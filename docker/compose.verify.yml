@@ -1,0 +1,16 @@
+# Test-only browser; never part of production startup.
+services:
+  browser:
+    profiles: [verification]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: browser-verification
+    environment:
+      HOME: /tmp/browser-home
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true

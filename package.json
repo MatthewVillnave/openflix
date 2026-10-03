@@ -18,7 +18,8 @@
     "user:create": "pnpm --filter @openflix/server user:create",
     "db:migrate": "pnpm --filter @openflix/server db:migrate",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "verify:docker": "node scripts/verify-docker.mjs"
   },
   "devDependencies": {
     "@testing-library/react": "^16.0.0",

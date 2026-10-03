@@ -1,0 +1,147 @@
+// Runs only in the disposable verification container, never in production.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:https';
+import { request } from 'node:http';
+import { chromium } from '/opt/browser/node_modules/playwright-core/index.mjs';
+
+let input = '';
+for await (const chunk of process.stdin) input += chunk;
+const { username, password } = JSON.parse(input);
+const dir = '/tmp/browser-home';
+mkdirSync(dir, { recursive: true, mode: 0o700 });
+const openssl = (...args) => execFileSync('openssl', args, { cwd: dir, stdio: 'pipe' });
+openssl(
+  'req',
+  '-x509',
+  '-newkey',
+  'rsa:2048',
+  '-nodes',
+  '-days',
+  '1',
+  '-subj',
+  '/CN=OpenFlix disposable test CA',
+  '-keyout',
+  'ca.key',
+  '-out',
+  'ca.crt',
+);
+openssl(
+  'req',
+  '-newkey',
+  'rsa:2048',
+  '-nodes',
+  '-subj',
+  '/CN=localhost',
+  '-keyout',
+  'server.key',
+  '-out',
+  'server.csr',
+);
+writeFileSync(
+  `${dir}/server.ext`,
+  'subjectAltName=DNS:localhost\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n',
+);
+openssl(
+  'x509',
+  '-req',
+  '-in',
+  'server.csr',
+  '-CA',
+  'ca.crt',
+  '-CAkey',
+  'ca.key',
+  '-CAcreateserial',
+  '-days',
+  '1',
+  '-extfile',
+  'server.ext',
+  '-out',
+  'server.crt',
+);
+// Trust only in this disposable user's browser stores. No host trust-store changes,
+// ignoreHTTPSErrors, certificate-warning bypass, or global insecure setting.
+for (const location of ['.pki/nssdb', '.local/share/pki/nssdb']) {
+  const db = `${dir}/${location}`;
+  mkdirSync(db, { recursive: true, mode: 0o700 });
+  execFileSync('certutil', ['-N', '-d', `sql:${db}`, '--empty-password']);
+  execFileSync('certutil', [
+    '-A',
+    '-d',
+    `sql:${db}`,
+    '-n',
+    'OpenFlix test CA',
+    '-t',
+    'C,,',
+    '-i',
+    `${dir}/ca.crt`,
+  ]);
+}
+const proxy = createServer(
+  { key: readFileSync(`${dir}/server.key`), cert: readFileSync(`${dir}/server.crt`) },
+  (req, res) => {
+    const upstream = request(
+      { hostname: 'web', port: 8080, path: req.url, method: req.method, headers: req.headers },
+      (response) => {
+        res.writeHead(response.statusCode, response.headers);
+        response.pipe(res);
+      },
+    );
+    upstream.on('error', () => {
+      res.writeHead(502);
+      res.end();
+    });
+    req.pipe(upstream);
+  },
+);
+await new Promise((resolve) => proxy.listen(8443, '127.0.0.1', resolve));
+let browser;
+let step = 'launch';
+try {
+  // Only this disposable test browser disables Chromium's OS sandbox; the
+  // container is non-root, cap-drop ALL, read-only, and visits only this fixture.
+  browser = await chromium.launch({
+    executablePath: '/usr/bin/chromium',
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const failures = [];
+  page.on('pageerror', () => failures.push('javascript error'));
+  step = 'trusted HTTPS frontend';
+  await page.goto('https://localhost:8443');
+  assert.equal(await page.title(), 'OpenFlix');
+  await page.getByLabel('Username', { exact: true }).waitFor();
+  step = 'sign in';
+  await page.getByLabel('Username', { exact: true }).fill(username);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('heading', { name: `Welcome, ${username}.` }).waitFor();
+  const cookies = await context.cookies();
+  const session = cookies.find((cookie) => cookie.name === '__Host-openflix_session');
+  assert.ok(session?.secure && session.httpOnly && session.sameSite === 'Strict');
+  assert.equal(await page.evaluate(() => document.cookie), '');
+  assert.equal(await page.evaluate(() => localStorage.length), 0);
+  step = 'session reload';
+  await page.reload();
+  await page.getByRole('heading', { name: `Welcome, ${username}.` }).waitFor();
+  step = 'logout';
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page.getByLabel('Username', { exact: true }).waitFor();
+  await page.reload();
+  await page.getByLabel('Username', { exact: true }).waitFor();
+  assert.equal(
+    (await context.cookies()).some((cookie) => cookie.name === '__Host-openflix_session'),
+    false,
+  );
+  assert.equal(failures.length, 0);
+  // Return only non-sensitive verification metadata.
+  console.log(JSON.stringify({ passed: true, browser: browser.version() }));
+} catch {
+  console.error(`Browser verification failed at: ${step}`);
+  process.exitCode = 1;
+} finally {
+  await browser?.close();
+  await new Promise((resolve) => proxy.close(resolve));
+}

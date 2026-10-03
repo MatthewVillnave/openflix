@@ -15,6 +15,8 @@ services:
       - openflix-dev-config:/config
       - ../apps/server/src:/app/apps/server/src:ro
     init: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
   web:
     build:
       context: ..
@@ -29,5 +31,7 @@ services:
       - ../apps/web/src:/app/apps/web/src:ro
     depends_on: [server]
     init: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
 volumes:
   openflix-dev-config:

@@ -36,3 +36,12 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s CMD wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1
 ENTRYPOINT ["nginx"]
 CMD ["-g", "daemon off;"]
+
+# Disposable HTTPS/browser verification, excluded from production images.
+FROM node:24.19.0-bookworm-slim AS browser-verification
+RUN apt-get update && apt-get install -y --no-install-recommends chromium libnss3-tools openssl && rm -rf /var/lib/apt/lists/*
+RUN npm install --prefix /opt/browser --ignore-scripts playwright-core@1.62.1
+WORKDIR /app
+COPY docker/verify-browser.mjs docker/verify-browser.mjs
+USER node
+CMD ["node", "docker/verify-browser.mjs"]
