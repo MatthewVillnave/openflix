@@ -1,0 +1,1948 @@
+OpenFlix Technical Specification
+
+Version: 0.1 Draft
+Status: Architecture / implementation handoff
+Project type: Open-source self-hosted media aggregation and federation platform
+
+⸻
+
+1. Project Summary
+
+OpenFlix is a standalone open-source media platform that sits in front of existing media servers, beginning with Jellyfin.
+
+OpenFlix does not replace Jellyfin’s media engine.
+
+Instead:
+
+Jellyfin handles
+
+* Media files
+* Library scanning
+* Media metadata
+* Playback information
+* Direct streaming
+* Transcoding
+* Subtitle/audio tracks
+* Hardware acceleration
+* Existing local media administration
+
+OpenFlix handles
+
+* A unified user-facing application
+* Jellyfin server discovery/connection
+* Cross-server catalog aggregation
+* Search across multiple libraries
+* User identity and sessions
+* Playback brokering
+* Remote access abstraction
+* Federation between OpenFlix nodes
+* Node discovery
+* Shared-library permissions
+* Trust and catalog validation
+* Eventually creator/public/community catalogs
+
+The simplest conceptual model is:
+
+                OPENFLIX CLIENT
+                     |
+                     v
+                OPENFLIX NODE
+                /     |      \
+               /      |       \
+          Jellyfin  Jellyfin   Remote
+          Server A  Server B   OpenFlix Node
+
+A user interacts only with OpenFlix.
+
+OpenFlix determines where the requested media lives and obtains the stream from the appropriate Jellyfin server.
+
+⸻
+
+2. Core Design Principle
+
+OpenFlix must separate:
+
+1. Media storage
+2. Media serving/transcoding
+3. Catalog/indexing
+4. Identity
+5. Federation
+6. Client presentation
+
+No OpenFlix deployment should require all six functions to exist on the same physical machine.
+
+A Raspberry Pi, OptiPlex, VPS, NAS, home server or cloud VM should all be capable of running an OpenFlix node.
+
+The actual media may remain somewhere completely different.
+
+Example:
+
+VPS
+└── OpenFlix Node
+Home Server
+└── Jellyfin
+    └── /media
+        ├── Movies
+        ├── TV
+        └── Music
+Browser / Phone / TV
+└── OpenFlix
+
+The VPS does not need a copy of the media.
+
+It communicates with Jellyfin and brokers playback.
+
+⸻
+
+3. Major Components
+
+OpenFlix should initially consist of four logical components.
+
+3.1 OpenFlix Server
+
+The primary backend application.
+
+Responsibilities:
+
+* Authentication
+* User accounts
+* Connected-server management
+* Catalog database
+* Search
+* Jellyfin API communication
+* Playback authorization
+* Stream brokering
+* Federation
+* Node identity
+* Peer management
+* Permissions
+* Health checks
+* Audit logs
+
+Suggested implementation:
+
+Language: TypeScript
+Runtime: current Node.js LTS
+HTTP framework: Fastify
+Database layer: Drizzle ORM or equivalent
+Primary DB for v0.1: SQLite
+Future supported DB: PostgreSQL
+API style: REST + WebSocket/SSE events
+
+SQLite is desirable for the initial version because OpenFlix should remain easy to self-host.
+
+The target installation experience should eventually be:
+
+docker compose up -d
+
+⸻
+
+4. OpenFlix Web Client
+
+A responsive web application/PWA.
+
+Suggested:
+
+React
+TypeScript
+Vite
+
+The client should work in:
+
+* Desktop browsers
+* Mobile browsers
+* Tablets
+* Installed PWA mode
+
+Native applications are explicitly outside the first MVP.
+
+The web client must never receive Jellyfin administrator credentials or permanent connector credentials.
+
+The browser communicates with OpenFlix.
+
+OpenFlix communicates with Jellyfin.
+
+Browser
+   |
+   | OpenFlix authentication
+   v
+OpenFlix
+   |
+   | Jellyfin authentication
+   v
+Jellyfin
+
+⸻
+
+5. Jellyfin Connector
+
+OpenFlix requires an abstraction called a Media Connector.
+
+The first connector implementation is:
+
+JellyfinConnector
+
+This abstraction is important because OpenFlix should not permanently become synonymous with Jellyfin.
+
+Future connectors could potentially support:
+
+PlexConnector
+EmbyConnector
+FilesystemConnector
+CreatorFeedConnector
+ArchiveConnector
+
+Core interface:
+
+interface MediaConnector {
+    connect(): Promise<void>;
+    testConnection(): Promise<ConnectionResult>;
+    getLibraries(): Promise<Library[]>;
+    scanCatalog(): Promise<MediaItem[]>;
+    getItem(id: string): Promise<MediaItem>;
+    search(query: string): Promise<MediaItem[]>;
+    getPlaybackInfo(
+        itemId: string,
+        clientProfile: ClientProfile
+    ): Promise<PlaybackInfo>;
+    reportPlaybackStart(session: PlaybackSession): Promise<void>;
+    reportPlaybackProgress(session: PlaybackSession): Promise<void>;
+    reportPlaybackStop(session: PlaybackSession): Promise<void>;
+}
+
+OpenFlix code outside the connector layer should not depend directly on Jellyfin-specific API response objects.
+
+⸻
+
+6. Connecting Jellyfin
+
+The administrator should open:
+
+OpenFlix
+→ Settings
+→ Media Servers
+→ Add Server
+→ Jellyfin
+
+Configuration:
+
+Name:
+Living Room Server
+URL:
+http://192.168.1.100:8096
+Authentication:
+<Jellyfin-supported connector credential>
+Connection mode:
+LAN / HTTPS / Private Network
+
+OpenFlix performs:
+
+1. Resolve server.
+2. Query Jellyfin system information.
+3. Authenticate.
+4. Store resulting connector credential securely.
+5. Enumerate accessible libraries.
+6. Ask administrator which libraries to import.
+7. Begin catalog synchronization.
+
+OpenFlix should never retain the Jellyfin user’s plaintext password after authentication.
+
+⸻
+
+7. Connector Security
+
+Stored connector secrets must be encrypted at rest.
+
+Example:
+
+OPENFLIX_MASTER_KEY
+
+is supplied using an environment variable or secret store.
+
+Database value:
+
+encrypted_connector_token
+
+never:
+
+plaintext_password
+
+Connector secrets must never be:
+
+* included in logs
+* transmitted to browsers
+* exposed in diagnostics
+* included in federation metadata
+* embedded into permanent playback URLs
+
+⸻
+
+8. OpenFlix Catalog
+
+OpenFlix maintains its own metadata index, not its own copy of the media.
+
+Example:
+
+OpenFlix Database
+Movie
+├── OpenFlix ID: of_movie_8f731
+├── Title: Interstellar
+├── Year: 2014
+├── TMDB ID: ...
+├── IMDB ID: ...
+└── Sources
+    ├── Jellyfin Server A
+    ├── Jellyfin Server B
+    └── Remote OpenFlix Node C
+
+Multiple physical copies of the same movie should appear as one catalog item with multiple sources.
+
+⸻
+
+9. Media Identity
+
+OpenFlix requires a normalized media identity layer.
+
+Preferred matching order:
+
+1. External provider ID
+2. Media type
+3. Release year
+4. Season/episode number
+5. Normalized title
+6. Runtime
+7. Optional media fingerprint/hash
+
+Example canonical identity:
+
+type = movie
+tmdb = 157336
+
+For television:
+
+type = episode
+tmdb-series = ...
+season = 2
+episode = 4
+
+File names must never be treated as sufficient proof that two media objects are identical.
+
+⸻
+
+10. Core Database Model
+
+Initial tables should resemble:
+
+users
+user_sessions
+nodes
+node_keys
+peer_nodes
+connectors
+connector_libraries
+catalog_items
+media_sources
+media_versions
+user_library_access
+playback_sessions
+playback_events
+federation_permissions
+federation_catalog_entries
+trust_records
+audit_events
+
+Example MediaSource
+
+{
+  "id": "src_x123",
+  "catalogItemId": "movie_abc",
+  "sourceType": "jellyfin",
+  "connectorId": "jf_001",
+  "remoteItemId": "49020",
+  "quality": {
+    "width": 3840,
+    "height": 2160,
+    "codec": "hevc"
+  },
+  "availability": "online"
+}
+
+⸻
+
+11. Library Synchronization
+
+When Jellyfin is first connected:
+
+Jellyfin
+   |
+   | scan
+   v
+OpenFlix Connector
+   |
+   | normalize
+   v
+OpenFlix Catalog
+
+Initial v0.1 synchronization should use polling as the authoritative mechanism.
+
+Example:
+
+Initial full scan
+then
+Incremental synchronization every 5 minutes
+
+Synchronization handles:
+
+Added media
+Changed metadata
+Deleted media
+Library changes
+Artwork changes
+Server availability
+
+Later OpenFlix can use Jellyfin real-time events where appropriate as an optimization.
+
+Polling remains the reconciliation mechanism.
+
+⸻
+
+12. Artwork
+
+OpenFlix should support two modes.
+
+Pass-through
+
+Client
+→ OpenFlix
+→ Jellyfin image endpoint
+
+Cached
+
+OpenFlix downloads/caches:
+
+posters
+backdrops
+logos
+thumbnails
+
+Cache only derivative artwork.
+
+Do not duplicate actual media.
+
+⸻
+
+13. Playback Architecture
+
+This is one of the most important parts of OpenFlix.
+
+The client requests:
+
+POST /api/v1/playback/start
+
+Example:
+
+{
+  "catalogItemId": "movie_abc",
+  "clientCapabilities": {
+    "videoCodecs": ["h264", "hevc"],
+    "audioCodecs": ["aac", "opus"],
+    "maxWidth": 1920,
+    "maxHeight": 1080
+  }
+}
+
+OpenFlix:
+
+1. Resolves available sources.
+2. Checks user permission.
+3. Checks source availability.
+4. Selects preferred source.
+5. Requests playback information from Jellyfin.
+6. Creates OpenFlix playback session.
+7. Returns temporary OpenFlix playback URL.
+
+⸻
+
+14. Streaming Modes
+
+OpenFlix should eventually support three streaming modes.
+
+Mode A — Reverse Proxy
+
+Recommended initial implementation.
+
+Viewer
+  |
+  v
+OpenFlix
+  |
+  v
+Jellyfin
+
+Example URL:
+
+https://openflix.example/stream/s_712312
+
+The browser never sees the Jellyfin access token.
+
+OpenFlix forwards:
+
+HTTP Range
+Content-Length
+Content-Range
+Content-Type
+ETag
+Last-Modified
+
+Correct HTTP Range support is mandatory.
+
+⸻
+
+15. Direct Mode
+
+For trusted local environments:
+
+OpenFlix
+   |
+   | signed temporary request
+   v
+Client
+   |
+   v
+Jellyfin
+
+Useful when both devices are on the same LAN.
+
+This prevents OpenFlix itself from becoming a bandwidth bottleneck.
+
+⸻
+
+16. Relay Mode
+
+Future feature.
+
+Useful for a Jellyfin server behind:
+
+CGNAT
+NAT
+Firewall
+No inbound ports
+
+Concept:
+
+Jellyfin/OpenFlix Node
+        |
+        | outbound encrypted connection
+        v
+OpenFlix Relay
+        |
+        v
+Viewer
+
+The relay routes traffic.
+
+It does not need to permanently store the media.
+
+Relay mode is NOT required for v0.1.
+
+⸻
+
+17. Transcoding
+
+OpenFlix should not implement its own FFmpeg transcoding system in the MVP.
+
+That is Jellyfin’s job.
+
+Example:
+
+Browser cannot play source format.
+OpenFlix
+→ Jellyfin playback request
+→ Jellyfin selects transcode
+→ Jellyfin/FFmpeg generates compatible stream
+→ OpenFlix proxies generated stream
+→ Browser
+
+OpenFlix is the orchestration layer.
+
+Jellyfin remains the media engine.
+
+⸻
+
+18. OpenFlix Accounts
+
+OpenFlix accounts are separate from Jellyfin accounts.
+
+v0.1:
+
+username
+password hash
+display name
+profile
+permissions
+
+Passwords:
+
+Argon2id
+
+Sessions:
+
+Secure
+HttpOnly
+SameSite cookies
+
+Future:
+
+passkeys
+OIDC
+federated identity
+device authorization
+
+⸻
+
+19. User Profiles
+
+One OpenFlix account may eventually contain profiles similar to streaming platforms.
+
+Example:
+
+Matt
+Danielle
+Khalani
+Mathias
+
+Profiles may have:
+
+watch history
+continue watching
+favorites
+playlists
+content restrictions
+preferred language
+subtitle preferences
+
+Do not rely exclusively upon Jellyfin’s watch-history database.
+
+OpenFlix should eventually maintain its own cross-server viewing state.
+
+⸻
+
+20. Personal Library Mode
+
+Every connected Jellyfin server begins as:
+
+PRIVATE
+
+Nothing automatically enters federation.
+
+A user connecting OpenFlix to Jellyfin immediately receives:
+
+OpenFlix unified interface
++
+their Jellyfin content
++
+search
++
+streaming
++
+watch state
+
+This alone should make OpenFlix useful.
+
+Federation is optional.
+
+⸻
+
+21. Multiple Jellyfin Servers
+
+A major feature is the ability to merge multiple servers.
+
+Example:
+
+Matt's OpenFlix
+Sources:
+├── OptiPlex Jellyfin
+├── Mac Mini Jellyfin
+├── Father's Jellyfin
+└── Remote Community Node
+
+Search:
+
+Interstellar
+
+OpenFlix returns one movie.
+
+Internally:
+
+Source A - 1080p
+Source B - 4K
+Source C - remote 720p
+
+The source-selection engine may choose based on:
+
+local before remote
+direct play before transcode
+resolution preference
+codec compatibility
+latency
+server health
+bandwidth
+user preference
+
+⸻
+
+22. Federation
+
+This is the major long-term OpenFlix feature.
+
+An OpenFlix server becomes an:
+
+OpenFlix Node
+
+Nodes can communicate with other OpenFlix nodes.
+
+Example:
+
+Matt Node
+   |
+   +------ Alice Node
+   |
+   +------ Bob Node
+   |
+   +------ Community Node
+
+No single OpenFlix server needs to contain the entire network.
+
+⸻
+
+23. Node Identity
+
+On first startup every OpenFlix node generates:
+
+Ed25519 public/private key pair
+
+Node ID:
+
+SHA-256(public key)
+
+Example:
+
+ofnode_94e92f...
+
+Private key remains on the node.
+
+Public key identifies the node to peers.
+
+⸻
+
+24. Node Descriptor
+
+Every node exposes:
+
+GET /.well-known/openflix
+
+Example:
+
+{
+  "protocol": "openflix",
+  "protocolVersion": "1",
+  "nodeId": "ofnode_94e92f",
+  "name": "Matt's OpenFlix",
+  "api": "https://node.example.com/api/v1",
+  "federation": true,
+  "publicKey": "...",
+  "capabilities": [
+    "catalog",
+    "search",
+    "playback"
+  ]
+}
+
+Descriptor should be digitally signed.
+
+⸻
+
+25. Federation Discovery
+
+Do NOT begin v0.1 with a DHT.
+
+Build federation progressively.
+
+v0.1
+
+Manual peer addition:
+
+Settings
+→ Federation
+→ Add Node
+https://alice.example.com
+
+v0.2
+
+Optional public OpenFlix node directory.
+
+Later
+
+Possible decentralized discovery:
+
+gossip
+DNS discovery
+mDNS for LAN
+signed peer exchange
+DHT
+
+The federation protocol must not depend permanently upon one centralized directory.
+
+⸻
+
+26. Federation Handshake
+
+Node A contacts Node B:
+
+A → /.well-known/openflix
+B → NodeDescriptor
+A verifies:
+protocol
+version
+signature
+node identity
+
+Node A sends signed handshake:
+
+{
+  "nodeId": "...",
+  "timestamp": 123456789,
+  "nonce": "...",
+  "signature": "..."
+}
+
+Requests must include replay protection.
+
+⸻
+
+27. Shared Catalog
+
+Media on a node can have visibility:
+
+PRIVATE
+TRUSTED_USERS
+TRUSTED_NODES
+COMMUNITY
+PUBLIC
+
+Default:
+
+PRIVATE
+
+Nothing becomes shared simply because Jellyfin indexes it.
+
+⸻
+
+28. Federation Catalog Entry
+
+A federated node advertises metadata, not necessarily the file itself.
+
+Example:
+
+{
+  "openflixId": "of_movie_x123",
+  "type": "movie",
+  "title": "Example Movie",
+  "year": 2025,
+  "providerIds": {
+    "tmdb": "12345"
+  },
+  "runtimeSeconds": 6430,
+  "versions": [
+    {
+      "resolution": "1080p",
+      "codec": "h264"
+    }
+  ]
+}
+
+Do not expose:
+
+filesystem paths
+Jellyfin tokens
+internal IP addresses
+administrator names
+server credentials
+
+⸻
+
+29. Federated Search
+
+User searches:
+
+Bluey
+
+Home node searches:
+
+Local catalog
++
+cached catalogs from peers
+
+The user’s client should not need to independently query 500 servers.
+
+Their home OpenFlix node performs aggregation.
+
+Result:
+
+Bluey
+├── Local source
+├── Node ABC
+└── Node XYZ
+
+Displayed as one title.
+
+⸻
+
+30. Federated Playback
+
+Example:
+
+Viewer
+   |
+   v
+Home OpenFlix Node
+   |
+   | signed playback request
+   v
+Remote OpenFlix Node
+   |
+   v
+Remote Jellyfin
+
+Remote node decides whether the requesting node/user is authorized.
+
+Remote Jellyfin credential never leaves the remote node.
+
+Possible final path:
+
+Viewer
+→ Remote OpenFlix Node
+→ Remote Jellyfin
+
+using a temporary playback capability created by the home/remote-node handshake.
+
+This avoids double-proxying through the home node.
+
+⸻
+
+31. Temporary Playback Tokens
+
+Federated playback URLs must be temporary.
+
+Example claims:
+
+{
+  "session": "ps_93d",
+  "media": "item_123",
+  "user": "user_abc",
+  "sourceNode": "node_xyz",
+  "expires": 123456789,
+  "permissions": ["stream"]
+}
+
+Token should:
+
+expire quickly
+be signed
+be limited to one media item
+not permit arbitrary API access
+not expose Jellyfin credentials
+
+⸻
+
+32. OpenFlix Is Not a File Upload Site
+
+This is a deliberate architectural decision.
+
+There should initially be no endpoint resembling:
+
+POST /upload/movie
+
+OpenFlix discovers media through connectors.
+
+Example:
+
+Jellyfin contains media
+↓
+OpenFlix indexes it
+↓
+Administrator chooses whether it is shareable
+
+This keeps OpenFlix fundamentally different from a generic video-upload platform.
+
+⸻
+
+33. Catalog Trust
+
+A node claiming:
+
+Cars (2006)
+
+does not automatically mean OpenFlix should trust that claim.
+
+Possible trust states:
+
+UNVERIFIED
+NODE_VERIFIED
+HASH_VERIFIED
+MANIFEST_VERIFIED
+CREATOR_VERIFIED
+
+This architecture allows stronger verification later without changing the basic protocol.
+
+⸻
+
+34. Media Fingerprinting
+
+Optional future feature.
+
+For public/shared content, OpenFlix may calculate:
+
+SHA-256
+
+for exact-file verification.
+
+For multiple legitimate encodes of the same media, future perceptual/audio/video fingerprints may be used.
+
+Exact hashes identify files.
+
+Metadata identifiers identify works.
+
+These concepts must remain separate.
+
+⸻
+
+35. Signed Media Manifest
+
+Future trusted catalog entries may support:
+
+{
+  "manifestVersion": 1,
+  "contentId": "of_content_x",
+  "title": "Example",
+  "creator": "Example Studio",
+  "approvedHashes": [
+    {
+      "sha256": "...",
+      "format": "1080p-h264"
+    }
+  ],
+  "issuer": "creator-key-x",
+  "signature": "..."
+}
+
+OpenFlix verifies the signature before marking the item:
+
+MANIFEST_VERIFIED
+
+⸻
+
+36. Node Trust
+
+Users should be able to:
+
+trust node
+block node
+remove node
+report node
+restrict node
+
+Example:
+
+Alice Node
+Status: Trusted
+Latency: 38ms
+Last Seen: 22 seconds ago
+Catalog: 1,832 items
+
+A malicious node can therefore be removed without affecting the rest of the federation.
+
+⸻
+
+37. No Single Global Administrator
+
+OpenFlix federation should not require one master administrator.
+
+Each node controls:
+
+its users
+its connected Jellyfin servers
+its shared catalog
+its peer relationships
+its access rules
+its blocks
+its trust decisions
+
+The protocol coordinates nodes.
+
+It does not centrally own them.
+
+⸻
+
+38. Public/Community Catalogs
+
+Eventually OpenFlix could support logical catalogs such as:
+
+Public Domain Movies
+Independent Film Network
+Open Education
+Local Community Media
+Creator Channels
+Family Media Group
+
+These are essentially collections advertised by participating nodes.
+
+Users may subscribe to catalogs.
+
+⸻
+
+39. Home Node Concept
+
+Every OpenFlix user has a home node.
+
+The home node stores:
+
+identity
+preferences
+connected servers
+peer list
+watch state
+favorites
+search cache
+trusted catalogs
+
+Other nodes merely provide services/content to it.
+
+This avoids requiring a central OpenFlix account database.
+
+⸻
+
+40. Search Architecture
+
+Initial:
+
+SQLite FTS5
+
+Index fields:
+
+title
+original title
+alternate titles
+actors
+director
+genres
+year
+description
+external IDs
+
+Federated catalog metadata may be locally cached.
+
+Search should therefore remain fast even when some peer nodes are offline.
+
+⸻
+
+41. Peer Health
+
+Each node tracks:
+
+ONLINE
+DEGRADED
+OFFLINE
+UNKNOWN
+
+Metrics:
+
+last seen
+latency
+API version
+catalog revision
+stream availability
+
+A source-selection engine avoids unavailable nodes.
+
+⸻
+
+42. Catalog Revisions
+
+Each node should publish a monotonically increasing:
+
+catalogRevision
+
+Example:
+
+2383
+
+Peers request:
+
+changes since revision 2370
+
+rather than downloading the entire catalog repeatedly.
+
+⸻
+
+43. Federation API
+
+Initial endpoints:
+
+GET  /.well-known/openflix
+GET  /api/v1/federation/node
+POST /api/v1/federation/handshake
+GET  /api/v1/federation/catalog
+GET  /api/v1/federation/catalog/changes
+POST /api/v1/federation/search
+POST /api/v1/federation/playback/request
+POST /api/v1/federation/playback/stop
+GET  /api/v1/federation/health
+
+All federation-changing operations must be authenticated and signed.
+
+⸻
+
+44. Local API
+
+Initial client-facing endpoints:
+
+POST /api/v1/auth/login
+POST /api/v1/auth/logout
+GET  /api/v1/me
+GET  /api/v1/catalog
+GET  /api/v1/catalog/:id
+GET  /api/v1/search
+GET  /api/v1/libraries
+POST /api/v1/playback/start
+POST /api/v1/playback/:id/progress
+POST /api/v1/playback/:id/stop
+GET  /api/v1/continue-watching
+GET  /api/v1/favorites
+
+Administration:
+
+GET    /api/v1/admin/connectors
+POST   /api/v1/admin/connectors
+PATCH  /api/v1/admin/connectors/:id
+DELETE /api/v1/admin/connectors/:id
+POST   /api/v1/admin/connectors/:id/sync
+GET    /api/v1/admin/peers
+POST   /api/v1/admin/peers
+DELETE /api/v1/admin/peers/:id
+
+⸻
+
+45. API Versioning
+
+All APIs:
+
+/api/v1/
+
+Federation descriptor contains:
+
+{
+  "protocolVersion": "1"
+}
+
+Major federation protocol changes require compatibility negotiation.
+
+Never silently change protocol semantics.
+
+⸻
+
+46. WebSocket / Events
+
+OpenFlix should provide one realtime channel:
+
+/api/v1/events
+
+Events might include:
+
+catalog.changed
+server.online
+server.offline
+playback.updated
+peer.online
+peer.offline
+sync.completed
+
+SSE may be used instead of WebSocket initially if simpler.
+
+⸻
+
+47. Resume / Continue Watching
+
+Playback updates:
+
+Start
+Progress
+Pause
+Stop
+Completed
+
+OpenFlix stores normalized progress:
+
+{
+  "catalogItemId": "...",
+  "positionMs": 342434,
+  "durationMs": 5423423,
+  "completed": false
+}
+
+This means continue-watching survives switching between different physical copies of the same title.
+
+⸻
+
+48. Source Selection
+
+Implement:
+
+scoreSource(source, client, user): number
+
+Example scoring:
+
++100 local LAN
++60 direct-play compatible
++30 preferred resolution
++20 trusted node
++10 low latency
+-40 transcoding required
+-50 degraded source
+-100 offline
+
+Do not permanently hard-code values.
+
+Expose selection policy through configuration later.
+
+⸻
+
+49. Failure Handling
+
+If Source A fails during startup:
+
+OpenFlix retries Source B.
+
+If stream dies mid-playback:
+
+MVP:
+
+show playback failure
+offer retry
+
+Future:
+
+resume from equivalent Source B
+
+Cross-source seamless failover is not required for v0.1.
+
+⸻
+
+50. Security Requirements
+
+Mandatory:
+
+* HTTPS for internet-facing nodes
+* strong password hashing
+* CSRF protections where applicable
+* secure cookies
+* strict CORS
+* Content Security Policy
+* rate limiting
+* connector-secret encryption
+* federation signatures
+* replay protection
+* nonce validation
+* request size limits
+* safe URL validation
+* SSRF protection
+* parameterized database queries
+* no secrets in logs
+* short-lived playback capabilities
+
+OpenFlix should assume peer nodes may be malicious.
+
+Never trust federation input merely because it came from another OpenFlix installation.
+
+⸻
+
+51. Network Isolation
+
+Ideal home deployment:
+
+Internet
+   |
+   v
+Caddy / reverse proxy
+   |
+   v
+OpenFlix :8787
+   |
+   +---- Jellyfin :8096
+   |
+   +---- SQLite
+
+Jellyfin itself does not necessarily need to be exposed publicly.
+
+Only OpenFlix needs external access.
+
+⸻
+
+52. Deployment
+
+Initial supported Docker deployment:
+
+openflix-server
+openflix-web
+
+Could eventually become one container/image.
+
+Persistent volume:
+
+/config
+
+Contains:
+
+database
+keys
+cached artwork
+configuration
+
+Example environment:
+
+OPENFLIX_BASE_URL=
+OPENFLIX_MASTER_KEY=
+OPENFLIX_DATA_DIR=/config
+OPENFLIX_PORT=8787
+OPENFLIX_LOG_LEVEL=info
+
+⸻
+
+53. Backup
+
+A complete OpenFlix backup should only need:
+
+/config
+
+Media remains backed up separately through Jellyfin/storage infrastructure.
+
+Export command future:
+
+openflix backup
+
+⸻
+
+54. Logging
+
+Structured logs.
+
+Every log entry may contain:
+
+timestamp
+level
+component
+request_id
+user_id
+node_id
+event
+
+Never log:
+
+passwords
+connector credentials
+session cookies
+playback bearer tokens
+private signing keys
+
+⸻
+
+55. Health Endpoint
+
+GET /health
+
+Response:
+
+{
+  "status": "healthy",
+  "database": "ok",
+  "connectors": {
+    "online": 2,
+    "offline": 0
+  },
+  "peers": {
+    "online": 4,
+    "offline": 1
+  }
+}
+
+No sensitive information should be included publicly.
+
+⸻
+
+56. OpenFlix v0.1 MVP
+
+Do NOT attempt the entire vision immediately.
+
+The first successful OpenFlix build must demonstrate:
+
+One OpenFlix Node
++
+One Jellyfin server
++
+One browser
+
+User can:
+
+connect Jellyfin
+index library
+browse library
+search
+open title
+play media
+pause
+seek
+resume
+direct play
+transcode through Jellyfin when needed
+
+If this does not work reliably, federation work must not begin.
+
+⸻
+
+57. v0.1 Milestone 1 — Foundation
+
+Build:
+
+monorepo
+backend
+frontend
+SQLite
+authentication
+Docker
+configuration
+health endpoint
+test framework
+
+Repository layout:
+
+openflix/
+├── apps/
+│   ├── server/
+│   └── web/
+│
+├── packages/
+│   ├── connector-core/
+│   ├── connector-jellyfin/
+│   ├── protocol/
+│   ├── shared/
+│   └── database/
+│
+├── docs/
+│   ├── architecture.md
+│   ├── federation.md
+│   └── security.md
+│
+├── docker/
+├── docker-compose.yml
+└── README.md
+
+⸻
+
+58. v0.1 Milestone 2 — Jellyfin Connection
+
+Implement:
+
+Add Jellyfin
+Test Jellyfin
+Authenticate
+Enumerate libraries
+Save connector securely
+Disconnect
+Reconnect
+
+Acceptance:
+
+A fresh OpenFlix installation can connect to an existing Jellyfin instance without modifying that Jellyfin installation.
+
+⸻
+
+59. v0.1 Milestone 3 — Catalog
+
+Implement:
+
+full scan
+normalization
+database storage
+poster loading
+movie view
+TV view
+series → season → episode
+search
+manual resync
+background resync
+
+Acceptance:
+
+OpenFlix can restart without rescanning everything from scratch.
+
+⸻
+
+60. v0.1 Milestone 4 — Playback
+
+Implement:
+
+playback session
+source resolution
+Jellyfin playback information
+reverse proxy
+HTTP Range requests
+direct stream
+transcoding
+audio tracks
+subtitles
+progress tracking
+resume
+
+Critical rule:
+
+Do not expose the permanent Jellyfin credential to the browser.
+
+Acceptance:
+
+OpenFlix can play the same media through its own URL while Jellyfin remains the actual media/transcoding backend.
+
+⸻
+
+61. v0.1 Milestone 5 — Multiple Servers
+
+Connect:
+
+Jellyfin A
+Jellyfin B
+
+Merge duplicate titles.
+
+Display:
+
+Interstellar
+Available sources: 2
+
+User should not need to know which server physically contains the movie unless they inspect details.
+
+⸻
+
+62. v0.2 — First Federation Prototype
+
+Now deploy:
+
+OpenFlix Node A
++ Jellyfin A
+OpenFlix Node B
++ Jellyfin B
+
+Manually peer them.
+
+Prove:
+
+A discovers B
+A receives B catalog metadata
+A can search B
+A requests playback from B
+B authorizes request
+B serves stream
+A's browser plays it
+
+This is the critical proof-of-concept for the entire OpenFlix idea.
+
+⸻
+
+63. Federation v0.2 Acceptance Test
+
+Set up:
+
+OptiPlex
+├── Jellyfin
+└── OpenFlix Node A
+VPS / second machine
+├── Jellyfin test server
+└── OpenFlix Node B
+
+Place:
+
+Movie A only on Server A
+Movie B only on Server B
+
+From Node A’s web interface:
+
+search Movie B
+see Movie B
+click Movie B
+stream Movie B
+
+The user should experience both systems as one library.
+
+If that works, the fundamental OpenFlix architecture is proven.
+
+⸻
+
+64. v0.3 — Trust and Shared Libraries
+
+Add:
+
+library visibility
+item visibility
+trusted peers
+blocked peers
+signed descriptors
+signed federation requests
+catalog revisions
+delta sync
+
+⸻
+
+65. v0.4 — Home Node / Identity
+
+Add:
+
+cross-node user identity
+portable profile
+watch history
+favorites
+multiple devices
+profile sync
+
+⸻
+
+66. v0.5 — Internet-Friendly Federation
+
+Research/build:
+
+NAT traversal
+relay service
+automatic TLS
+node discovery
+optional public directory
+peer exchange
+
+Do not introduce these before basic federation works.
+
+⸻
+
+67. Explicit Non-Goals for v0.1
+
+Do NOT build:
+
+torrent protocol
+P2P chunk swarming
+DHT
+native iOS app
+native Android app
+Roku app
+automatic global federation
+massive public directory
+OpenFlix transcoder
+media uploader
+payment system
+creator marketplace
+cloud storage
+AI recommendations
+social features
+comments
+live streaming
+
+Those are future possibilities.
+
+They should not contaminate the first architecture.
+
+⸻
+
+68. Design Rule: OpenFlix Must Work Without Federation
+
+This is important.
+
+Even if federation disappeared tomorrow, OpenFlix should remain useful as:
+
+A beautiful open-source unified frontend for one or more self-hosted media servers.
+
+That ensures the project has immediate value.
+
+⸻
+
+69. Design Rule: Federation Must Work Without OpenFlix Central Infrastructure
+
+Likewise:
+
+Two OpenFlix nodes controlled by two independent people must eventually be capable of federating directly.
+
+Node A
+↔
+Node B
+
+No mandatory:
+
+openflix.com
+central login service
+central database
+central streaming server
+
+A hosted OpenFlix service may exist for convenience.
+
+It must not be required by the protocol.
+
+⸻
+
+70. Design Rule: Storage Belongs to the Node Operator
+
+OpenFlix does not require users to upload their media into an OpenFlix-owned cloud.
+
+Example:
+
+Matt owns 8 TB storage.
+Alice owns 20 TB storage.
+Bob owns 4 TB storage.
+
+They remain owners/operators of their storage.
+
+OpenFlix provides the interoperability layer.
+
+⸻
+
+71. Design Rule: Compute Belongs to the Source
+
+If a source Jellyfin server needs to transcode:
+
+source Jellyfin performs transcoding
+
+The requesting node should not normally do it.
+
+This distributes compute naturally with the media.
+
+⸻
+
+72. Design Rule: Metadata Can Travel, Secrets Cannot
+
+Federation can exchange:
+
+title
+description
+poster
+year
+runtime
+provider IDs
+quality
+availability
+catalog IDs
+
+Federation cannot exchange:
+
+Jellyfin administrator token
+filesystem paths
+private keys
+local network credentials
+database passwords
+unrelated user information
+
+⸻
+
+73. Long-Term Vision
+
+OpenFlix eventually becomes an open protocol for decentralized personal and community media infrastructure.
+
+Conceptually:
+
+                   OPENFLIX
+              Open Client Layer
+                      |
+              Identity / Catalog
+                      |
+              Federation Protocol
+             /        |        \
+            /         |         \
+       Home Node   VPS Node   Community Node
+          |           |            |
+       Jellyfin    Jellyfin      Jellyfin
+          |           |            |
+       Storage     Storage       Storage
+
+The important innovation is not merely a different Jellyfin skin.
+
+It is:
+
+A unified media experience where the catalog, storage, compute and users can live on independent hardware while interoperating through an open protocol.
+
+A person’s media server becomes one node in a larger optional network rather than an isolated island.
+
+⸻
+
+74. First Engineering Objective
+
+Do not begin by attempting the global network.
+
+Build this:
+
+Browser
+   |
+   v
+OpenFlix
+   |
+   v
+Jellyfin
+   |
+   v
+Media
+
+Then build this:
+
+Browser
+   |
+   v
+OpenFlix A
+   |
+   +----------+
+   |          |
+   v          v
+Jellyfin A  OpenFlix B
+                |
+                v
+             Jellyfin B
+
+Once the second diagram works reliably, OpenFlix exists.
+
+Everything after that is scale, polish, discovery and protocol evolution.
+
+⸻
+
+75. Instructions to Implementation Agent
+
+Treat this document as the architectural specification for the OpenFlix project.
+
+Begin with Milestone 1 only.
+
+Before implementing:
+
+1. Inspect the current Jellyfin API/OpenAPI specification.
+2. Inspect the current official Jellyfin TypeScript SDK.
+3. Do not assume legacy Jellyfin endpoints remain valid.
+4. Establish the monorepo and test environment.
+5. Create architecture documentation.
+6. Implement interfaces before Jellyfin-specific business logic.
+7. Keep federation packages present structurally but do not implement federation during Milestone 1.
+8. Keep media-server-specific objects behind the MediaConnector abstraction.
+9. Make no changes to the connected Jellyfin installation.
+10. Never expose Jellyfin credentials to the OpenFlix web client.
+
+After Milestone 1, produce:
+
+STATUS
+TEST RESULTS
+FILES CREATED
+ARCHITECTURE DECISIONS
+SECURITY NOTES
+KNOWN LIMITATIONS
+NEXT MILESTONE
+
+Do not proceed automatically into later milestones until the current milestone is independently testable and its acceptance criteria pass.
+
+The immediate goal is not to build a global streaming network.
+
+The immediate goal is to create a clean architecture capable of becoming one.

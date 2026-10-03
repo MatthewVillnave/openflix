@@ -1,0 +1,31 @@
+{
+  "name": "openflix",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "dev": "pnpm build:packages && pnpm --parallel --filter @openflix/server --filter @openflix/web dev",
+    "build:packages": "pnpm --filter \"./packages/**\" -r build",
+    "build": "pnpm build:packages && pnpm --filter @openflix/server build && pnpm --filter @openflix/web build",
+    "typecheck": "pnpm build && tsc -p tsconfig.tests.json --noEmit",
+    "test": "pnpm build:packages && vitest run",
+    "check": "pnpm typecheck && pnpm test",
+    "start": "pnpm --filter @openflix/server start",
+    "user:create": "pnpm --filter @openflix/server user:create",
+    "db:migrate": "pnpm --filter @openflix/server db:migrate"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.0",
+    "jsdom": "^27.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}

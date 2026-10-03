@@ -1,0 +1,29 @@
+{
+  "name": "@openflix/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "cd ../.. && node --env-file-if-exists=.env --import tsx --watch apps/server/src/main.ts",
+    "start": "cd ../.. && node --env-file-if-exists=.env apps/server/dist/main.js",
+    "user:create": "cd ../.. && node --env-file-if-exists=.env --import tsx apps/server/src/cli.ts user:create",
+    "db:migrate": "cd ../.. && node --env-file-if-exists=.env --import tsx apps/server/src/cli.ts db:migrate"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.0",
+    "@fastify/helmet": "^13.0.0",
+    "@fastify/rate-limit": "^10.0.0",
+    "@inquirer/prompts": "^8.7.2",
+    "@node-rs/argon2": "^2.0.0",
+    "@openflix/database": "workspace:*",
+    "@openflix/protocol": "workspace:*",
+    "@openflix/shared": "workspace:*",
+    "fastify": "^5.12.5",
+    "pino": "^10.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  }
+}
