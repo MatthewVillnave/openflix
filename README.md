@@ -63,7 +63,7 @@ docker compose logs server
 docker compose down              # preserves the named data volume
 ```
 
-Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Docker configuration is supplied with CI smoke checks, but was **not executed on the initial MacBook build because Docker was unavailable**. See [verification](docs/verification.md).
+Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [verification](docs/verification.md) for prerequisites and [the report](docs/milestone-1-report.md) for the recorded results. On macOS, approve Docker access to the project folder when prompted for development source mounts.
 
 ## Repository
 
@@ -76,7 +76,8 @@ packages/protocol/            OpenFlix HTTP response/request contracts
 packages/shared/              Normalized domain types
 packages/database/            SQLite, migrations and repositories
 tests/                        Unit, HTTP, persistence, process and UI tests
-docker/                       Dockerfile, Nginx, development Compose
+docker/                       Images, Nginx, development Compose and browser fixture
+scripts/                      Reproducible Docker verification
 .github/workflows/ci.yml       Build/test and Docker verification jobs
 docs/                         Architecture, security, configuration and handoff
 ```

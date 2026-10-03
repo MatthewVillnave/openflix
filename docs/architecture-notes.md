@@ -7,3 +7,11 @@
 5. Connector credentials have an opaque reference/storage interface only. No credentials can be persisted in M1. M2 must implement authenticated encryption, key validation, rotation/version metadata and fail-closed behavior before saving secrets.
 6. M2 must re-inspect the current official SDK and version-matched OpenAPI before implementation. Do not assume the installed OptiPlex server version or copy SDK example logging of authentication responses.
 7. Scan pagination/cancellation, normalized identity matching, streaming transport and source selection need decisions in their respective milestones. The initial MediaConnector preserves the supplied method signatures without implementing those features.
+
+## Docker verification follow-up
+
+The first real container start exposed a packaging error: `pnpm deploy --legacy` left the internal workspace packages linked to `/app/packages/*`, which is absent from the final production image. The local packaging smoke check had incorrectly passed because it could still reach the original checkout. Workspace dependencies now use pnpm injection with synchronization after builds, and deployment uses the isolated deploy implementation. The Docker build temporarily moves the source workspace aside and imports the deployed application as a regression check. This changes packaging only, not the application architecture. See [pnpm deployment documentation](https://pnpm.io/cli/deploy).
+
+The local pnpm cache was also missing from `.dockerignore`, producing an unnecessary 159 MB build context. It is now excluded. Development containers explicitly drop Linux capabilities and set `no-new-privileges`, matching production's relevant restrictions while retaining the writable filesystem needed by development tools.
+
+`scripts/verify-docker.mjs` owns only freshly named test projects and volumes. Its browser runs in a separate disposable image with a temporary CA trusted solely in that container; it never changes host certificate trust or disables HTTPS certificate verification. Chromium's OS sandbox is disabled only in this constrained, non-root test container, which visits the local fixture. The production images contain neither Chromium nor test CA material.
