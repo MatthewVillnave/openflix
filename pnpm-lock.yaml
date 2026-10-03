@@ -14,6 +14,9 @@ importers:
       '@testing-library/user-event':
         specifier: ^14.0.0
         version: 14.6.7(@testing-library/dom@10.4.2)
+      '@types/better-sqlite3':
+        specifier: ^7.6.0
+        version: 7.6.13
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.1
@@ -23,9 +26,18 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.3.0(@types/react@19.3.0)
+      better-sqlite3:
+        specifier: 13.0.3
+        version: 13.0.3
       jsdom:
         specifier: ^27.0.0
         version: 27.4.0
+      react:
+        specifier: ^19.0.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.3.0(react@19.3.0)
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
