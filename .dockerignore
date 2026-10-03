@@ -10,3 +10,5 @@ node_modules
 **/*.sqlite*
 coverage
 *.log
+.pnpm-store
+output

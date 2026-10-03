@@ -14,7 +14,9 @@ CMD ["pnpm", "dev"]
 
 FROM dependencies AS build
 RUN pnpm build
-RUN pnpm --filter @openflix/server deploy --prod --legacy /out
+RUN pnpm --filter @openflix/server deploy --prod /out
+# The output must work after the build workspace is removed.
+RUN mv /app /workspace-build && cd /out && node --input-type=module -e "await import('./dist/app.js')" && mv /workspace-build /app
 
 FROM node:24.19.0-bookworm-slim AS server
 ENV NODE_ENV=production OPENFLIX_HOST=0.0.0.0 OPENFLIX_PORT=8787 OPENFLIX_DATA_DIR=/config
