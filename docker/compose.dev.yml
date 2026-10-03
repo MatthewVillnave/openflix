@@ -1,0 +1,33 @@
+# Standalone development configuration; do not combine with the production file.
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: development
+    command: [pnpm, --filter, '@openflix/server', dev]
+    environment:
+      NODE_ENV: development
+      OPENFLIX_BASE_URL: http://localhost:5173
+      OPENFLIX_HOST: 0.0.0.0
+      OPENFLIX_DATA_DIR: /config
+    volumes:
+      - openflix-dev-config:/config
+      - ../apps/server/src:/app/apps/server/src:ro
+    init: true
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: development
+    command: [pnpm, --filter, '@openflix/web', exec, vite, --host, 0.0.0.0]
+    environment:
+      OPENFLIX_DEV_API_TARGET: http://server:8787
+    ports:
+      - '127.0.0.1:5173:5173'
+    volumes:
+      - ../apps/web/src:/app/apps/web/src:ro
+    depends_on: [server]
+    init: true
+volumes:
+  openflix-dev-config:
