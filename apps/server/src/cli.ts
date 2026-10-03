@@ -7,7 +7,14 @@ let db: ReturnType<typeof openDatabase> | undefined;
 try {
   const [command, username, roleFlag, ...extra] = process.argv.slice(2);
   if (command !== 'db:migrate' && command !== 'user:create') throw new Error('Unknown command');
-  if (command === 'user:create' && (!username || (roleFlag && roleFlag !== '--admin') || extra.length || !process.stdin.isTTY || !process.stdout.isTTY)) {
+  if (
+    command === 'user:create' &&
+    (!username ||
+      (roleFlag && roleFlag !== '--admin') ||
+      extra.length ||
+      !process.stdin.isTTY ||
+      !process.stdout.isTTY)
+  ) {
     throw new Error('Usage: user:create <username> [--admin], from an interactive terminal');
   }
   db = openDatabase(loadConfig().databasePath);
@@ -17,8 +24,14 @@ try {
     if (secret !== confirmation) throw new Error('Passwords differ');
     await provisionUser(db, username!, secret, roleFlag === '--admin' ? 'admin' : 'user');
     console.log('Account created.');
-  } else { console.log('Database migrations applied.'); }
+  } else {
+    console.log('Database migrations applied.');
+  }
 } catch {
-  console.error('Command failed. Check arguments, unique username, password requirements/confirmation, configuration, and database permissions.');
+  console.error(
+    'Command failed. Check arguments, unique username, password requirements/confirmation, configuration, and database permissions.',
+  );
   process.exitCode = 1;
-} finally { db?.close(); }
+} finally {
+  db?.close();
+}

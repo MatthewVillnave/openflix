@@ -1,0 +1,6 @@
+node_modules
+dist
+pnpm-lock.yaml
+.pnpm-store
+coverage
+docs/technical-specification-v0.1.txt

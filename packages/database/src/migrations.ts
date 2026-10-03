@@ -1,7 +1,15 @@
 import { createHash } from 'node:crypto';
 import type Database from 'better-sqlite3';
-export interface Migration { version: number; name: string; sql: string }
-export const migrations: readonly Migration[] = [{ version: 1, name: 'identity', sql: `
+export interface Migration {
+  version: number;
+  name: string;
+  sql: string;
+}
+export const migrations: readonly Migration[] = [
+  {
+    version: 1,
+    name: 'identity',
+    sql: `
 CREATE TABLE users (
   id TEXT PRIMARY KEY,
   username TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -18,25 +26,43 @@ CREATE TABLE user_sessions (
 ) STRICT;
 CREATE INDEX user_sessions_user ON user_sessions(user_id);
 CREATE INDEX user_sessions_expiry ON user_sessions(expires_at);
-` }];
-export function migrate(db: Database.Database, definitions: readonly Migration[] = migrations): void {
+`,
+  },
+];
+export function migrate(
+  db: Database.Database,
+  definitions: readonly Migration[] = migrations,
+): void {
   db.transaction(() => {
     db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
       version INTEGER PRIMARY KEY, name TEXT NOT NULL, checksum TEXT NOT NULL, applied_at INTEGER NOT NULL
     ) STRICT`);
-    const applied = db.prepare('SELECT version, name, checksum FROM schema_migrations ORDER BY version').all() as {version: number; name: string; checksum: string}[];
-    if (applied.length > definitions.length) throw new Error('Unknown database migration; refusing downgrade');
+    const applied = db
+      .prepare('SELECT version, name, checksum FROM schema_migrations ORDER BY version')
+      .all() as { version: number; name: string; checksum: string }[];
+    if (applied.length > definitions.length)
+      throw new Error('Unknown database migration; refusing downgrade');
     for (const [index, migration] of definitions.entries()) {
-      if (migration.version !== index + 1) throw new Error('Migrations must be contiguous and ordered');
+      if (migration.version !== index + 1)
+        throw new Error('Migrations must be contiguous and ordered');
       const checksum = createHash('sha256').update(migration.sql).digest('hex');
       const existing = applied[index];
       if (existing) {
-        if (existing.version !== migration.version || existing.name !== migration.name || existing.checksum !== checksum) {
+        if (
+          existing.version !== migration.version ||
+          existing.name !== migration.name ||
+          existing.checksum !== checksum
+        ) {
           throw new Error('Applied migration differs from source');
         }
       } else {
         db.exec(migration.sql);
-        db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?, ?)').run(migration.version, migration.name, checksum, Date.now());
+        db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?, ?)').run(
+          migration.version,
+          migration.name,
+          checksum,
+          Date.now(),
+        );
       }
     }
   }).immediate();

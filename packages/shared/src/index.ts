@@ -1,6 +1,15 @@
 /** Backend-independent normalized domain types. No upstream API DTOs. */
-export interface User { id: string; username: string; displayName: string; role: 'admin' | 'user' }
-export interface Library { id: string; name: string; mediaTypes: MediaType[] }
+export interface User {
+  id: string;
+  username: string;
+  displayName: string;
+  role: 'admin' | 'user';
+}
+export interface Library {
+  id: string;
+  name: string;
+  mediaTypes: MediaType[];
+}
 export type MediaType = 'movie' | 'series' | 'season' | 'episode' | 'music';
 export interface MediaItem {
   id: string;

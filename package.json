@@ -13,23 +13,27 @@
     "build": "pnpm build:packages && pnpm --filter @openflix/server build && pnpm --filter @openflix/web build",
     "typecheck": "pnpm build && tsc -p tsconfig.tests.json --noEmit",
     "test": "pnpm build:packages && pnpm --filter @openflix/server build && vitest run",
-    "check": "pnpm typecheck && pnpm test",
+    "check": "pnpm format:check && pnpm typecheck && pnpm test",
     "start": "pnpm --filter @openflix/server start",
     "user:create": "pnpm --filter @openflix/server user:create",
-    "db:migrate": "pnpm --filter @openflix/server db:migrate"
+    "db:migrate": "pnpm --filter @openflix/server db:migrate",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "typescript": "~5.9.3",
-    "vitest": "^4.0.0",
-    "jsdom": "^27.0.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.0.0",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "better-sqlite3": "13.0.3",
-    "@types/better-sqlite3": "^7.6.0",
+    "jsdom": "^27.0.0",
+    "prettier": "^3.9.9",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.0"
   }
 }
