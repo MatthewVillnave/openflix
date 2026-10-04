@@ -278,6 +278,7 @@ try {
     await ready('http://127.0.0.1:8080/health');
     assert.equal((await request('/api/v1/me', { headers: { cookie } })).status, 200);
     const current = await snapshot();
+    assert.equal(current.mode, 0o600);
     assert.deepEqual(current.migrations, before.migrations);
     assert.deepEqual(current.users, before.users);
     assert.deepEqual(current.sessions, before.sessions);
@@ -289,10 +290,15 @@ try {
   };
   phase = 'restart';
   await logs();
+  // Simulate a database restored with permissive mode bits, using test data only.
+  await prod('exec', '-T', 'server', 'chmod', '0644', '/config/openflix.sqlite');
+  assert.equal((await snapshot()).mode, 0o644);
   await prod('restart');
   await prod('up', '-d', '--wait', '--wait-timeout', '120');
   await verifyPersistence();
-  mark('Container restart retains account, session, migration ledger and config marker');
+  mark(
+    'Container restart repairs 0644 permissions and retains account, session, migrations and config',
+  );
   phase = 'clean stop/start';
   await prod('stop', '--timeout', '15');
   const stopped = await inventory(prod);
@@ -336,8 +342,8 @@ try {
   mark('Docker development frontend and API proxy');
   phase = 'Linux full suite';
   const suite = await dev('run', '--rm', '--no-deps', '-T', 'server', 'pnpm', 'check');
-  assert.match(suite, /52 passed/);
-  mark('Complete pnpm check inside Linux container: 52 tests, builds, types and formatting');
+  assert.match(suite, /60 passed/);
+  mark('Complete pnpm check inside Linux container: 60 tests, builds, types and formatting');
   console.log(`DOCKER VERIFICATION PASS: ${checks.length} check groups`);
 } catch (error) {
   let message = `${phase}: ${error.message}`;
