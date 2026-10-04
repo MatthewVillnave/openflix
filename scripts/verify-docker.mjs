@@ -139,6 +139,9 @@ console.log(JSON.stringify({
   users: db.prepare('SELECT id, username, password_hash FROM users ORDER BY id').all(),
   sessions: db.prepare('SELECT token_hash FROM user_sessions ORDER BY token_hash').all(),
   mode: statSync('/config/openflix.sqlite').mode & 0o777,
+  directoryMode: statSync('/config').mode & 0o7777,
+  directoryOwner: statSync('/config').uid,
+  runtimeUid: process.geteuid(),
   integrity: db.pragma('integrity_check', {simple:true}),
 }));
 db.close();`;
@@ -187,6 +190,8 @@ try {
   assert.equal(original.users.length, 0);
   assert.equal(original.sessions.length, 0);
   assert.equal(original.mode, 0o600);
+  assert.equal(original.directoryMode, 0o700);
+  assert.equal(original.directoryOwner, original.runtimeUid);
   assert.equal(original.integrity, 'ok');
   await prod('exec', '-T', 'server', 'node', 'dist/cli.js', 'db:migrate');
   await prod('exec', '-T', 'server', 'node', 'dist/cli.js', 'db:migrate');
@@ -271,6 +276,69 @@ try {
   const serverId = initialContainers.find(
     (c) => c.Config.Labels['com.docker.compose.service'] === 'server',
   ).Id;
+  phase = 'private storage access boundary';
+  // Positive control: the unrelated UID can replace entries when a directory is
+  // shared. It keeps all existing container restrictions (including cap_drop ALL).
+  await serverScript(`import { mkdirSync, chmodSync, writeFileSync } from 'node:fs';
+    mkdirSync('/tmp/storage-control'); chmodSync('/tmp/storage-control', 0o777);
+    writeFileSync('/tmp/storage-control/db.sqlite', 'control', {mode:0o644});
+    writeFileSync('/config/access-probe', 'test-only', {mode:0o644});`);
+  const asUnrelated = (source) =>
+    docker(
+      ['exec', '-i', '--user', '65534:65534', serverId, 'node', '--input-type=module'],
+      source,
+    );
+  await asUnrelated(`import assert from 'node:assert/strict';
+    import { readFileSync, readdirSync, renameSync, symlinkSync, unlinkSync, writeFileSync, mkdirSync } from 'node:fs';
+    assert.equal(process.geteuid(), 65534);
+    unlinkSync('/tmp/storage-control/db.sqlite'); symlinkSync('/tmp/insecure-target', '/tmp/storage-control/db.sqlite');
+    mkdirSync('/tmp/foreign-owner', {mode:0o755});
+    for (const action of [
+      () => readFileSync('/config/access-probe'),
+      () => readdirSync('/config'),
+      () => writeFileSync('/config/new-file', 'attack'),
+      () => unlinkSync('/config/openflix.sqlite'),
+      () => renameSync('/config/openflix.sqlite', '/config/replaced'),
+      () => symlinkSync('/tmp/insecure-target', '/config/injected.sqlite'),
+      () => renameSync('/config', '/config-replaced'),
+    ]) assert.throws(action, (error) => ['EACCES', 'EPERM', 'EROFS', 'EBUSY'].includes(error.code));`);
+  await serverScript(`import assert from 'node:assert/strict';
+    import { openDatabase } from '@openflix/database';
+    import { existsSync, statSync, unlinkSync } from 'node:fs';
+    assert.throws(() => openDatabase('/tmp/foreign-owner/db.sqlite'), /runtime UID/);
+    assert.equal(existsSync('/tmp/foreign-owner/db.sqlite'), false);
+    assert.equal(statSync('/tmp/foreign-owner').uid, 65534);
+    unlinkSync('/config/access-probe');`);
+  mark(
+    'Unrelated UID cannot read, traverse, create or swap protected paths; foreign ownership fails closed',
+  );
+  // Restore an actual quiescent SQLite WAL snapshot, including recognizable data.
+  await serverScript(`import assert from 'node:assert/strict';
+    import { createRequire } from 'node:module';
+    import { openDatabase } from '@openflix/database';
+    import { mkdirSync, chmodSync, copyFileSync, readFileSync, statSync, rmSync } from 'node:fs';
+    const Database = createRequire(import.meta.resolve('@openflix/database'))('better-sqlite3');
+    mkdirSync('/config/restore-probe'); chmodSync('/config/restore-probe', 0o777);
+    const raw = new Database('/config/source-probe.sqlite');
+    raw.pragma('journal_mode = WAL'); raw.pragma('wal_autocheckpoint = 0');
+    raw.exec("CREATE TABLE preservation(value TEXT); INSERT INTO preservation VALUES ('sensitive-wal-probe')");
+    assert.ok(readFileSync('/config/source-probe.sqlite-wal').includes(Buffer.from('sensitive-wal-probe')));
+    const restored = '/config/restore-probe/openflix.sqlite';
+    for (const suffix of ['', '-wal', '-shm']) {
+      copyFileSync('/config/source-probe.sqlite' + suffix, restored + suffix);
+      chmodSync(restored + suffix, 0o644);
+    }
+    const db = openDatabase(restored);
+    assert.equal(statSync('/config/restore-probe').mode & 0o7777, 0o700);
+    for (const suffix of ['', '-wal', '-shm']) assert.equal(statSync(restored + suffix).mode & 0o7777, 0o600);
+    const reader = new Database(restored);
+    assert.equal(reader.prepare('SELECT value FROM preservation').get().value, 'sensitive-wal-probe');
+    assert.equal(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get().n, 1);
+    reader.close(); db.close(); raw.close();
+    rmSync('/config/restore-probe', {recursive:true}); rmSync('/config/source-probe.sqlite');`);
+  mark(
+    'Production SQLite restore repairs directory and 0644 DB/WAL/SHM while retaining committed data',
+  );
   const volumeName = initialContainers
     .find((c) => c.Id === serverId)
     .Mounts.find((m) => m.Destination === '/config').Name;
@@ -279,6 +347,8 @@ try {
     assert.equal((await request('/api/v1/me', { headers: { cookie } })).status, 200);
     const current = await snapshot();
     assert.equal(current.mode, 0o600);
+    assert.equal(current.directoryMode, 0o700);
+    assert.equal(current.directoryOwner, current.runtimeUid);
     assert.deepEqual(current.migrations, before.migrations);
     assert.deepEqual(current.users, before.users);
     assert.deepEqual(current.sessions, before.sessions);
@@ -291,13 +361,14 @@ try {
   phase = 'restart';
   await logs();
   // Simulate a database restored with permissive mode bits, using test data only.
+  await prod('exec', '-T', 'server', 'chmod', '0755', '/config');
   await prod('exec', '-T', 'server', 'chmod', '0644', '/config/openflix.sqlite');
   assert.equal((await snapshot()).mode, 0o644);
   await prod('restart');
   await prod('up', '-d', '--wait', '--wait-timeout', '120');
   await verifyPersistence();
   mark(
-    'Container restart repairs 0644 permissions and retains account, session, migrations and config',
+    'Container restart repairs directory 0755 and database 0644 permissions and retains account, session, migrations and config',
   );
   phase = 'clean stop/start';
   await prod('stop', '--timeout', '15');
@@ -342,8 +413,8 @@ try {
   mark('Docker development frontend and API proxy');
   phase = 'Linux full suite';
   const suite = await dev('run', '--rm', '--no-deps', '-T', 'server', 'pnpm', 'check');
-  assert.match(suite, /60 passed/);
-  mark('Complete pnpm check inside Linux container: 60 tests, builds, types and formatting');
+  assert.match(suite, /75 passed/);
+  mark('Complete pnpm check inside Linux container: 75 tests, builds, types and formatting');
   console.log(`DOCKER VERIFICATION PASS: ${checks.length} check groups`);
 } catch (error) {
   let message = `${phase}: ${error.message}`;

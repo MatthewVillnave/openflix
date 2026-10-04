@@ -29,7 +29,7 @@ try {
   }
 } catch {
   console.error(
-    'Command failed. Check arguments, unique username, password requirements/confirmation, configuration, and database permissions.',
+    'Command failed. Check arguments, unique username, password requirements/confirmation, configuration, and database storage (runtime UID ownership, private directory mode 0700, regular files mode 0600, trusted parent directories).',
   );
   process.exitCode = 1;
 } finally {

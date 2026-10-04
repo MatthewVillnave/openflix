@@ -1,6 +1,5 @@
 import Database from 'better-sqlite3';
-import { mkdirSync, openSync, closeSync, fstatSync, fchmodSync, constants } from 'node:fs';
-import { dirname } from 'node:path';
+import { secureStorage } from './storage.js';
 import type { User } from '@openflix/shared';
 import { migrate } from './migrations.js';
 export { migrate, migrations } from './migrations.js';
@@ -10,29 +9,7 @@ export interface StoredUser extends User {
 }
 const userColumns = 'id, username, display_name AS displayName, role';
 export function openDatabase(filename: string): OpenFlixDatabase {
-  if (filename !== ':memory:') {
-    // Node's Windows mode bits cannot establish owner-only ACL access.
-    if (process.platform === 'win32') {
-      throw new Error('File-backed databases require POSIX permissions; use a Linux container.');
-    }
-    mkdirSync(dirname(filename), { recursive: true, mode: 0o700 });
-    const fd = openSync(
-      filename,
-      constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-      0o600,
-    );
-    try {
-      const info = fstatSync(fd);
-      if (!info.isFile()) throw new Error('Database must be a regular file.');
-      // Work on the inspected inode, never chmod a path that could be a symlink.
-      if ((info.mode & 0o7777) !== 0o600) fchmodSync(fd, 0o600);
-      if ((fstatSync(fd).mode & 0o7777) !== 0o600) {
-        throw new Error('Cannot establish database permissions 0600.');
-      }
-    } finally {
-      closeSync(fd);
-    }
-  }
+  if (filename !== ':memory:') filename = secureStorage(filename);
   const db = new Database(filename);
   try {
     db.pragma('foreign_keys = ON');

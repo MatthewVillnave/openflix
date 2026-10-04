@@ -71,7 +71,7 @@ describe('database file permission boundary', () => {
       try {
         expect(db.healthy()).toBe(true);
         expect(statSync(fixture.config.databasePath).mode & 0o7777).toBe(0o600);
-        expect(statSync(fixture.directory).mode & 0o777).toBe(0o755);
+        expect(statSync(fixture.directory).mode & 0o777).toBe(0o700);
       } finally {
         db.close();
       }

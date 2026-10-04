@@ -6,7 +6,7 @@ WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm build:packages
-RUN mkdir -p /config && chown -R node:node /app /config
+RUN mkdir -p /config && chown -R node:node /app /config && chmod 0700 /config
 
 FROM dependencies AS development
 USER node
@@ -21,7 +21,7 @@ RUN mv /app /workspace-build && cd /out && node --input-type=module -e "await im
 FROM node:24.19.0-bookworm-slim AS server
 ENV NODE_ENV=production OPENFLIX_HOST=0.0.0.0 OPENFLIX_PORT=8787 OPENFLIX_DATA_DIR=/config
 WORKDIR /app
-RUN mkdir /config && chown node:node /config
+RUN mkdir /config && chown node:node /config && chmod 0700 /config
 COPY --from=build --chown=node:node /out/ ./
 USER node
 EXPOSE 8787
