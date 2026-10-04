@@ -6,7 +6,7 @@ A standalone, self-hosted media application. Jellyfin will be a media backend be
 
 ## Local setup
 
-File-backed storage requires a filesystem that enforces POSIX permissions (macOS/Linux); use the Linux Docker deployment on Windows. Existing database files are secured to mode 0600 before use, or startup fails. See [database operations](docs/configuration.md#database-lifecycle).
+File-backed storage requires a filesystem that enforces POSIX permissions (macOS/Linux); use the Linux Docker deployment on Windows. The runtime-owned database directory is secured to mode 0700 and primary/known sidecar files to 0600 before use, or startup fails. Unsafe ancestors and wrong ownership are rejected. See [database operations](docs/configuration.md#database-lifecycle).
 
 Requirements: Node **24.19.0** (`.nvmrc`), pnpm **11.19.0**, and Git. Native dependencies ship prebuilt binaries for supported platforms; building from source may require Python 3 and a C++ toolchain (Xcode command-line tools on macOS).
 
