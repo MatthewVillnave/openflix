@@ -2,26 +2,34 @@
 
 ## STATUS
 
-**PASS — Milestone 1 implementation and Docker deployment verified on 2026-10-03.** The production and development Compose stacks were executed on this MacBook using Docker Desktop, including real Linux native dependencies and trusted HTTPS browser authentication. Milestone 2 has not begun; the live Jellyfin installation was not accessed or modified.
+**PASS — independent-audit database permission defect remediated and all checks reverified on 2026-10-04.** The original `openflix-v0.1-m1` tag remains an immutable historical snapshot; the remediated review uses `openflix-v0.1-m1-r1`. The production and development Compose stacks were executed on this MacBook using Docker Desktop, including real Linux native dependencies and trusted HTTPS browser authentication. Milestone 2 has not begun; the live Jellyfin installation was not accessed or modified.
 
 ## IMPLEMENTED
 
-TypeScript/pnpm monorepo; Fastify HTTP server; responsive React/Vite client; SQLite repositories and transactional, checksummed migrations; validated configuration; Argon2id passwords; operator account provisioning; persisted, hashed, revocable cookie sessions; login/logout/current-user API; readiness; structured secret-safe logs; strict request validation, CSRF/origin checks, request/time/rate limits; bounded password work; graceful lifecycle; normalized media/connector interfaces; explicit unavailable Jellyfin factory; verified Docker development/production deployments, a reproducible container/browser verification script and CI; configuration, architecture, security and continuation documentation.
+TypeScript/pnpm monorepo; Fastify HTTP server; responsive React/Vite client; SQLite repositories, verified owner-only database modes and transactional, checksummed migrations; validated configuration; Argon2id passwords; operator account provisioning; persisted, hashed, revocable cookie sessions; login/logout/current-user API; readiness; structured secret-safe logs; strict request validation, CSRF/origin checks, request/time/rate limits; bounded password work; graceful lifecycle; normalized media/connector interfaces; explicit unavailable Jellyfin factory; verified Docker development/production deployments, a reproducible container/browser verification script and CI; configuration, architecture, security and continuation documentation.
 
 ## TEST RESULTS
 
 - `pnpm install --frozen-lockfile --store-dir .pnpm-store`: passed with the committed lockfile.
 - `pnpm verify:docker`: **PASS, 13 check groups**, exit 0. Server, web, browser-test and development images built; clean-volume migrations and repeated migration CLI passed; SQLite integrity/private permissions passed; health, frontend/assets, API proxy, CSP, auth failures and CSRF checks passed.
-- Container persistence: account, session, migration ledger and `/config` marker survived container restart, clean stop/start, and Compose down/up with replacement containers. Clean shutdown exit codes were 0; no OOM kills. Session revocation passed.
+- Container persistence: a disposable database changed to 0644 was corrected to 0600 on restart; account, session, migration ledger and `/config` marker survived container restart, clean stop/start, and Compose down/up with replacement containers. Clean shutdown exit codes were 0; no OOM kills. Session revocation passed.
 - Real Chromium **154.0.8037.92** over trusted fixture HTTPS: sign-in, reload persistence, sign-out, Secure/HttpOnly/SameSite cookies, no credential localStorage and no JavaScript errors passed.
 - Runtime inspection: production and development containers ran non-root with zero effective capabilities and no-new-privileges; no privileged mode, host namespaces or Docker socket. Production root filesystems rejected writes; only the frontend was published, on loopback. Collected production logs were structured and free of application errors and tested secret canaries.
-- Development Compose: Vite frontend and proxied health passed. `docker compose ... run --rm --no-deps -T server pnpm check` passed **52 tests across 8 suites**, production builds, strict source/test types and formatting inside Linux/ARM64.
-- Final host `pnpm check`: passed formatting, strict source/test types, production builds and **52 tests across 8 suites** after Docker verification.
+- Development Compose: Vite frontend and proxied health passed. `docker compose ... run --rm --no-deps -T server pnpm check` passed **60 tests across 9 suites**, production builds, strict source/test types and formatting inside Linux/ARM64.
+- Host `pnpm test`: passed all **60 tests across 9 suites**.
+- `pnpm exec vitest run tests/database-permissions.test.ts tests/database.test.ts tests/cli.test.ts`: **14/14 tests passed** (permission, migration/storage and CLI coverage).
+- Host `pnpm check`: passed formatting, strict source/test types, production builds and **60 tests across 9 suites**.
 - `pnpm audit --prod --json` and `pnpm audit --json`: **zero known vulnerabilities** at verification time (104 production / 266 total dependencies reported).
 - `node --check scripts/verify-docker.mjs`, `node --check docker/verify-browser.mjs` and `git diff --check`: passed. No runtime databases, dependencies, secrets or build output committed.
 - Disposable verification containers, networks and volumes were removed; unrelated Docker resources were preserved. CI uses the same Docker verifier, but a remote CI run was not dispatched.
 
 See [verification details](verification.md) for commands, test groups and resolved issues.
+
+## DEFECT REMEDIATION
+
+An existing SQLite file was accepted after EEXIST without validating its permissions. `openDatabase()` now inspects a regular-file descriptor, enforces and verifies mode 0600 before SQLite use, and closes the descriptor on every path. Permission denial or ineffective correction fails closed. Final symlinks are rejected to avoid chmodding an unrelated target. Secure files still open without unnecessary chmod calls. No schema, API or authentication changes were required.
+
+Eight regression tests cover new 0600 files, existing 0644 correction with preserved data, secure reopen, repeated EPERM/no-op failures before SQLite writes with descriptor cleanup, symlink and directory rejection, and the explicit native-Windows disk-storage refusal with in-memory support. The Docker restart check additionally restores mode 0600 on a real permissive test database inside the production container.
 
 ## FILES / STRUCTURE
 
@@ -47,7 +55,7 @@ Docker testing exposed a deployment packaging defect: legacy pnpm deployment lin
 
 ## KNOWN LIMITATIONS
 
-Docker was verified on Linux/ARM64 through this MacBook; other architectures and remote CI are not claimed as tested. The HTTPS fixture does not validate an operator's public DNS/certificate/proxy configuration. No Jellyfin integration, media administration, catalog, search, playback, profiles, event stream or federation is implemented. Password recovery/change, MFA, account-management UI and distributed/forwarded-client rate limiting are deferred. Public deployments require operator-managed TLS and security maintenance. Proxy clients currently share a rate-limit bucket. Image release tags are pinned, not immutable image digests.
+Disk-backed databases require enforced POSIX modes; native Windows fails explicitly and should use Linux containers. Mode checks do not manage ACL grants, untrusted parent directories, restored sidecars or previously exposed backups. Docker was verified on Linux/ARM64 through this MacBook; other architectures and remote CI are not claimed as tested. The HTTPS fixture does not validate an operator's public DNS/certificate/proxy configuration. No Jellyfin integration, media administration, catalog, search, playback, profiles, event stream or federation is implemented. Password recovery/change, MFA, account-management UI and distributed/forwarded-client rate limiting are deferred. Public deployments require operator-managed TLS and security maintenance. Proxy clients currently share a rate-limit bucket. Image release tags are pinned, not immutable image digests.
 
 ## NEXT MILESTONE
 

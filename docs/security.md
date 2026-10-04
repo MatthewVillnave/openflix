@@ -25,6 +25,14 @@ The application never accesses the user's live Jellyfin server. There are no net
 - Structured Pino logging records generated request IDs, route templates, status, safe events and user IDs. It deliberately omits request bodies, raw URLs, headers, cookies and arbitrary error text. Redaction and serializers provide defense in depth. Nginx request/error logging is disabled because raw URLs can eventually contain capabilities; server logs remain the diagnostic source. Do not configure an outer proxy to log cookies, request bodies, authorization headers or sensitive query strings.
 - SQL values are bound parameters. Schema SQL is static and migrations run transactionally. There is no arbitrary SQL API.
 
+## Database file permissions
+
+The independent Milestone 1 audit found that an existing database copied as 0644 remained readable by other users. `openDatabase()` now verifies POSIX mode 0600 before handing any file to SQLite. It opens without following a final symlink or truncating contents, checks the descriptor is a regular file, uses `fchmod` on that same descriptor when needed, and reads the mode back. Errors and a successful-looking but ineffective chmod fail closed before initialization/migrations. The descriptor closes on success and failure. A secure existing database opens without an unnecessary chmod. This is a file-access correction, not a schema or authentication redesign.
+
+Native Windows disk-backed databases fail explicitly; Node's mode APIs cannot distinguish owner/group/other permissions there. Use Linux containers on Windows. In-memory databases are unaffected. See the [Node file-mode documentation](https://nodejs.org/download/release/v24.20.0/docs/api/fs.html#file-modes).
+
+The guarantee concerns POSIX mode bits on the primary database file. The operator must use a filesystem that enforces them, remove ACL grants that separately authorize other users, restrict restored sidecars/backups and keep the parent directory non-writable by untrusted users. SQLite subsequently opens the pathname itself; the check is not protection against a hostile process replacing entries in an untrusted directory. Existing directories and other files are not recursively chmodded. Tightening permissions cannot undo any earlier disclosure; operators who suspect access to an old permissive database should investigate that exposure separately.
+
 ## Remaining work
 
 This is a foundation, not a complete internet-facing media product. Password reset/change, MFA, passkeys, account administration, role enforcement for future privileged endpoints, durable audit records, account-scoped abuse limits, encrypted connector storage and key recovery are unimplemented. There are no administrator HTTP endpoints yet. Operators can revoke all sessions by stopping the service and removing session rows with an appropriate local database tool; no remote reset shortcut is provided.

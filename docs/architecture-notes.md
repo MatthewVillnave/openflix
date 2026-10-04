@@ -15,3 +15,9 @@ The first real container start exposed a packaging error: `pnpm deploy --legacy`
 The local pnpm cache was also missing from `.dockerignore`, producing an unnecessary 159 MB build context. It is now excluded. Development containers explicitly drop Linux capabilities and set `no-new-privileges`, matching production's relevant restrictions while retaining the writable filesystem needed by development tools.
 
 `scripts/verify-docker.mjs` owns only freshly named test projects and volumes. Its browser runs in a separate disposable image with a temporary CA trusted solely in that container; it never changes host certificate trust or disables HTTPS certificate verification. Chromium's OS sandbox is disabled only in this constrained, non-root test container, which visits the local fixture. The production images contain neither Chromium nor test CA material.
+
+## Independent audit: existing database permissions
+
+The audit reproduced an existing 0644 database remaining permissive because `openDatabase()` ignored EEXIST after exclusive creation. The narrow correction is to inspect, chmod when needed and recheck the actual file descriptor before SQLite opens it. Symlink/non-regular targets are rejected; failure closes the descriptor and prevents SQLite initialization. No table, repository, API or authentication contract changes.
+
+macOS and Linux retain their supported behavior. Native Windows file-backed storage is explicitly refused because Node mode bits cannot prove owner-only ACL access; Linux containers are the supported Windows-host deployment path. Parent directory trust, explicit ACL grants, previously exposed copies and restored sidecars remain operator responsibilities. Supporting native Windows ACL management would require a separate, reviewed change, not a silent permission bypass.

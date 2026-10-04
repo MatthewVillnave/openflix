@@ -1,13 +1,15 @@
 # Milestone 1 verification
 
-Verification environment: macOS Apple Silicon, Node 24.19.0, pnpm 11.19.0; Docker Desktop 4.93.0, Engine 29.8.1, Compose 5.5.1, Linux/ARM64. Verification follow-up: 2026-10-03. No Jellyfin server was used.
+Verification environment: macOS Apple Silicon, Node 24.19.0, pnpm 11.19.0; Docker Desktop 4.93.0, Engine 29.8.1, Compose 5.5.1, Linux/ARM64. Audit-remediation verification: 2026-10-04. No Jellyfin server was used.
 
 ## Reproducible commands
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm verify:docker
+pnpm test
 pnpm check
+pnpm exec vitest run tests/database-permissions.test.ts tests/database.test.ts tests/cli.test.ts
 pnpm audit --prod --json
 pnpm audit --json
 git diff --check
@@ -15,17 +17,18 @@ git diff --check
 
 `pnpm check` includes formatting, a production build of every package/application, strict source/test type checks, and Vitest. Tests use native Argon2 and SQLite rather than substituting mock crypto or storage. Local socket permission is needed for lifecycle tests.
 
-| Suite                     |  Tests | Coverage                                                                                                                                                 |
-| ------------------------- | -----: | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/config.test.ts`    |     19 | Defaults, integer bounds, URL/origin restrictions, production HTTPS, safe errors                                                                         |
-| `tests/database.test.ts`  |      4 | Initialization/reopen, private files, migration idempotence/checksums/downgrade, rollback, foreign keys, uniqueness, parameterization                    |
-| `tests/auth.test.ts`      |      7 | Salted Argon2id/cost, verification failures, length limits, hashed persistent sessions, revocation, rotation, expiry, session cap, bounded password work |
-| `tests/http.test.ts`      |     11 | Health, user lookup, login/logout, cookies, generic failure, CSRF, body/schema limits, rate limits, log non-disclosure, future routes absent             |
-| `tests/connector.test.ts` |      2 | Compile-time normalized connector contract; explicit unavailable factory without credential reads or network calls                                       |
-| `tests/lifecycle.test.ts` |      4 | Real listener/health/rebind, bind failure cleanup, compiled process SIGINT and SIGTERM                                                                   |
-| `tests/cli.test.ts`       |      2 | Root source-loader resolution and repeatable CLI migrations; noninteractive provisioning refusal                                                         |
-| `tests/web.test.tsx`      |      3 | Sign-in/out flow, password clearing, auth failure, unavailable server                                                                                    |
-| **Total**                 | **52** | All passing in final verification                                                                                                                        |
+| Suite                                |  Tests | Coverage                                                                                                                                                            |
+| ------------------------------------ | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/config.test.ts`               |     19 | Defaults, integer bounds, URL/origin restrictions, production HTTPS, safe errors                                                                                    |
+| `tests/database.test.ts`             |      4 | Initialization/reopen, private files, migration idempotence/checksums/downgrade, rollback, foreign keys, uniqueness, parameterization                               |
+| `tests/auth.test.ts`                 |      7 | Salted Argon2id/cost, verification failures, length limits, hashed persistent sessions, revocation, rotation, expiry, session cap, bounded password work            |
+| `tests/http.test.ts`                 |     11 | Health, user lookup, login/logout, cookies, generic failure, CSRF, body/schema limits, rate limits, log non-disclosure, future routes absent                        |
+| `tests/connector.test.ts`            |      2 | Compile-time normalized connector contract; explicit unavailable factory without credential reads or network calls                                                  |
+| `tests/lifecycle.test.ts`            |      4 | Real listener/health/rebind, bind failure cleanup, compiled process SIGINT and SIGTERM                                                                              |
+| `tests/cli.test.ts`                  |      2 | Root source-loader resolution and repeatable CLI migrations; noninteractive provisioning refusal                                                                    |
+| `tests/web.test.tsx`                 |      3 | Sign-in/out flow, password clearing, auth failure, unavailable server                                                                                               |
+| `tests/database-permissions.test.ts` |      8 | New/existing 0600, 0644 correction with data preservation, denied/ineffective chmod and descriptor cleanup, symlink/directory rejection, Windows fail-closed branch |
+| **Total**                            | **60** | All passing in final verification                                                                                                                                   |
 
 Production-only and full dependency audits reported zero known vulnerabilities at verification time. The lockfile was installed with `--frozen-lockfile` after the final dependency changes. Audits are point-in-time findings.
 
@@ -38,7 +41,7 @@ Production-only and full dependency audits reported zero known vulnerabilities a
 
 ## Docker verification
 
-**2026-10-03 result: PASS — 13 check groups, exit 0.** Both production and development stacks ran successfully after the operator approved Docker's Documents-folder access. The complete Linux suite passed 52/52 tests across 8 suites, plus builds, strict types and formatting. Trusted HTTPS browser checks used Chromium 154.0.8037.92. All disposable test containers and volumes were cleaned up. The complete host suite was rerun after container verification.
+**2026-10-04 audit-remediation result: PASS — 13 check groups, exit 0.** Both production and development stacks ran successfully, including correction of the existing test database from 0644 to 0600 on production restart. The complete Linux suite passed 60/60 tests across 9 suites, plus builds, strict types and formatting. Trusted HTTPS browser checks used Chromium 154.0.8037.92. All disposable test containers and volumes were cleaned up. The separate host `pnpm test` and `pnpm check` runs also passed 60/60 tests across 9 suites. Both dependency audits reported zero known vulnerabilities.
 
 Run the complete container suite from the repository root:
 
@@ -60,12 +63,12 @@ The verification covers:
 4. Provision a disposable account, authenticate using native Argon2, inspect cookie flags and verify only the session digest is persisted.
 5. Use Chromium over trusted HTTPS for sign-in, reload and logout; check HttpOnly/Secure/SameSite cookies, absent browser credential storage and absence of JavaScript errors. A temporary CA is trusted solely in the disposable container, never on the host. No certificate-validation bypass is used.
 6. Inspect actual UIDs, effective capabilities, no-new-privileges, mounts, namespace settings, published ports and read-only production filesystems. Assert non-root, zero effective capabilities, no privileged mode, no Docker socket, loopback-only frontend and no published backend.
-7. Restart both containers; assert the account, active session, migration ledger and private `/config` marker persist.
+7. Change the disposable database to 0644, restart both containers, and assert mode 0600 is restored while the account, active session, migration ledger and private `/config` marker persist. Recheck mode after subsequent restart/replacement steps.
 8. Stop cleanly; assert exit code 0 with no OOM kill; start again and repeat persistence checks.
 9. Run Compose down/up without deleting the volume; assert replacement containers retain the same data and working session.
 10. Revoke the session and scan collected production logs for errors, password/hash/token canaries and private-key material; validate structured safe events.
 11. Build/start development Compose, reach Vite and proxied health, inspect development privileges and logs.
-12. Run the entire `pnpm check` inside the Linux development image (52 tests, builds, type checks and formatting).
+12. Run the entire `pnpm check` inside the Linux development image (60 tests, builds, type checks and formatting).
 13. Remove the disposable test stacks and volumes; a cleanup failure makes the command fail.
 
 The script emits 13 `PASS` check groups on a complete run; some related steps above share a group. CI invokes this same script. CI itself has not been dispatched remotely during this task. Operator-specific public TLS/DNS configuration remains a deployment responsibility; the browser fixture verifies the production authentication path over trusted HTTPS locally.
@@ -76,3 +79,7 @@ The script emits 13 `PASS` check groups on a complete run; some related steps ab
 - Excluded `.pnpm-store` and temporary `output` from the Docker context; the local cache had inflated the context to approximately 159 MB.
 - Added capability dropping and no-new-privileges to development containers. Production already had these restrictions.
 - Initial development startup waited on macOS Documents-folder permission before any process launched. The operator approved the prompt and the complete container suite then passed. This is a host permission prerequisite; no application workaround or weakened protection was added.
+
+## Independent audit regression
+
+The eight new permission tests were first run against the original implementation: five failed, including the exact 0644 reproduction (expected decimal 384/0600, received 420/0644). After remediation, the permission, database/migration and CLI suites passed all 14 tests. The new suite uses real files and SQLite; only the chmod system call is replaced for deterministic denial/no-op failures, independent of runner UID or mount behavior. Those tests assert no SQLite header/WAL/SHM is created and every attempted correction's descriptor is closed. The Windows branch is simulated on POSIX; this does not claim native Windows platform certification.
