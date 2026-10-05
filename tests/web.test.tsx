@@ -21,7 +21,7 @@ it('allows sign in and sign out without implying a Jellyfin connection', async (
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
   await screen.findByText('Welcome, Alice.');
   expect(login).toHaveBeenCalledWith({ username: 'alice', password: 'test-password' });
-  expect(screen.getByText(/No media servers are connected/)).toBeDefined();
+  expect(screen.getByText(/Catalog import and playback are not available/)).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
   await screen.findByLabelText('Password');
   expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');

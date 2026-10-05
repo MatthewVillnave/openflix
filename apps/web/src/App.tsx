@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { CurrentUserResponse } from '@openflix/protocol';
+import { MediaServers } from './MediaServers.js';
 import { ApiError, currentUser, login, logout } from './api.js';
 export function App() {
+  const [settings, setSettings] = useState(false);
   const [user, setUser] = useState<CurrentUserResponse['user'] | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
@@ -47,6 +49,7 @@ export function App() {
     try {
       await logout();
       setUser(null);
+      setSettings(false);
     } catch {
       setError('Could not sign out. Please try again.');
     } finally {
@@ -77,7 +80,7 @@ export function App() {
             Built to connect. Designed to stay yours.
           </p>
           <div className="scope">
-            <span className="dot" /> Milestone 1 · Foundation
+            <span className="dot" /> Milestone 2 · Media Servers
           </div>
         </section>
         <section className="panel" aria-label={user ? 'Your account' : 'Sign in'}>
@@ -92,10 +95,18 @@ export function App() {
                 <span aria-hidden="true">▱</span>
                 <h3>Your library starts here.</h3>
                 <p>
-                  Media server connections arrive in Milestone 2. No media servers are connected in
-                  this foundation build.
+                  Administrators can connect Jellyfin from Settings. Catalog import and playback are
+                  not available yet.
                 </p>
               </div>
+              {user.role === 'admin' && (
+                <>
+                  <button className="secondary" onClick={() => setSettings((value) => !value)}>
+                    Settings · Media Servers
+                  </button>
+                  {settings && <MediaServers />}
+                </>
+              )}
               <button className="secondary" onClick={signOut} disabled={pending}>
                 {pending ? 'Signing out…' : 'Sign out'}
               </button>
@@ -149,7 +160,7 @@ export function App() {
       </main>
       <footer>
         <span>Independent by design.</span>
-        <span>OpenFlix · Milestone 1</span>
+        <span>OpenFlix · Milestone 2</span>
       </footer>
     </div>
   );

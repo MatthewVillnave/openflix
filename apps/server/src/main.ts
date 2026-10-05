@@ -23,7 +23,7 @@ try {
 } catch {
   // Config values and driver errors can contain secrets; don't print arbitrary errors.
   console.error(
-    'OpenFlix startup failed. Check configuration, database storage (runtime UID ownership, private directory mode 0700, regular files mode 0600, trusted parent directories), migrations, and port availability.',
+    'OpenFlix startup failed. Check configuration (including the original OPENFLIX_MASTER_KEY for saved connectors), database storage (runtime UID ownership, private directory mode 0700, regular files mode 0600, trusted parent directories), migrations, and port availability.',
   );
   process.exitCode = 1;
 }

@@ -8,6 +8,7 @@ import { API_PREFIX } from '@openflix/protocol';
 import type { CurrentUserResponse, HealthResponse } from '@openflix/protocol';
 import type { Config } from './config.js';
 import { AuthService, AuthBusyError } from './auth.js';
+import { registerConnectors } from './connectors.js';
 import { createLogger } from './logger.js';
 export async function buildApp(config: Config, logger = createLogger(config)) {
   const db = openDatabase(config.databasePath);
@@ -137,6 +138,7 @@ export async function buildApp(config: Config, logger = createLogger(config)) {
       if (!user) return reply.code(401).send({ error: 'Authentication required' });
       return { user } satisfies CurrentUserResponse;
     });
+    await registerConnectors(app, db, auth, config);
     await app.ready();
     return app;
   } catch (error) {
