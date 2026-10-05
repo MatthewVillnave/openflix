@@ -34,3 +34,9 @@ Successful login creates a new session and revokes the presented prior session. 
 SIGINT/SIGTERM stop accepting work, close Fastify and SQLite, and have a 10-second hard deadline. Binding failure closes the database. No external services are contacted during startup.
 
 Production rates are conservative: 120 requests/minute per observed IP, 10 login attempts/minute per observed IP, and at most four concurrent Argon2 verifications. Proxy forwarding headers are not trusted; through the supplied proxy all clients share its rate bucket. This prevents IP-spoofing bypasses but may throttle a household under heavy use. Trusted proxy configuration and distributed limits are deliberate future decisions.
+
+## Milestone 2 connector key
+
+`OPENFLIX_MASTER_KEY` optionally enables encrypted connector credentials. It must be canonical base64 of 32 random bytes, with no whitespace or passphrase substitution. No default is provided. Without a key and without saved connectors, M1 authentication/health remain usable and connector creation is disabled. Saved connectors require the original key on every startup; absent/wrong keys and tampered credentials fail closed before network access. Production and development Compose forward the operator-provided value; it is never a build argument.
+
+Provision an OpenFlix administrator with `pnpm user:create <username> --admin`, then use Settings → Media Servers → Add Server · Jellyfin. Use a final, administrator-trusted URL, including the actual base-path prefix; redirects are rejected. A Jellyfin account with the intended library access is sufficient; a global administrative API key is not required. See [connector security](connector-security.md) for encryption format, network trust, backup/key-loss/rotation and removal semantics.

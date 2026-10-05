@@ -1,5 +1,7 @@
 # Milestone 1 verification
 
+Historical audited R2 results are preserved below. On the Milestone 2 branch, use [M2 verification](milestone-2-verification.md) for the current suite and Docker assertions.
+
 Verification environment: macOS Apple Silicon, Node 24.19.0, pnpm 11.19.0; Docker Desktop 4.93.0, Engine 29.8.1, Compose 5.5.1, Linux/ARM64. R2 audit-remediation verification: 2026-10-04. No Jellyfin server was used.
 
 ## Reproducible commands

@@ -1,4 +1,6 @@
-# Milestone 1 architecture
+# OpenFlix foundation architecture
+
+The foundation below is the audited M1 design. M2 adds administrator-only connector routes, the real Jellyfin SDK connector, a versioned encrypted credential store and one connector migration. See [M2 security](connector-security.md) and [architecture decisions](architecture-notes.md#milestone-2-decisions).
 
 The supplied [technical specification](technical-specification-v0.1.txt) is the architectural source of truth. Only section 57 is implemented. OpenFlix is a standalone application; it does not fork or modify Jellyfin.
 

@@ -1,8 +1,12 @@
 # OpenFlix
 
-A standalone, self-hosted media application. Jellyfin will be a media backend behind `MediaConnector`; OpenFlix owns identity, sessions, its API, and its database.
+Milestone 1 is independently audited and published at [openflix-v0.1-m1-r2](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.1-m1-r2). This development branch implements **Milestone 2: Jellyfin connection administration**. Its builder checks use disposable fixtures; actual OptiPlex integration must be independently audited by Optimus. No catalog import, playback or federation is implemented.
 
-**Milestone 1 only:** working authentication, SQLite persistence, web client, HTTP server, configuration, migrations, tests and Docker definitions. **No Jellyfin connection, catalog, playback, or federation exists yet.** No access to a real media server is required.
+For M2, provide a private operator-generated `OPENFLIX_MASTER_KEY` (base64 of 32 random bytes), provision an OpenFlix admin with `pnpm user:create <username> --admin`, and open Settings → Media Servers. See [configuration](docs/configuration.md), [credential/network security](docs/connector-security.md), [SDK/API baseline](docs/jellyfin-preparation.md), [M2 verification](docs/milestone-2-verification.md) and [Optimus checks](docs/milestone-2-integration.md).
+
+A standalone, self-hosted media application. Jellyfin is a media backend behind `MediaConnector`; OpenFlix owns identity, sessions, its API, and its database.
+
+The audited foundation provides authentication, SQLite persistence, web/API, migrations, tests and Docker. M2 adds administrator-managed Jellyfin connections and accessible library metadata. No real media server is required for builder verification.
 
 ## Local setup
 
@@ -31,7 +35,7 @@ pnpm build
 pnpm start          # compiled server; web assets require a web server/proxy
 ```
 
-Tests use disposable temporary SQLite databases and do not contact Jellyfin. Lifecycle tests need permission to bind loopback sockets and signal their own child processes.
+Tests use disposable SQLite databases and local Jellyfin protocol fixtures; they do not contact a household server. Lifecycle tests need permission to bind loopback sockets and signal their own child processes.
 
 ## Docker
 
@@ -65,7 +69,7 @@ docker compose logs server
 docker compose down              # preserves the named data volume
 ```
 
-Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [verification](docs/verification.md) for prerequisites and [the report](docs/milestone-1-report.md) for the recorded results. On macOS, approve Docker access to the project folder when prompted for development source mounts.
+Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [M2 verification](docs/milestone-2-verification.md) and [the M2 report](docs/milestone-2-report.md). The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
 
 ## Repository
 
@@ -73,7 +77,7 @@ Production images run as non-root with read-only root filesystems; only `/config
 apps/server/                  Fastify API, authentication, configuration, CLI
 apps/web/                     React/Vite sign-in and account view
 packages/connector-core/      Backend-neutral media and secret-store contracts
-packages/connector-jellyfin/  Explicitly unimplemented factory
+packages/connector-jellyfin/  Official SDK connector; normalized connection/library operations
 packages/protocol/            OpenFlix HTTP response/request contracts
 packages/shared/              Normalized domain types
 packages/database/            SQLite, migrations and repositories
@@ -84,4 +88,4 @@ scripts/                      Reproducible Docker verification
 docs/                         Architecture, security, configuration and handoff
 ```
 
-Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Milestone 2 preparation](docs/jellyfin-preparation.md) describes what to inspect next. The [completion report](docs/milestone-1-report.md) records exactly what was verified.
+Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Jellyfin baseline](docs/jellyfin-preparation.md) records the inspected official API/SDK. The [M2 report](docs/milestone-2-report.md) records builder results and required independent integration.
