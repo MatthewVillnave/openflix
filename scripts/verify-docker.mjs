@@ -9,9 +9,20 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const project = `openflix-m1-check-${process.pid}-${randomBytes(4).toString('hex')}`;
 const devProject = `${project}-dev`;
 const origin = 'https://localhost:8443';
-const env = { ...process.env, OPENFLIX_BASE_URL: origin };
+const masterKey = randomBytes(32).toString('base64');
+const jellyfinPassword = randomBytes(32).toString('base64url');
+const jellyfinTokenSeed = randomBytes(32).toString('hex');
+const env = {
+  ...process.env,
+  OPENFLIX_BASE_URL: origin,
+  OPENFLIX_MASTER_KEY: masterKey,
+  OPENFLIX_VERIFY_JELLYFIN_PASSWORD: jellyfinPassword,
+  OPENFLIX_VERIFY_JELLYFIN_TOKEN: jellyfinTokenSeed,
+};
+const jellyfinBaseUrl = 'http://jellyfin-fixture:8096/jellyfin';
 const secrets = [randomBytes(32).toString('base64url'), randomBytes(32).toString('base64url')];
 const [password, canary] = secrets;
+secrets.push(masterKey, jellyfinPassword, jellyfinTokenSeed);
 let phase = 'prerequisites';
 const collectedLogs = [];
 const checks = [];
@@ -93,7 +104,7 @@ async function inventory(compose) {
 }
 async function inspectPrivileges(compose, production) {
   const containers = await inventory(compose);
-  assert.equal(containers.length, 2);
+  assert.equal(containers.length, production ? 3 : 2);
   for (const c of containers) {
     assert.ok(c.Config.User && !['0', 'root'].includes(c.Config.User));
     assert.equal(c.HostConfig.Privileged, false);
@@ -180,13 +191,13 @@ try {
   }
   phase = 'image builds';
   console.log('Building production and disposable browser images…');
-  await prod('build', 'server', 'web', 'browser');
+  await prod('build', 'server', 'web', 'browser', 'jellyfin-fixture');
   mark('Production images and isolated browser image build');
   phase = 'clean startup';
   prodTouched = true;
-  await prod('up', '-d', '--wait', '--wait-timeout', '120', 'server', 'web');
+  await prod('up', '-d', '--wait', '--wait-timeout', '120', 'server', 'web', 'jellyfin-fixture');
   const original = await snapshot();
-  assert.equal(original.migrations.length, 1);
+  assert.equal(original.migrations.length, 2);
   assert.equal(original.users.length, 0);
   assert.equal(original.sessions.length, 0);
   assert.equal(original.mode, 0o600);
@@ -227,7 +238,7 @@ try {
   });
   mark('Frontend/assets, health, API proxy, CSP, unauthorized access and CSRF rejection');
   await serverScript(
-    `import { openDatabase } from '@openflix/database'; import { provisionUser } from './dist/auth.js'; import { writeFileSync } from 'node:fs'; const db=openDatabase('/config/openflix.sqlite'); await provisionUser(db,'container-test',${JSON.stringify(password)}); db.close(); writeFileSync('/config/verification-marker','persistent-config',{mode:0o600});`,
+    `import { openDatabase } from '@openflix/database'; import { provisionUser } from './dist/auth.js'; import { writeFileSync } from 'node:fs'; const db=openDatabase('/config/openflix.sqlite'); await provisionUser(db,'container-test',${JSON.stringify(password)},'admin'); db.close(); writeFileSync('/config/verification-marker','persistent-config',{mode:0o600});`,
   );
   const login = await request('/api/v1/auth/login', {
     method: 'POST',
@@ -266,7 +277,15 @@ try {
         '-T',
         'browser',
       ],
-      JSON.stringify({ username: 'container-test', password }),
+      JSON.stringify({
+        username: 'container-test',
+        password,
+        jellyfin: {
+          baseUrl: jellyfinBaseUrl,
+          username: 'fixture-user',
+          password: jellyfinPassword,
+        },
+      }),
     ),
   );
   assert.equal(browser.passed, true);
@@ -333,7 +352,7 @@ try {
     for (const suffix of ['', '-wal', '-shm']) assert.equal(statSync(restored + suffix).mode & 0o7777, 0o600);
     const reader = new Database(restored);
     assert.equal(reader.prepare('SELECT value FROM preservation').get().value, 'sensitive-wal-probe');
-    assert.equal(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get().n, 1);
+    assert.equal(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get().n, 2);
     reader.close(); db.close(); raw.close();
     rmSync('/config/restore-probe', {recursive:true}); rmSync('/config/source-probe.sqlite');`);
   mark(
@@ -342,6 +361,38 @@ try {
   const volumeName = initialContainers
     .find((c) => c.Id === serverId)
     .Mounts.find((m) => m.Destination === '/config').Name;
+  phase = 'production connector administration';
+  const connectorAdd = await request('/api/v1/connectors', {
+    method: 'POST',
+    headers: { origin, cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      name: 'Persistent fixture',
+      baseUrl: jellyfinBaseUrl,
+      username: 'fixture-user',
+      password: jellyfinPassword,
+    }),
+  });
+  assert.equal(connectorAdd.status, 201);
+  const connectorId = JSON.parse(connectorAdd.body).connector.id;
+  for (const secret of secrets) assert.ok(!connectorAdd.body.includes(secret));
+  const stored = JSON.parse(
+    await serverScript(`
+    import {openDatabase} from '@openflix/database';
+    const db=openDatabase('/config/openflix.sqlite');
+    console.log(JSON.stringify(db.getConnector(${JSON.stringify(connectorId)})));db.close();`),
+  );
+  assert.equal(JSON.parse(stored.credentialEnvelope).algorithm, 'aes-256-gcm');
+  for (const secret of secrets) assert.ok(!JSON.stringify(stored).includes(secret));
+  const fixtureState = async () =>
+    JSON.parse(
+      await serverScript(
+        `console.log(JSON.stringify(await (await fetch('http://jellyfin-fixture:8096/__fixture/state')).json()));`,
+      ),
+    );
+  const authenticated = (await fixtureState()).authentications;
+  mark(
+    'Production admin API encrypts Jellyfin fixture credential and exposes only normalized libraries',
+  );
   const verifyPersistence = async () => {
     await ready('http://127.0.0.1:8080/health');
     assert.equal((await request('/api/v1/me', { headers: { cookie } })).status, 200);
@@ -353,6 +404,18 @@ try {
     assert.deepEqual(current.users, before.users);
     assert.deepEqual(current.sessions, before.sessions);
     assert.equal(current.integrity, 'ok');
+    const list = await request('/api/v1/connectors', { headers: { cookie } });
+    assert.equal(list.status, 200);
+    assert.equal(JSON.parse(list.body).connectors[0].id, connectorId);
+    assert.ok(!list.body.includes('credentialEnvelope'));
+    const reconnect = await request(`/api/v1/connectors/${connectorId}/test`, {
+      method: 'POST',
+      headers: { origin, cookie, 'content-type': 'application/json' },
+      body: '{}',
+    });
+    assert.equal(reconnect.status, 200);
+    assert.equal(JSON.parse(reconnect.body).connector.state, 'connected');
+    assert.equal((await fixtureState()).authentications, authenticated);
     assert.equal(
       (await prod('exec', '-T', 'server', 'cat', '/config/verification-marker')).trim(),
       'persistent-config',
@@ -389,7 +452,15 @@ try {
   await verifyPersistence();
   const replacement = await inventory(prod);
   assert.ok(replacement.every((c) => c.Id !== serverId));
-  mark('Compose down/up replaces containers while preserving named-volume data and sessions');
+  mark('Compose down/up preserves volumes, accounts, sessions and encrypted connector reconnect');
+  const removed = await request(`/api/v1/connectors/${connectorId}`, {
+    method: 'DELETE',
+    headers: { origin, cookie },
+  });
+  assert.equal(removed.status, 200);
+  assert.equal(JSON.parse(removed.body).revocation, 'confirmed');
+  assert.equal((await fixtureState()).active, 0);
+  mark('Connector removal revokes only its fixture session and removes saved credentials');
   const logout = await request('/api/v1/auth/logout', {
     method: 'POST',
     headers: { origin, cookie },
@@ -413,8 +484,11 @@ try {
   mark('Docker development frontend and API proxy');
   phase = 'Linux full suite';
   const suite = await dev('run', '--rm', '--no-deps', '-T', 'server', 'pnpm', 'check');
-  assert.match(suite, /75 passed/);
-  mark('Complete pnpm check inside Linux container: 75 tests, builds, types and formatting');
+  const passed = suite.match(/Tests\s+(\d+) passed/);
+  assert.ok(passed && Number(passed[1]) >= 75);
+  mark(
+    `Complete pnpm check inside Linux container: ${passed[1]} tests, builds, types and formatting`,
+  );
   console.log(`DOCKER VERIFICATION PASS: ${checks.length} check groups`);
 } catch (error) {
   let message = `${phase}: ${error.message}`;

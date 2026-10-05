@@ -45,3 +45,12 @@ WORKDIR /app
 COPY docker/verify-browser.mjs docker/verify-browser.mjs
 USER node
 CMD ["node", "docker/verify-browser.mjs"]
+
+# Disposable SDK protocol fixture; never deployed with production Compose alone.
+FROM node:24.19.0-bookworm-slim AS jellyfin-fixture
+WORKDIR /fixture
+RUN mkdir /state && chown node:node /state && chmod 0700 /state
+COPY docker/jellyfin-fixture.mjs ./
+USER node
+HEALTHCHECK --interval=2s --timeout=3s CMD node -e "fetch('http://127.0.0.1:8096/jellyfin/System/Info/Public').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "jellyfin-fixture.mjs"]

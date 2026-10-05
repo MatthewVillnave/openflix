@@ -14,3 +14,20 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     init: true
+  jellyfin-fixture:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: jellyfin-fixture
+    environment:
+      OPENFLIX_VERIFY_JELLYFIN_PASSWORD: ${OPENFLIX_VERIFY_JELLYFIN_PASSWORD:?Verification-only credential required}
+      OPENFLIX_VERIFY_JELLYFIN_TOKEN: ${OPENFLIX_VERIFY_JELLYFIN_TOKEN:?Verification-only token seed required}
+    volumes:
+      - jellyfin-fixture-state:/state
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+
+volumes:
+  jellyfin-fixture-state:

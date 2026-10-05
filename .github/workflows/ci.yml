@@ -1,4 +1,4 @@
-name: Milestone 1 verification
+name: OpenFlix verification
 on: [push, pull_request]
 permissions:
   contents: read

@@ -8,7 +8,7 @@ import { chromium } from '/opt/browser/node_modules/playwright-core/index.mjs';
 
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
-const { username, password } = JSON.parse(input);
+const { username, password, jellyfin } = JSON.parse(input);
 const dir = '/tmp/browser-home';
 mkdirSync(dir, { recursive: true, mode: 0o700 });
 const openssl = (...args) => execFileSync('openssl', args, { cwd: dir, stdio: 'pipe' });
@@ -126,6 +126,38 @@ try {
   step = 'session reload';
   await page.reload();
   await page.getByRole('heading', { name: `Welcome, ${username}.` }).waitFor();
+  if (jellyfin) {
+    step = 'Jellyfin administrator UI';
+    await page.getByRole('button', { name: 'Settings · Media Servers', exact: true }).click();
+    await page.getByLabel('Display name', { exact: true }).fill('Browser fixture');
+    await page.getByLabel('Jellyfin URL', { exact: true }).fill(jellyfin.baseUrl);
+    await page.getByLabel('Jellyfin username', { exact: true }).fill(jellyfin.username);
+    await page.getByLabel('Jellyfin password', { exact: true }).fill(jellyfin.password);
+    const addedResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/v1/connectors') && response.request().method() === 'POST',
+    );
+    await page.getByRole('button', { name: 'Add Jellyfin server', exact: true }).click();
+    const added = await addedResponse;
+    assert.equal(added.status(), 201);
+    const publicBody = await added.text();
+    assert.ok(!publicBody.includes(jellyfin.password));
+    assert.ok(!publicBody.includes('credentialEnvelope'));
+    await page.getByText('Fixture movies', { exact: true }).waitFor();
+    assert.equal(await page.getByLabel('Jellyfin password', { exact: true }).inputValue(), '');
+    await page.reload();
+    await page.getByRole('button', { name: 'Settings · Media Servers', exact: true }).click();
+    await page.getByRole('heading', { name: 'Browser fixture', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Reconnect / test', exact: true }).click();
+    await page
+      .getByText('Connection verified using its saved credential.', { exact: true })
+      .waitFor();
+    await page.getByRole('button', { name: 'Disconnect / remove', exact: true }).click();
+    await page
+      .getByText('Connection removed and its Jellyfin session ended.', { exact: true })
+      .waitFor();
+    assert.equal(await page.evaluate(() => localStorage.length), 0);
+  }
   step = 'logout';
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.getByLabel('Username', { exact: true }).waitFor();
