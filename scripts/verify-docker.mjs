@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process';
 import { randomBytes, createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const project = `openflix-m1-check-${process.pid}-${randomBytes(4).toString('hex')}`;
@@ -484,8 +485,8 @@ try {
   mark('Docker development frontend and API proxy');
   phase = 'Linux full suite';
   const suite = await dev('run', '--rm', '--no-deps', '-T', 'server', 'pnpm', 'check');
-  const passed = suite.match(/Tests\s+(\d+) passed/);
-  assert.ok(passed && Number(passed[1]) >= 75);
+  const passed = stripVTControlCharacters(suite).match(/Tests\s+(\d+) passed/);
+  assert.ok(passed && Number(passed[1]) >= 130, 'Expected at least 130 passing Linux tests');
   mark(
     `Complete pnpm check inside Linux container: ${passed[1]} tests, builds, types and formatting`,
   );
