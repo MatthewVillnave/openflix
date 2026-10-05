@@ -20,7 +20,7 @@ it('runs the source CLI from repository root and applies migrations idempotently
       expect(child.stdout).toContain('Database migrations applied');
     }
     const db = new Database(fixture.config.databasePath);
-    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 1 });
+    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 2 });
     expect(db.prepare('SELECT count(*) AS n FROM users').get()).toEqual({ n: 0 });
     db.close();
   } finally {

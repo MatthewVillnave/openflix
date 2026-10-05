@@ -28,6 +28,25 @@ CREATE INDEX user_sessions_user ON user_sessions(user_id);
 CREATE INDEX user_sessions_expiry ON user_sessions(expires_at);
 `,
   },
+  {
+    version: 2,
+    name: 'media_connectors',
+    sql: `
+CREATE TABLE media_connectors (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL CHECK(type = 'jellyfin'),
+  name TEXT NOT NULL,
+  base_url TEXT NOT NULL,
+  server_json TEXT NOT NULL,
+  libraries_json TEXT NOT NULL,
+  state TEXT NOT NULL CHECK(state IN ('unverified', 'connected', 'error')),
+  last_error TEXT,
+  last_checked_at INTEGER,
+  created_at INTEGER NOT NULL,
+  credential_envelope TEXT
+) STRICT;
+`,
+  },
 ];
 export function migrate(
   db: Database.Database,

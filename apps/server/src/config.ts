@@ -16,6 +16,7 @@ const envSchema = z.object({
     .refine((value) => isIP(value) !== 0, 'must be an IP address')
     .default('127.0.0.1'),
   OPENFLIX_PORT: integer(8787, 1, 65535),
+  OPENFLIX_MASTER_KEY: z.string().optional(),
   OPENFLIX_DATA_DIR: z.string().trim().min(1).default('.data'),
   OPENFLIX_LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
@@ -29,6 +30,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       `Invalid configuration fields: ${parsed.error.issues.map((issue) => issue.path.join('.')).join(', ')}`,
     );
   const value = parsed.data;
+  const masterKey = value.OPENFLIX_MASTER_KEY || undefined;
+  if (
+    masterKey &&
+    (Buffer.from(masterKey, 'base64').length !== 32 ||
+      Buffer.from(masterKey, 'base64').toString('base64') !== masterKey)
+  ) {
+    throw new Error('OPENFLIX_MASTER_KEY must be canonical base64 encoding of 32 random bytes');
+  }
   const url = new URL(value.OPENFLIX_BASE_URL);
   if (
     !['https:', 'http:'].includes(url.protocol) ||
@@ -50,6 +59,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error('Production requires OPENFLIX_BASE_URL');
   const secureCookies = url.protocol === 'https:';
   return Object.freeze({
+    masterKey,
     environment: value.NODE_ENV,
     origin: url.origin,
     host: value.OPENFLIX_HOST,

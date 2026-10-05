@@ -1,11 +1,25 @@
 import Database from 'better-sqlite3';
 import { secureStorage } from './storage.js';
-import type { User } from '@openflix/shared';
+import type { User, ConnectorSummary } from '@openflix/shared';
 import { migrate } from './migrations.js';
 export { migrate, migrations } from './migrations.js';
 export type { Migration } from './migrations.js';
 export interface StoredUser extends User {
   passwordHash: string;
+}
+export interface StoredConnector extends ConnectorSummary {
+  credentialEnvelope: string | null;
+}
+const connectorColumns = `id, type, name, base_url AS baseUrl, server_json AS serverJson,
+  libraries_json AS librariesJson, state, last_error AS lastError,
+  last_checked_at AS lastCheckedAt, created_at AS createdAt, credential_envelope AS credentialEnvelope`;
+function connectorRow(row: unknown): StoredConnector | undefined {
+  if (!row) return undefined;
+  const { serverJson, librariesJson, ...record } = row as Omit<
+    StoredConnector,
+    'server' | 'libraries'
+  > & { serverJson: string; librariesJson: string };
+  return { ...record, server: JSON.parse(serverJson), libraries: JSON.parse(librariesJson) };
 }
 const userColumns = 'id, username, display_name AS displayName, role';
 export function openDatabase(filename: string): OpenFlixDatabase {
@@ -24,6 +38,59 @@ export function openDatabase(filename: string): OpenFlixDatabase {
 }
 export class OpenFlixDatabase {
   constructor(private readonly db: Database.Database) {}
+  listConnectors(): StoredConnector[] {
+    return this.db
+      .prepare(`SELECT ${connectorColumns} FROM media_connectors ORDER BY created_at, id`)
+      .all()
+      .map((row) => connectorRow(row)!);
+  }
+  getConnector(id: string): StoredConnector | undefined {
+    return connectorRow(
+      this.db.prepare(`SELECT ${connectorColumns} FROM media_connectors WHERE id = ?`).get(id),
+    );
+  }
+  insertConnector(record: ConnectorSummary, envelope: string): void {
+    this.db
+      .prepare(`INSERT INTO media_connectors VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(
+        record.id,
+        record.type,
+        record.name,
+        record.baseUrl,
+        JSON.stringify(record.server),
+        JSON.stringify(record.libraries),
+        record.state,
+        record.lastError,
+        record.lastCheckedAt,
+        record.createdAt,
+        envelope,
+      );
+  }
+  setConnectorCredential(id: string, envelope: string | null): void {
+    this.db
+      .prepare('UPDATE media_connectors SET credential_envelope = ? WHERE id = ?')
+      .run(envelope, id);
+  }
+  updateConnector(record: ConnectorSummary): void {
+    this.db
+      .prepare(
+        'UPDATE media_connectors SET server_json = ?, libraries_json = ?, state = ?, last_error = ?, last_checked_at = ? WHERE id = ?',
+      )
+      .run(
+        JSON.stringify(record.server),
+        JSON.stringify(record.libraries),
+        record.state,
+        record.lastError,
+        record.lastCheckedAt,
+        record.id,
+      );
+  }
+  resetConnectorStates(): void {
+    this.db.prepare("UPDATE media_connectors SET state = 'unverified', last_error = NULL").run();
+  }
+  removeConnector(id: string): void {
+    this.db.prepare('DELETE FROM media_connectors WHERE id = ?').run(id);
+  }
   close(): void {
     if (this.db.open) this.db.close();
   }

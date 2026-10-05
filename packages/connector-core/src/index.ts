@@ -1,8 +1,7 @@
-import type { Library, MediaItem } from '@openflix/shared';
-export type { Library, MediaItem, MediaSource } from '@openflix/shared';
+import type { Library, MediaItem, ConnectorServerInfo, ConnectorErrorCode } from '@openflix/shared';
+export type { Library, MediaItem, MediaSource, MediaType } from '@openflix/shared';
 export type ConnectionResult =
-  | { ok: true; serverName: string }
-  | { ok: false; code: 'unavailable' | 'unauthorized' | 'unsupported'; message: string };
+  { ok: true; serverName: string } | { ok: false; code: ConnectorErrorCode; message: string };
 export interface ClientProfile {
   videoCodecs: string[];
   audioCodecs: string[];
@@ -40,7 +39,7 @@ export interface MediaConnector {
 export interface CredentialRef {
   readonly id: string;
 }
-/** Milestone 2 must implement authenticated encryption, with its key outside the DB. */
+/** Implementations must use authenticated encryption with the key outside the DB. */
 export interface ConnectorCredentialStore {
   store(connectorId: string, secret: Uint8Array): Promise<CredentialRef>;
   read(ref: CredentialRef): Promise<Uint8Array>;
@@ -48,7 +47,47 @@ export interface ConnectorCredentialStore {
 }
 export class ConnectorNotImplementedError extends Error {
   constructor() {
-    super('Jellyfin integration is deferred to Milestone 2');
+    super('This operation is outside the implemented connector milestone');
     this.name = 'ConnectorNotImplementedError';
   }
+}
+
+export type { ConnectorServerInfo, ConnectorErrorCode } from '@openflix/shared';
+export interface ManagedMediaConnector extends MediaConnector {
+  getServerInfo(): Promise<ConnectorServerInfo>;
+  disconnect(): Promise<void>;
+}
+const messages: Record<ConnectorErrorCode, string> = {
+  invalid_configuration: 'Invalid media server configuration.',
+  unavailable: 'Media server is unavailable.',
+  timeout: 'Media server request timed out.',
+  unauthorized: 'Media server authentication was rejected.',
+  unsupported: 'Media server version or operation is unsupported.',
+  invalid_response: 'Media server returned an invalid response.',
+  unsafe_redirect: 'Media server redirects are not allowed. Use its final base URL.',
+  identity_mismatch:
+    'Media server identity changed. Remove and re-add this connection after verification.',
+  credential_unavailable:
+    'Connector credential could not be authenticated. Check the original master key.',
+  busy: 'Connector management is busy. Retry shortly.',
+  not_found: 'Media server connection was not found.',
+};
+export class ConnectorError extends Error {
+  constructor(readonly code: ConnectorErrorCode) {
+    super(messages[code]);
+    this.name = 'ConnectorError';
+  }
+}
+
+/** Workspace deployment may contain separate module instances. Accept only our
+ * closed error vocabulary and fixed messages, never arbitrary transport text. */
+export function isConnectorError(error: unknown): error is ConnectorError {
+  if (!(error instanceof Error) || error.name !== 'ConnectorError' || !('code' in error))
+    return false;
+  const code = error.code;
+  return (
+    typeof code === 'string' &&
+    Object.hasOwn(messages, code) &&
+    error.message === messages[code as ConnectorErrorCode]
+  );
 }

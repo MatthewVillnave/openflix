@@ -29,3 +29,34 @@ export interface MediaSource {
   remoteItemId: string;
   availability: 'online' | 'offline' | 'unknown';
 }
+
+export interface ConnectorServerInfo {
+  id: string;
+  name: string;
+  version: string;
+}
+export type ConnectorErrorCode =
+  | 'invalid_configuration'
+  | 'unavailable'
+  | 'timeout'
+  | 'unauthorized'
+  | 'unsupported'
+  | 'invalid_response'
+  | 'unsafe_redirect'
+  | 'identity_mismatch'
+  | 'credential_unavailable'
+  | 'busy'
+  | 'not_found';
+/** Safe administrative projection. No credential material belongs here. */
+export interface ConnectorSummary {
+  id: string;
+  type: 'jellyfin';
+  name: string;
+  baseUrl: string;
+  server: ConnectorServerInfo;
+  libraries: Library[];
+  state: 'unverified' | 'connected' | 'error';
+  lastError: ConnectorErrorCode | null;
+  lastCheckedAt: number | null;
+  createdAt: number;
+}

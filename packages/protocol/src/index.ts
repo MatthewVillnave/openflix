@@ -13,3 +13,22 @@ export interface ErrorResponse {
 }
 export type HealthResponse =
   { status: 'healthy'; database: 'ok' } | { status: 'unhealthy'; database: 'unavailable' };
+
+export type { ConnectorSummary } from '@openflix/shared';
+export interface AddConnectorRequest {
+  name: string;
+  baseUrl: string;
+  username: string;
+  password: string;
+}
+export interface ConnectorsResponse {
+  connectors: import('@openflix/shared').ConnectorSummary[];
+  credentialStorageConfigured: boolean;
+}
+export interface ConnectorResponse {
+  connector: import('@openflix/shared').ConnectorSummary;
+}
+export interface RemoveConnectorResponse {
+  removed: true;
+  revocation: 'confirmed' | 'unconfirmed';
+}

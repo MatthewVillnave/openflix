@@ -26,16 +26,23 @@ it('preserves the normalized async connector contract at compile time', () => {
     | 'reportPlaybackStop'
   >();
 });
-it('fails explicitly without reading credentials or contacting an upstream', () => {
+it('defers later operations without reading credentials or contacting an upstream', async () => {
   const store: ConnectorCredentialStore = { store: vi.fn(), read: vi.fn(), delete: vi.fn() };
   const fetchSpy = vi.spyOn(globalThis, 'fetch');
   try {
-    expect(() =>
-      createJellyfinConnector(
-        { baseUrl: 'https://unused.invalid', credential: { id: 'opaque-reference' } },
-        store,
-      ),
-    ).toThrow(ConnectorNotImplementedError);
+    const connector = createJellyfinConnector(
+      { baseUrl: 'https://unused.invalid', credential: { id: 'opaque-reference' } },
+      store,
+    );
+    await expect(connector.scanCatalog()).rejects.toThrow(ConnectorNotImplementedError);
+    await expect(
+      connector.getPlaybackInfo('item', {
+        videoCodecs: [],
+        audioCodecs: [],
+        maxWidth: 1,
+        maxHeight: 1,
+      }),
+    ).rejects.toThrow(ConnectorNotImplementedError);
     expect(store.read).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
   } finally {

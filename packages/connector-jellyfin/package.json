@@ -16,6 +16,9 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@openflix/connector-core": "workspace:*"
+    "@jellyfin/sdk": "1.0.0",
+    "@openflix/connector-core": "workspace:*",
+    "axios": "1.20.0",
+    "zod": "^4.6.5"
   }
 }
