@@ -92,3 +92,21 @@ The targeted command now passes **29 tests across 4 suites**, including the orig
 The Docker suite adds two check groups. An actual process running as UID/GID 65534 can unlink and replace a file with a symlink in a disposable 0777 control directory, proving the test exercises filesystem access. The same process cannot read a deliberately 0644 file inside `/config`, list/create/unlink/rename/symlink protected entries, or replace `/config`. It retains the container's zero capabilities and no-new-privileges. This demonstrates that an unrelated UID cannot perform the auditor's pathname swap after the 0700 invariant is established. Another UID's directory is rejected without creating a database. A separate real production-package restore test copies a quiescent DB/WAL/SHM snapshot, sets all three files to 0644 and the restore directory to 0777, then asserts 0600/0700, preserved WAL data and migrations.
 
 The initial host full-check invocation lacked sandbox loopback permissions: only four lifecycle cases failed with `listen EPERM`. The complete check passed after granting the required execution permission. No application workaround was introduced. Native Windows refusal remains simulated; ACL grants outside POSIX mode semantics, same-UID/root adversaries and already-open descriptors remain outside the verified boundary.
+
+## Audited R2 host TMPDIR prerequisite
+
+The independent R2 audit approved Milestone 1 with a non-blocking host-test note: a system `TMPDIR` beneath an unsafe ancestor can correctly fail the storage boundary checks. Host tests create SQLite directories beneath the selected temporary directory, so that path must have trusted ancestors: root/runtime-owned, without group/world write except sticky shared directories. The temporary directory itself must be runtime-owned and private (0700). Do not weaken storage checks to accommodate an unsafe temporary path.
+
+For example, on macOS or Linux with a trusted `/tmp`:
+
+```sh
+verification_tmp=$(mktemp -d /tmp/openflix-verification.XXXXXX)
+chmod 700 "$verification_tmp"
+TMPDIR="$verification_tmp" pnpm check
+# Remove only the disposable directory created above after verification.
+rmdir "$verification_tmp"
+```
+
+If tests leave fixture files after an interrupted run, inspect that specific directory before removing it. Do not change a shared temporary directory's permissions. Linux Docker verification uses private test directories under its trusted sticky `/tmp`.
+
+This documentation was added after publication on the Milestone 2 development branch. The audited `openflix-v0.1-m1-r2` tag and all earlier history remain unchanged.
