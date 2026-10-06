@@ -21,6 +21,8 @@ const persist = () =>
     JSON.stringify({ authentications, revocations, sessions: [...sessions] }),
     { mode: 0o600 },
   );
+let catalogMode = 'normal';
+const itemId = (n) => n.toString(16).padStart(32, '0');
 const server = createServer(async (req, res) => {
   let body = '';
   for await (const chunk of req) {
@@ -35,6 +37,11 @@ const server = createServer(async (req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(data));
   };
+  if (req.url?.startsWith('/__fixture/catalog?')) {
+    catalogMode = new URL(req.url, 'http://fixture').searchParams.get('mode');
+    send({ ok: true });
+    return;
+  }
   if (req.url === '/__fixture/state') {
     send({ authentications, revocations, active: sessions.size });
     return;
@@ -43,7 +50,7 @@ const server = createServer(async (req, res) => {
     send({
       Id: '11111111111111111111111111111111',
       ServerName: 'Disposable Jellyfin fixture',
-      Version: '12.1.0',
+      Version: '10.11.11',
     });
     return;
   }
@@ -95,7 +102,65 @@ const server = createServer(async (req, res) => {
           Name: 'Fixture movies',
           CollectionType: 'movies',
         },
+        { Id: '44444444444444444444444444444444', Name: 'Tv shows', CollectionType: null },
       ],
+    });
+    return;
+  }
+  const url = new URL(req.url, 'http://fixture');
+  if (url.pathname === '/jellyfin/Items') {
+    const q = url.searchParams,
+      offset = Number(q.get('startIndex')),
+      limit = Number(q.get('limit'));
+    if (
+      q.get('userId') !== '22222222222222222222222222222222' ||
+      q.get('recursive') !== 'true' ||
+      q.get('enableImages') !== 'false' ||
+      q.get('enableUserData') !== 'false'
+    ) {
+      send({}, 400);
+      return;
+    }
+    const tv = q.get('parentId') === '44444444444444444444444444444444';
+    if (!tv && catalogMode === 'partial' && offset >= 100) {
+      send({ error: 'fixture scan interrupted' }, 500);
+      return;
+    }
+    const items = tv
+      ? [
+          { Id: itemId(1001), Name: 'Fixture series', Type: 'Series' },
+          {
+            Id: itemId(1002),
+            Name: 'Fixture season',
+            Type: 'Season',
+            ParentId: itemId(1001),
+            SeriesId: itemId(1001),
+            IndexNumber: 1,
+          },
+          {
+            Id: itemId(1003),
+            Name: 'Fixture episode',
+            Type: 'Episode',
+            ParentId: itemId(1002),
+            SeriesId: itemId(1001),
+            SeasonId: itemId(1002),
+            IndexNumber: 1,
+            ParentIndexNumber: 1,
+          },
+        ]
+      : Array.from({ length: catalogMode === 'updated' ? 204 : 205 }, (_, i) => ({
+          Id: itemId(i + 1),
+          Name:
+            i === 0 && catalogMode !== 'normal'
+              ? 'Changed fixture movie'
+              : `Fixture movie ${String(i + 1).padStart(3, '0')}`,
+          Type: 'Movie',
+          ProductionYear: 2026,
+        }));
+    send({
+      Items: items.slice(offset, offset + limit),
+      StartIndex: offset,
+      TotalRecordCount: items.length,
     });
     return;
   }

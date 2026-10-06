@@ -152,6 +152,28 @@ try {
     await page
       .getByText('Connection verified using its saved credential.', { exact: true })
       .waitFor();
+    step = 'catalog synchronization and TV hierarchy';
+    await page.getByRole('button', { name: 'Sync Browser fixture', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Tv shows · Browser fixture (television)', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: 'Browse children of Fixture series', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: 'Browse children of Fixture season', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Fixture episode', exact: true }).click();
+    await page
+      .getByRole('article', { name: 'Item details' })
+      .getByText('Episode 1', { exact: true })
+      .waitFor();
+    await page
+      .getByRole('button', { name: 'Fixture movies · Browser fixture (movie)', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Next page', exact: true }).click();
+    await page.getByRole('button', { name: 'Fixture movie 051', exact: true }).waitFor();
+    step = 'connector removal after catalog import';
     await page.getByRole('button', { name: 'Disconnect / remove', exact: true }).click();
     await page
       .getByText('Connection removed and its Jellyfin session ended.', { exact: true })

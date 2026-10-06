@@ -198,7 +198,7 @@ try {
   prodTouched = true;
   await prod('up', '-d', '--wait', '--wait-timeout', '120', 'server', 'web', 'jellyfin-fixture');
   const original = await snapshot();
-  assert.equal(original.migrations.length, 2);
+  assert.equal(original.migrations.length, 3);
   assert.equal(original.users.length, 0);
   assert.equal(original.sessions.length, 0);
   assert.equal(original.mode, 0o600);
@@ -353,7 +353,7 @@ try {
     for (const suffix of ['', '-wal', '-shm']) assert.equal(statSync(restored + suffix).mode & 0o7777, 0o600);
     const reader = new Database(restored);
     assert.equal(reader.prepare('SELECT value FROM preservation').get().value, 'sensitive-wal-probe');
-    assert.equal(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get().n, 2);
+    assert.equal(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get().n, 3);
     reader.close(); db.close(); raw.close();
     rmSync('/config/restore-probe', {recursive:true}); rmSync('/config/source-probe.sqlite');`);
   mark(
@@ -394,6 +394,67 @@ try {
   mark(
     'Production admin API encrypts Jellyfin fixture credential and exposes only normalized libraries',
   );
+  phase = 'production catalog';
+  const catalogRead = async (path) => {
+    const result = await request('/api/v1/catalog' + path, { headers: { cookie } });
+    assert.equal(result.status, 200);
+    for (const secret of secrets) assert.ok(!result.body.includes(secret));
+    return JSON.parse(result.body);
+  };
+  const catalogSync = async (expected) => {
+    const started = await request(`/api/v1/catalog/sync/${connectorId}`, {
+      method: 'POST',
+      headers: { origin, cookie, 'content-type': 'application/json' },
+      body: '{}',
+    });
+    assert.equal(started.status, 202);
+    for (let attempt = 0; attempt < 100; attempt++) {
+      await delay(100);
+      const status = await catalogRead(`/sync/${connectorId}`);
+      if (status.state !== 'syncing') {
+        assert.equal(status.state, expected);
+        return;
+      }
+    }
+    throw new Error('Catalog sync did not finish');
+  };
+  await catalogSync('successful');
+  const catalogLibraries = (await catalogRead('/libraries')).libraries;
+  const movies = catalogLibraries.find((l) => l.name === 'Fixture movies'),
+    tv = catalogLibraries.find((l) => l.name === 'Tv shows');
+  assert.equal(tv.type, 'television');
+  assert.equal(tv.upstreamType, null);
+  const originalCatalog = await catalogRead(`/libraries/${movies.id}/items?limit=100`);
+  assert.equal(originalCatalog.total, 205);
+  assert.equal(
+    (await catalogRead(`/libraries/${movies.id}/items?offset=200&limit=100`)).items.length,
+    5,
+  );
+  const episodes = await catalogRead(`/libraries/${tv.id}/items?type=episode`);
+  assert.equal(episodes.total, 1);
+  assert.equal((await catalogRead(`/items/${episodes.items[0].seasonId}`)).item.type, 'season');
+  await catalogSync('successful');
+  assert.equal(
+    (await catalogRead(`/libraries/${movies.id}/items`)).items[0].id,
+    originalCatalog.items[0].id,
+  );
+  mark('Catalog full scan, multi-page browsing, null-type TV hierarchy and idempotent resync');
+  const fixtureMode = (mode) =>
+    serverScript(`await fetch('http://jellyfin-fixture:8096/__fixture/catalog?mode=${mode}');`);
+  const stableCatalog = await catalogRead(`/libraries/${movies.id}/items?limit=100`);
+  await fixtureMode('partial');
+  await catalogSync('failed');
+  assert.deepEqual(await catalogRead(`/libraries/${movies.id}/items?limit=100`), stableCatalog);
+  await fixtureMode('updated');
+  await catalogSync('successful');
+  const updatedCatalog = await catalogRead(`/libraries/${movies.id}/items?limit=100`);
+  assert.equal(updatedCatalog.total, 204);
+  assert.equal(updatedCatalog.items[0].title, 'Changed fixture movie');
+  assert.equal(updatedCatalog.items[0].id, originalCatalog.items[0].id);
+  const persistedLibraries = await catalogRead('/libraries');
+  mark(
+    'Failed partial scan preserves published catalog; successful resync updates and prunes safely',
+  );
   const verifyPersistence = async () => {
     await ready('http://127.0.0.1:8080/health');
     assert.equal((await request('/api/v1/me', { headers: { cookie } })).status, 200);
@@ -405,6 +466,8 @@ try {
     assert.deepEqual(current.users, before.users);
     assert.deepEqual(current.sessions, before.sessions);
     assert.equal(current.integrity, 'ok');
+    assert.deepEqual(await catalogRead('/libraries'), persistedLibraries);
+    assert.deepEqual(await catalogRead(`/libraries/${movies.id}/items?limit=100`), updatedCatalog);
     const list = await request('/api/v1/connectors', { headers: { cookie } });
     assert.equal(list.status, 200);
     assert.equal(JSON.parse(list.body).connectors[0].id, connectorId);
@@ -461,6 +524,13 @@ try {
   assert.equal(removed.status, 200);
   assert.equal(JSON.parse(removed.body).revocation, 'confirmed');
   assert.equal((await fixtureState()).active, 0);
+  assert.equal((await catalogRead('/libraries')).libraries.length, 0);
+  assert.equal(
+    (await request(`/api/v1/catalog/items/${updatedCatalog.items[0].id}`, { headers: { cookie } }))
+      .status,
+    404,
+  );
+  mark('Catalog persists through all restart/recreation checks and connector removal cascades');
   mark('Connector removal revokes only its fixture session and removes saved credentials');
   const logout = await request('/api/v1/auth/logout', {
     method: 'POST',
@@ -486,7 +556,7 @@ try {
   phase = 'Linux full suite';
   const suite = await dev('run', '--rm', '--no-deps', '-T', 'server', 'pnpm', 'check');
   const passed = stripVTControlCharacters(suite).match(/Tests\s+(\d+) passed/);
-  assert.ok(passed && Number(passed[1]) >= 130, 'Expected at least 130 passing Linux tests');
+  assert.ok(passed && Number(passed[1]) >= 184, 'Expected at least 184 passing Linux tests');
   mark(
     `Complete pnpm check inside Linux container: ${passed[1]} tests, builds, types and formatting`,
   );
