@@ -252,7 +252,7 @@ it('migrates the audited R2 identity schema without changing accounts or session
     expect(db.listConnectors()).toEqual([]);
     db.close();
     const check = new Database(fixture.config.databasePath);
-    expect(check.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 2 });
+    expect(check.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 3 });
     check.close();
   } finally {
     fixture.cleanup();

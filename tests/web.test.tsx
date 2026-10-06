@@ -9,6 +9,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 it('allows sign in and sign out without implying a Jellyfin connection', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ libraries: [] })));
   vi.spyOn(api, 'currentUser').mockRejectedValue(new api.ApiError(401));
   const login = vi.spyOn(api, 'login').mockResolvedValue({
     user: { id: '1', username: 'alice', displayName: 'Alice', role: 'user' },
@@ -21,7 +22,7 @@ it('allows sign in and sign out without implying a Jellyfin connection', async (
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
   await screen.findByText('Welcome, Alice.');
   expect(login).toHaveBeenCalledWith({ username: 'alice', password: 'test-password' });
-  expect(screen.getByText(/Catalog import and playback are not available/)).toBeDefined();
+  expect(screen.getByText(/Playback is not available/)).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
   await screen.findByLabelText('Password');
   expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');

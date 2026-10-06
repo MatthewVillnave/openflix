@@ -1,3 +1,4 @@
+import { Catalog } from './Catalog.js';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { CurrentUserResponse } from '@openflix/protocol';
@@ -65,7 +66,7 @@ export function App() {
           </span>{' '}
           OPENFLIX
         </a>
-        <span className="milestone">FOUNDATION / 0.1</span>
+        <span className="milestone">CATALOG / M3</span>
       </header>
       <main>
         <section className="intro">
@@ -80,7 +81,7 @@ export function App() {
             Built to connect. Designed to stay yours.
           </p>
           <div className="scope">
-            <span className="dot" /> Milestone 2 · Media Servers
+            <span className="dot" /> Milestone 3 · Catalog
           </div>
         </section>
         <section className="panel" aria-label={user ? 'Your account' : 'Sign in'}>
@@ -91,14 +92,7 @@ export function App() {
               <p className="eyebrow">CONNECTED TO OPENFLIX</p>
               <h2>Welcome, {user.displayName}.</h2>
               <p>Your account is ready.</p>
-              <div className="empty">
-                <span aria-hidden="true">▱</span>
-                <h3>Your library starts here.</h3>
-                <p>
-                  Administrators can connect Jellyfin from Settings. Catalog import and playback are
-                  not available yet.
-                </p>
-              </div>
+              <Catalog admin={user.role === 'admin'} />
               {user.role === 'admin' && (
                 <>
                   <button className="secondary" onClick={() => setSettings((value) => !value)}>
@@ -160,7 +154,7 @@ export function App() {
       </main>
       <footer>
         <span>Independent by design.</span>
-        <span>OpenFlix · Milestone 2</span>
+        <span>OpenFlix · Milestone 3</span>
       </footer>
     </div>
   );

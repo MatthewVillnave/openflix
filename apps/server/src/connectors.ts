@@ -1,3 +1,4 @@
+import { registerCatalog } from './catalog.js';
 import { randomUUID } from 'node:crypto';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import type { createLogger } from './logger.js';
@@ -57,6 +58,7 @@ export async function registerConnectors(
       busy = false;
     }
   };
+  await registerCatalog(app, db, auth, config, run, () => busy);
   await app.register(
     async (routes) => {
       routes.addHook('preHandler', async (request, reply) => {
