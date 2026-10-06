@@ -1,12 +1,14 @@
 # OpenFlix
 
-Milestone 1 is independently audited and published at [openflix-v0.1-m1-r2](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.1-m1-r2). This development branch implements **Milestone 2: Jellyfin connection administration**. Its builder checks use disposable fixtures; actual OptiPlex integration must be independently audited by Optimus. No catalog import, playback or federation is implemented.
+Milestones 1 and 2 are independently audited. [Milestone 2's published release](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.2-m2) freezes the real Jellyfin 10.11.11 integration. This development branch implements **Milestone 3: normalized catalog**, awaiting its own Optimus integration audit. Playback and federation are not implemented.
 
-For M2, provide a private operator-generated `OPENFLIX_MASTER_KEY` (base64 of 32 random bytes), provision an OpenFlix admin with `pnpm user:create <username> --admin`, and open Settings → Media Servers. See [configuration](docs/configuration.md), [credential/network security](docs/connector-security.md), [SDK/API baseline](docs/jellyfin-preparation.md), [M2 verification](docs/milestone-2-verification.md) and [Optimus checks](docs/milestone-2-integration.md).
+Provide a private operator-generated `OPENFLIX_MASTER_KEY` (base64 of 32 random bytes), provision an OpenFlix admin with `pnpm user:create <username> --admin`, and add Jellyfin in Settings → Media Servers. Use Catalog → Sync [server] to publish accessible library metadata. All signed-in OpenFlix users can browse it; choose the connector identity accordingly. Catalog persistence survives restart without an automatic rescan.
+
+Read [catalog model and sync safety](docs/catalog.md), [catalog API baseline](docs/milestone-3-api-baseline.md), [M3 verification](docs/milestone-3-verification.md), [M3 report](docs/milestone-3-report.md), and [Optimus integration checks](docs/milestone-3-integration.md). [M2 acceptance](docs/milestone-2-audit-acceptance.md) carries forward the restricted-user and null-CollectionType notes.
 
 A standalone, self-hosted media application. Jellyfin is a media backend behind `MediaConnector`; OpenFlix owns identity, sessions, its API, and its database.
 
-The audited foundation provides authentication, SQLite persistence, web/API, migrations, tests and Docker. M2 adds administrator-managed Jellyfin connections and accessible library metadata. No real media server is required for builder verification.
+The audited foundation provides authentication, SQLite persistence, web/API, migrations, tests and Docker. M2 adds administrator-managed Jellyfin connections; M3 adds item normalization, atomic synchronization and authenticated catalog browsing. No real media server is required for builder verification.
 
 ## Local setup
 
@@ -69,15 +71,15 @@ docker compose logs server
 docker compose down              # preserves the named data volume
 ```
 
-Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [M2 verification](docs/milestone-2-verification.md) and [the M2 report](docs/milestone-2-report.md). The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
+Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [M3 verification](docs/milestone-3-verification.md) and [the M3 report](docs/milestone-3-report.md). The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
 
 ## Repository
 
 ```text
 apps/server/                  Fastify API, authentication, configuration, CLI
-apps/web/                     React/Vite sign-in and account view
+apps/web/                     React/Vite authentication, media-server administration and catalog
 packages/connector-core/      Backend-neutral media and secret-store contracts
-packages/connector-jellyfin/  Official SDK connector; normalized connection/library operations
+packages/connector-jellyfin/  Official SDK connector; normalized connection, library and paginated item operations
 packages/protocol/            OpenFlix HTTP response/request contracts
 packages/shared/              Normalized domain types
 packages/database/            SQLite, migrations and repositories
@@ -88,4 +90,4 @@ scripts/                      Reproducible Docker verification
 docs/                         Architecture, security, configuration and handoff
 ```
 
-Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Jellyfin baseline](docs/jellyfin-preparation.md) records the inspected official API/SDK. The [M2 report](docs/milestone-2-report.md) records builder results and required independent integration.
+Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Catalog baseline](docs/milestone-3-api-baseline.md) records the exact official API/SDK contracts. Historical M1/M2 reports remain unchanged; M3 has not been merged or tagged as audited.
