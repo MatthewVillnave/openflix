@@ -81,7 +81,7 @@ describe('database file permission boundary', () => {
           value: 'kept',
         });
         expect(reopened.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({
-          n: 2,
+          n: 3,
         });
       } finally {
         reopened.close();

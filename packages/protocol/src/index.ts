@@ -32,3 +32,15 @@ export interface RemoveConnectorResponse {
   removed: true;
   revocation: 'confirmed' | 'unconfirmed';
 }
+
+export interface CatalogLibrariesResponse {
+  libraries: import('@openflix/shared').CatalogLibrary[];
+}
+export interface CatalogItemResponse {
+  item: import('@openflix/shared').CatalogItem;
+}
+export type CatalogItemsResponse = import('@openflix/shared').CatalogPage;
+export type CatalogSyncResponse = import('@openflix/shared').CatalogSyncStatus;
+export interface CatalogSyncRequest {
+  libraryId?: string;
+}

@@ -8,7 +8,9 @@ import type {
 import { ConnectorNotImplementedError } from '../packages/connector-core/dist/index.js';
 import { createJellyfinConnector } from '../packages/connector-jellyfin/dist/index.js';
 it('preserves the normalized async connector contract at compile time', () => {
-  expectTypeOf<ReturnType<MediaConnector['scanCatalog']>>().toEqualTypeOf<Promise<MediaItem[]>>();
+  expectTypeOf<ReturnType<MediaConnector['scanCatalog']>>().toEqualTypeOf<
+    AsyncIterable<readonly MediaItem[]>
+  >();
   expectTypeOf<ReturnType<MediaConnector['testConnection']>>().toEqualTypeOf<
     Promise<ConnectionResult>
   >();
@@ -34,7 +36,7 @@ it('defers later operations without reading credentials or contacting an upstrea
       { baseUrl: 'https://unused.invalid', credential: { id: 'opaque-reference' } },
       store,
     );
-    await expect(connector.scanCatalog()).rejects.toThrow(ConnectorNotImplementedError);
+    await expect(connector.search('unused')).rejects.toThrow(ConnectorNotImplementedError);
     await expect(
       connector.getPlaybackInfo('item', {
         videoCodecs: [],

@@ -9,13 +9,40 @@ export interface Library {
   id: string;
   name: string;
   mediaTypes: MediaType[];
+  type?: LibraryType;
+  upstreamType?: string | null;
 }
-export type MediaType = 'movie' | 'series' | 'season' | 'episode' | 'music';
+export const mediaTypes = [
+  'movie',
+  'series',
+  'season',
+  'episode',
+  'audio',
+  'album',
+  'artist',
+  'playlist',
+  'unknown',
+  'music',
+] as const;
+export type MediaType = (typeof mediaTypes)[number];
+export type LibraryType = 'movie' | 'television' | 'music' | 'playlist' | 'mixed' | 'unknown';
 export interface MediaItem {
   id: string;
   libraryId: string;
   type: MediaType;
   title: string;
+  sortTitle?: string;
+  upstreamType?: string;
+  releaseDate?: string;
+  parentId?: string;
+  seriesId?: string;
+  seasonId?: string;
+  albumId?: string;
+  artistIds?: string[];
+  albumArtistIds?: string[];
+  albumTitle?: string;
+  revision?: string;
+  createdAt?: string;
   year?: number;
   providerIds: Readonly<Record<string, string>>;
   runtimeSeconds?: number;
@@ -59,4 +86,37 @@ export interface ConnectorSummary {
   lastError: ConnectorErrorCode | null;
   lastCheckedAt: number | null;
   createdAt: number;
+}
+
+export interface CatalogLibrary {
+  id: string;
+  connectorId: string;
+  connectorName: string;
+  upstreamId: string;
+  name: string;
+  type: LibraryType;
+  upstreamType: string | null;
+  lastSyncedAt: number;
+}
+/** Relationship IDs are OpenFlix source-scoped IDs, possibly unresolved if not enumerated. */
+export interface CatalogItem extends Omit<MediaItem, 'libraryId'> {
+  connectorId: string;
+  upstreamId: string;
+  libraryIds: string[];
+  syncedAt: number;
+}
+export interface CatalogPage {
+  items: CatalogItem[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+export interface CatalogSyncStatus {
+  connectorId: string;
+  state: 'never' | 'syncing' | 'successful' | 'failed';
+  startedAt: number | null;
+  finishedAt: number | null;
+  lastSuccessfulAt: number | null;
+  error: ConnectorErrorCode | null;
+  libraryId: string | null;
 }

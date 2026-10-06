@@ -70,7 +70,13 @@ describe('current Jellyfin SDK wire contract', () => {
       const { result, connector } = await saved();
       expect(result.server).toEqual({ id: serverId, name: 'Fixture Jellyfin', version });
       expect(result.libraries).toEqual([
-        { id: libraryId, name: 'Accessible movies', mediaTypes: ['movie'] },
+        {
+          id: libraryId,
+          name: 'Accessible movies',
+          mediaTypes: ['movie'],
+          type: 'movie',
+          upstreamType: 'movies',
+        },
       ]);
       expect(Buffer.from(result.secret).toString()).not.toContain(upstreamPassword);
       await connector.connect();

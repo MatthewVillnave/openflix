@@ -1,3 +1,6 @@
+import type { LibraryApi } from '@jellyfin/sdk/lib/generated-client/api/library-api.js';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api.js';
+import { normalizeItem, pageSchema } from './catalog.js';
 import { Jellyfin } from '@jellyfin/sdk/lib/jellyfin.js';
 import type { Api as JellyfinApi } from '@jellyfin/sdk/lib/api.js';
 import { getSystemApi } from '@jellyfin/sdk/lib/utils/api/system-api.js';
@@ -38,6 +41,7 @@ const credentialSchema = z.object({
   serverId: identifier,
 });
 const librarySchema = z.object({
+  TotalRecordCount: z.number().int().nonnegative().optional(),
   Items: z
     .array(
       z.object({
@@ -99,7 +103,10 @@ function apiFor(baseUrl: string, deviceId: string, token = ''): JellyfinApi {
   });
   // Absolute deadline also bounds slow/dripping responses, not just socket inactivity.
   transport.interceptors.request.use((config) => {
-    config.signal = AbortSignal.timeout(5000);
+    config.signal =
+      config.signal instanceof AbortSignal
+        ? AbortSignal.any([config.signal, AbortSignal.timeout(5000)])
+        : AbortSignal.timeout(5000);
     return config;
   });
   return new Jellyfin({
@@ -108,6 +115,9 @@ function apiFor(baseUrl: string, deviceId: string, token = ''): JellyfinApi {
   }).createApi(validateJellyfinUrl(baseUrl), token, transport);
 }
 type Api = ReturnType<typeof apiFor>;
+// SDK 1.0.0 augmentation declarations omit NodeNext extensions; runtime inherits these exact generated methods.
+const catalogApi = (api: Api) =>
+  getLibraryApi(api) as unknown as Pick<LibraryApi, 'getItems' | 'getItem'>;
 async function serverInfo(api: Api): Promise<ConnectorServerInfo> {
   const data = infoSchema.parse((await getSystemApi(api).getPublicSystemInfo()).data);
   if (!/^(12\.\d+\.\d+|10\.11\.\d+)(?:[-+].*)?$/.test(data.Version))
@@ -124,14 +134,34 @@ async function libraries(api: Api, userId: string): Promise<Library[]> {
       })
     ).data,
   );
+  if (result.TotalRecordCount !== undefined && result.TotalRecordCount !== result.Items.length)
+    throw new ConnectorError('invalid_response');
+  if (new Set(result.Items.map((v) => v.Id)).size !== result.Items.length)
+    throw new ConnectorError('invalid_response');
   const types: Record<string, MediaType[]> = {
     movies: ['movie'],
     tvshows: ['series', 'season', 'episode'],
     music: ['music'],
+    playlists: ['playlist'],
   };
   return result.Items.map((item) => ({
     id: item.Id,
     name: item.Name,
+    upstreamType: item.CollectionType ?? null,
+    type:
+      (
+        {
+          movies: 'movie',
+          tvshows: 'television',
+          music: 'music',
+          playlists: 'playlist',
+          mixed: 'mixed',
+        } as Record<string, Library['type']>
+      )[
+        Object.hasOwn(types, item.CollectionType ?? '') || item.CollectionType === 'mixed'
+          ? item.CollectionType!
+          : ''
+      ] ?? 'unknown',
     mediaTypes: Object.hasOwn(types, item.CollectionType ?? '')
       ? types[item.CollectionType ?? '']!
       : [],
@@ -201,26 +231,40 @@ export function createJellyfinConnector(
   credentials: ConnectorCredentialStore,
 ): ManagedMediaConnector {
   const baseUrl = validateJellyfinUrl(options.baseUrl);
-  async function withCredential<T>(
-    action: (api: Api, credential: z.infer<typeof credentialSchema>) => Promise<T>,
-  ): Promise<T> {
-    let secret: Uint8Array | undefined;
+  async function session() {
+    const secret = await credentials.read(options.credential);
     let api: Api | undefined;
     try {
-      secret = await credentials.read(options.credential);
       const credential = credentialSchema.parse(JSON.parse(Buffer.from(secret).toString('utf8')));
       api = apiFor(baseUrl, options.credential.id);
-      // Check saved server identity before forwarding a credential.
       const server = await serverInfo(api);
       noSecretEcho(server, [credential.token]);
       if (server.id !== credential.serverId) throw new ConnectorError('identity_mismatch');
       api.update({ accessToken: credential.token });
-      return await action(api, credential);
+      return {
+        api,
+        credential,
+        close() {
+          secret.fill(0);
+          api?.update({ accessToken: '' });
+        },
+      };
+    } catch (error) {
+      secret.fill(0);
+      api?.update({ accessToken: '' });
+      throw normalized(error);
+    }
+  }
+  async function withCredential<T>(
+    action: (api: Api, credential: z.infer<typeof credentialSchema>) => Promise<T>,
+  ): Promise<T> {
+    const active = await session();
+    try {
+      return await action(active.api, active.credential);
     } catch (error) {
       throw normalized(error);
     } finally {
-      secret?.fill(0);
-      api?.update({ accessToken: '' });
+      active.close();
     }
   }
   const connector: ManagedMediaConnector = {
@@ -263,11 +307,71 @@ export function createJellyfinConnector(
         }
       });
     },
-    async scanCatalog(): Promise<MediaItem[]> {
-      throw new ConnectorNotImplementedError();
+    async *scanCatalog(libraryId, scanOptions = {}) {
+      if (!identifier.safeParse(libraryId).success)
+        throw new ConnectorError('invalid_configuration');
+      const limit = scanOptions.pageSize ?? 100;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+        throw new ConnectorError('invalid_configuration');
+      const active = await session();
+      try {
+        let offset = 0,
+          total: number | undefined;
+        for (let pages = 0; pages < 10000; pages++) {
+          scanOptions.signal?.throwIfAborted();
+          const page = pageSchema.parse(
+            (
+              await catalogApi(active.api).getItems(
+                {
+                  userId: active.credential.userId,
+                  parentId: libraryId,
+                  recursive: true,
+                  startIndex: offset,
+                  limit,
+                  sortBy: ['SortName'],
+                  sortOrder: ['Ascending'],
+                  fields: ['ParentId', 'SortName', 'ProviderIds', 'Etag', 'DateCreated'],
+                  enableImages: false,
+                  enableUserData: false,
+                  enableTotalRecordCount: true,
+                },
+                scanOptions.signal ? { signal: scanOptions.signal } : {},
+              )
+            ).data,
+          );
+          if (
+            page.StartIndex !== offset ||
+            page.Items.length > limit ||
+            (total !== undefined && total !== page.TotalRecordCount) ||
+            offset + page.Items.length > page.TotalRecordCount ||
+            (page.Items.length === 0 && offset !== page.TotalRecordCount) ||
+            new Set(page.Items.map((item) => item.Id)).size !== page.Items.length
+          )
+            throw new ConnectorError('invalid_response');
+          total = page.TotalRecordCount;
+          const items = page.Items.map((item) => normalizeItem(item, libraryId));
+          noSecretEcho(items, [active.credential.token]);
+          yield items;
+          offset += items.length;
+          if (offset === total) return;
+        }
+        throw new ConnectorError('invalid_response');
+      } catch (error) {
+        throw normalized(error);
+      } finally {
+        active.close();
+      }
     },
-    async getItem(): Promise<MediaItem> {
-      throw new ConnectorNotImplementedError();
+    async getItem(id): Promise<MediaItem> {
+      if (!identifier.safeParse(id).success) throw new ConnectorError('invalid_configuration');
+      return withCredential(async (api, credential) => {
+        const item = normalizeItem(
+          (await catalogApi(api).getItem({ itemId: id, userId: credential.userId })).data,
+        );
+        if (item.id !== id) throw new ConnectorError('invalid_response');
+        noSecretEcho(item, [credential.token]);
+        return item;
+      });
     },
     async search(): Promise<MediaItem[]> {
       throw new ConnectorNotImplementedError();

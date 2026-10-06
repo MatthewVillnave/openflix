@@ -8,7 +8,14 @@ export const libraryId = '33333333333333333333333333333333';
 export const upstreamPassword = 'fixture-only-jellyfin-password';
 export async function jellyfinFixture() {
   const state = {
-    collectionType: 'movies',
+    collectionType: 'movies' as string | null,
+    libraryName: 'Accessible movies',
+    catalog: [] as Record<string, unknown>[],
+    catalogByLibrary: new Map<string, Record<string, unknown>[]>(),
+    extraLibraries: [] as { Id: string; Name: string; CollectionType: string | null }[],
+    hideLibraries: false,
+    catalogFailureAt: -1,
+    pageOverride: undefined as undefined | ((offset: number, limit: number) => unknown),
     version: '12.1.0',
     serverId,
     name: 'Fixture Jellyfin',
@@ -90,9 +97,53 @@ export async function jellyfinFixture() {
         return;
       }
       json({
-        Items: [{ Id: libraryId, Name: 'Accessible movies', CollectionType: state.collectionType }],
-        TotalRecordCount: 1,
+        Items: state.hideLibraries
+          ? []
+          : [
+              { Id: libraryId, Name: state.libraryName, CollectionType: state.collectionType },
+              ...state.extraLibraries,
+            ],
+        TotalRecordCount: state.hideLibraries ? 0 : 1 + state.extraLibraries.length,
       });
+      return;
+    }
+    const catalogUrl = new URL(path, 'http://fixture');
+    if (catalogUrl.pathname === '/jellyfin/Items') {
+      const query = catalogUrl.searchParams;
+      if (
+        query.get('userId') !== userId ||
+        query.get('recursive') !== 'true' ||
+        query.get('enableImages') !== 'false' ||
+        query.get('enableUserData') !== 'false'
+      ) {
+        json({}, 400);
+        return;
+      }
+      const offset = Number(query.get('startIndex')),
+        limit = Number(query.get('limit'));
+      if (state.catalogFailureAt >= 0 && offset >= state.catalogFailureAt) {
+        json({ secret: state.token }, 500);
+        return;
+      }
+      const items = state.catalogByLibrary.get(query.get('parentId') ?? '') ?? state.catalog;
+      json(
+        state.pageOverride
+          ? state.pageOverride(offset, limit)
+          : {
+              Items: items.slice(offset, offset + limit),
+              TotalRecordCount: items.length,
+              StartIndex: offset,
+            },
+      );
+      return;
+    }
+    if (catalogUrl.pathname.startsWith('/jellyfin/Items/')) {
+      if (catalogUrl.searchParams.get('userId') !== userId) {
+        json({}, 403);
+        return;
+      }
+      const item = state.catalog.find((v) => v.Id === catalogUrl.pathname.split('/').at(-1));
+      json(item ?? {}, item ? 200 : 404);
       return;
     }
     if (path === '/jellyfin/Sessions/Logout' && request.method === 'POST') {

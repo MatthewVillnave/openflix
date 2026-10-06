@@ -1,3 +1,5 @@
+import { CatalogRepository } from './catalog.js';
+export { catalogId } from './catalog.js';
 import Database from 'better-sqlite3';
 import { secureStorage } from './storage.js';
 import type { User, ConnectorSummary } from '@openflix/shared';
@@ -37,7 +39,10 @@ export function openDatabase(filename: string): OpenFlixDatabase {
   }
 }
 export class OpenFlixDatabase {
-  constructor(private readonly db: Database.Database) {}
+  readonly catalog: CatalogRepository;
+  constructor(private readonly db: Database.Database) {
+    this.catalog = new CatalogRepository(db);
+  }
   listConnectors(): StoredConnector[] {
     return this.db
       .prepare(`SELECT ${connectorColumns} FROM media_connectors ORDER BY created_at, id`)

@@ -47,6 +47,82 @@ CREATE TABLE media_connectors (
 ) STRICT;
 `,
   },
+  {
+    version: 3,
+    name: 'normalized_catalog',
+    sql: `
+CREATE TABLE catalog_libraries (
+  id TEXT PRIMARY KEY,
+  connector_id TEXT NOT NULL REFERENCES media_connectors(id) ON DELETE CASCADE,
+  upstream_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  upstream_type TEXT,
+  last_synced_at INTEGER NOT NULL,
+  UNIQUE(connector_id, upstream_id),
+  UNIQUE(id, connector_id)
+) STRICT;
+CREATE TABLE catalog_items (
+  id TEXT PRIMARY KEY,
+  connector_id TEXT NOT NULL REFERENCES media_connectors(id) ON DELETE CASCADE,
+  upstream_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  sort_title TEXT NOT NULL,
+  parent_id TEXT,
+  series_id TEXT,
+  season_id TEXT,
+  album_id TEXT,
+  metadata_json TEXT NOT NULL,
+  synced_at INTEGER NOT NULL,
+  UNIQUE(connector_id, upstream_id),
+  UNIQUE(id, connector_id)
+) STRICT;
+CREATE INDEX catalog_items_type ON catalog_items(connector_id, type, sort_title, id);
+CREATE INDEX catalog_items_parent ON catalog_items(parent_id);
+CREATE INDEX catalog_items_series ON catalog_items(series_id);
+CREATE INDEX catalog_items_season ON catalog_items(season_id);
+CREATE INDEX catalog_items_album ON catalog_items(album_id);
+CREATE TABLE catalog_memberships (
+  library_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  connector_id TEXT NOT NULL,
+  PRIMARY KEY(library_id, item_id),
+  FOREIGN KEY(library_id, connector_id) REFERENCES catalog_libraries(id, connector_id) ON DELETE CASCADE,
+  FOREIGN KEY(item_id, connector_id) REFERENCES catalog_items(id, connector_id) ON DELETE CASCADE
+) STRICT;
+CREATE INDEX catalog_memberships_item ON catalog_memberships(item_id);
+CREATE TABLE catalog_sync (
+  connector_id TEXT PRIMARY KEY REFERENCES media_connectors(id) ON DELETE CASCADE,
+  run_id TEXT NOT NULL UNIQUE,
+  state TEXT NOT NULL CHECK(state IN ('syncing', 'successful', 'failed')),
+  library_id TEXT,
+  started_at INTEGER NOT NULL,
+  finished_at INTEGER,
+  last_successful_at INTEGER,
+  error TEXT
+) STRICT;
+CREATE TABLE catalog_stage_libraries (
+  run_id TEXT NOT NULL REFERENCES catalog_sync(run_id) ON DELETE CASCADE,
+  upstream_id TEXT NOT NULL,
+  metadata_json TEXT NOT NULL,
+  PRIMARY KEY(run_id, upstream_id)
+) STRICT;
+CREATE TABLE catalog_stage_items (
+  run_id TEXT NOT NULL REFERENCES catalog_sync(run_id) ON DELETE CASCADE,
+  upstream_id TEXT NOT NULL,
+  metadata_json TEXT NOT NULL,
+  PRIMARY KEY(run_id, upstream_id)
+) STRICT;
+CREATE TABLE catalog_stage_memberships (
+  run_id TEXT NOT NULL,
+  library_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  PRIMARY KEY(run_id, library_id, item_id),
+  FOREIGN KEY(run_id, library_id) REFERENCES catalog_stage_libraries(run_id, upstream_id) ON DELETE CASCADE,
+  FOREIGN KEY(run_id, item_id) REFERENCES catalog_stage_items(run_id, upstream_id) ON DELETE CASCADE
+) STRICT;
+`,
+  },
 ];
 export function migrate(
   db: Database.Database,

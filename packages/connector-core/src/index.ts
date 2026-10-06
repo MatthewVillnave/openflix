@@ -27,7 +27,10 @@ export interface MediaConnector {
   connect(): Promise<void>;
   testConnection(): Promise<ConnectionResult>;
   getLibraries(): Promise<Library[]>;
-  scanCatalog(): Promise<MediaItem[]>;
+  scanCatalog(
+    libraryId: string,
+    options?: { pageSize?: number; signal?: AbortSignal },
+  ): AsyncIterable<readonly MediaItem[]>;
   getItem(id: string): Promise<MediaItem>;
   search(query: string): Promise<MediaItem[]>;
   getPlaybackInfo(itemId: string, clientProfile: ClientProfile): Promise<PlaybackInfo>;
