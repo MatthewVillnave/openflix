@@ -157,6 +157,8 @@ const server = createServer(async (req, res) => {
           Type: 'Movie',
           ProductionYear: 2026,
         }));
+    // Real 10.11.11 scans include structural Folder records in both media families.
+    items.push({ Id: itemId(tv ? 1099 : 999), Name: 'Structural folder', Type: 'Folder' });
     send({
       Items: items.slice(offset, offset + limit),
       StartIndex: offset,

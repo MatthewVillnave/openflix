@@ -15,3 +15,9 @@ Builder status is READY FOR INTEGRATION AUDIT only after the documented suite co
 11. Remove only the isolated OpenFlix connector; confirm its catalog/memberships/staging disappear, unrelated sources stay intact, and only its Jellyfin session is revoked. Never delete or change upstream media, libraries, playlists, plugins or configuration.
 
 Report exact server/SDK/API revisions, topology/base path, OS/architecture, source commit, commands, counts, limitations and findings. Do not merge/tag M3 as audited before independent acceptance. Do not begin playback or Milestone 4.
+
+## R1 Folder classification re-audit
+
+The original M3 review commit is `a457a55cc37a94c7185aef91bb5c36945e20170d`. Optimus observed `Folder` records on real Jellyfin 10.11.11 in Movies and null-CollectionType TV, causing incorrect mixed-family publication. R1 treats only known structural folders as neutral; it does not discard their records or ignore arbitrary unknown semantic types.
+
+After validating the separate R1 archive/checksum, run a successful full or targeted resync against the existing authorized connector. Verify Movies + Folder produces `movie`, Series/Season/Episode + Folder produces `television` with the original null upstream CollectionType, and folders remain visible as unknown records. No library renaming or upstream mutation is required. Existing published classifications change only after successful resync. Use disposable fixtures for structural-only, genuine mixed-family, unsupported-type and failure-safety checks; do not modify household content. Recheck IDs, counts, relationships and persistence. The new status is READY FOR RE-AUDIT until Optimus accepts the fix; no M3 tag/merge or Milestone 4 is authorized.

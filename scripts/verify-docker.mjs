@@ -422,14 +422,21 @@ try {
   const catalogLibraries = (await catalogRead('/libraries')).libraries;
   const movies = catalogLibraries.find((l) => l.name === 'Fixture movies'),
     tv = catalogLibraries.find((l) => l.name === 'Tv shows');
+  assert.equal(movies.type, 'movie');
   assert.equal(tv.type, 'television');
   assert.equal(tv.upstreamType, null);
   const originalCatalog = await catalogRead(`/libraries/${movies.id}/items?limit=100`);
-  assert.equal(originalCatalog.total, 205);
+  assert.equal(originalCatalog.total, 206);
   assert.equal(
     (await catalogRead(`/libraries/${movies.id}/items?offset=200&limit=100`)).items.length,
-    5,
+    6,
   );
+  for (const library of [movies, tv]) {
+    const folders = await catalogRead(`/libraries/${library.id}/items?type=unknown`);
+    assert.equal(folders.total, 1);
+    assert.equal(folders.items[0].upstreamType, 'Folder');
+    assert.equal(folders.items[0].structural, true);
+  }
   const episodes = await catalogRead(`/libraries/${tv.id}/items?type=episode`);
   assert.equal(episodes.total, 1);
   assert.equal((await catalogRead(`/items/${episodes.items[0].seasonId}`)).item.type, 'season');
@@ -438,7 +445,9 @@ try {
     (await catalogRead(`/libraries/${movies.id}/items`)).items[0].id,
     originalCatalog.items[0].id,
   );
-  mark('Catalog full scan, multi-page browsing, null-type TV hierarchy and idempotent resync');
+  mark(
+    'Catalog full scan, Folder-neutral movie/TV classification, multi-page browsing, hierarchy and idempotent resync',
+  );
   const fixtureMode = (mode) =>
     serverScript(`await fetch('http://jellyfin-fixture:8096/__fixture/catalog?mode=${mode}');`);
   const stableCatalog = await catalogRead(`/libraries/${movies.id}/items?limit=100`);
@@ -448,7 +457,7 @@ try {
   await fixtureMode('updated');
   await catalogSync('successful');
   const updatedCatalog = await catalogRead(`/libraries/${movies.id}/items?limit=100`);
-  assert.equal(updatedCatalog.total, 204);
+  assert.equal(updatedCatalog.total, 205);
   assert.equal(updatedCatalog.items[0].title, 'Changed fixture movie');
   assert.equal(updatedCatalog.items[0].id, originalCatalog.items[0].id);
   const persistedLibraries = await catalogRead('/libraries');
@@ -556,7 +565,7 @@ try {
   phase = 'Linux full suite';
   const suite = await dev('run', '--rm', '--no-deps', '-T', 'server', 'pnpm', 'check');
   const passed = stripVTControlCharacters(suite).match(/Tests\s+(\d+) passed/);
-  assert.ok(passed && Number(passed[1]) >= 184, 'Expected at least 184 passing Linux tests');
+  assert.ok(passed && Number(passed[1]) >= 194, 'Expected at least 194 passing Linux tests');
   mark(
     `Complete pnpm check inside Linux container: ${passed[1]} tests, builds, types and formatting`,
   );

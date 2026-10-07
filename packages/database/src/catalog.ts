@@ -189,25 +189,30 @@ export class CatalogRepository {
           const lib: Library = JSON.parse(row.metadata);
           const families = this.db
             .prepare(
-              `SELECT DISTINCT json_extract(i.metadata_json, '$.type') AS type FROM catalog_stage_items i
+              `SELECT DISTINCT json_extract(i.metadata_json, '$.type') AS type,
+            json_extract(i.metadata_json, '$.structural') AS structural FROM catalog_stage_items i
           JOIN catalog_stage_memberships m ON m.run_id=i.run_id AND m.item_id=i.upstream_id WHERE m.run_id=? AND m.library_id=?`,
             )
-            .all(runId, lib.id) as { type: string }[];
+            .all(runId, lib.id) as { type: string; structural: number | null }[];
           const groups = new Set(
-            families.map((v) =>
-              ['series', 'season', 'episode'].includes(v.type)
-                ? 'television'
-                : ['audio', 'album', 'artist', 'music'].includes(v.type)
-                  ? 'music'
-                  : v.type,
-            ),
+            families
+              .filter((v) => v.structural !== 1)
+              .map((v) =>
+                ['series', 'season', 'episode'].includes(v.type)
+                  ? 'television'
+                  : ['audio', 'album', 'artist', 'music'].includes(v.type)
+                    ? 'music'
+                    : v.type,
+              ),
           );
           const type: LibraryType =
             groups.size > 1
               ? 'mixed'
               : groups.size === 1
                 ? ([...groups][0] as LibraryType)
-                : (lib.type ?? 'unknown');
+                : families.length > 0
+                  ? 'unknown'
+                  : (lib.type ?? 'unknown');
           const id = catalogId('lib', run.connectorId, lib.id);
           this.db
             .prepare(

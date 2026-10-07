@@ -6,6 +6,14 @@ export const serverId = '11111111111111111111111111111111';
 export const userId = '22222222222222222222222222222222';
 export const libraryId = '33333333333333333333333333333333';
 export const upstreamPassword = 'fixture-only-jellyfin-password';
+/** Structural folders observed by Optimus on Jellyfin 10.11.11, including null-type TV. */
+export function observedCatalog(types: readonly string[]): Record<string, unknown>[] {
+  return types.map((Type, i) => ({
+    Id: (i + 1).toString(16).padStart(32, '0'),
+    Name: `Observed fixture item ${i + 1}`,
+    Type,
+  }));
+}
 export async function jellyfinFixture() {
   const state = {
     collectionType: 'movies' as string | null,

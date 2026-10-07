@@ -4,7 +4,12 @@ import {
   createJellyfinConnector,
 } from '../packages/connector-jellyfin/dist/index.js';
 import { normalizeItem } from '../packages/connector-jellyfin/dist/catalog.js';
-import { jellyfinFixture, libraryId, upstreamPassword } from './jellyfin-fixture.js';
+import {
+  jellyfinFixture,
+  libraryId,
+  upstreamPassword,
+  observedCatalog,
+} from './jellyfin-fixture.js';
 const id = (n: number) => n.toString(16).padStart(32, '0');
 const raw = (n: number, Type = 'Movie') => ({ Id: id(n), Name: `Item ${n}`, Type });
 it.each([
@@ -16,6 +21,7 @@ it.each([
   ['MusicAlbum', 'album'],
   ['MusicArtist', 'artist'],
   ['Playlist', 'playlist'],
+  ['Folder', 'unknown'],
   ['Photo', 'unknown'],
   ['__proto__', 'unknown'],
   [null, 'unknown'],
@@ -117,16 +123,16 @@ describe('official SDK catalog requests', () => {
       upstreamType: null,
       mediaTypes: [],
     });
-    fixture.state.catalog = [raw(1, 'Series'), raw(2, 'Season'), raw(3, 'Episode')];
+    fixture.state.catalog = observedCatalog(['Series', 'Season', 'Episode', 'Folder']);
     const scan = async () => {
       const types = [];
       for await (const page of connector.scanCatalog(libraryId))
         types.push(...page.map((i) => i.type));
       return types;
     };
-    expect(await scan()).toEqual(['series', 'season', 'episode']);
+    expect(await scan()).toEqual(['series', 'season', 'episode', 'unknown']);
     fixture.state.libraryName = 'Random unrelated title';
-    expect(await scan()).toEqual(['series', 'season', 'episode']);
+    expect(await scan()).toEqual(['series', 'season', 'episode', 'unknown']);
   });
   it.each(['offset', 'empty', 'total', 'duplicate', 'oversized'])(
     'fails closed on malformed pagination: %s',

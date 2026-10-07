@@ -26,6 +26,7 @@ beforeEach(async () => {
   upstream.state.collectionType = null;
   upstream.state.libraryName = 'Tv shows';
   upstream.state.catalog = [
+    { Id: itemId(4), Name: 'Structural folder', Type: 'Folder' },
     { Id: itemId(1), Name: 'Series <script>alert(1)</script>', Type: 'Series' },
     {
       Id: itemId(2),
@@ -141,10 +142,10 @@ it('browses normalized TV hierarchy with paging/filtering, no secrets and no bro
   const library = libs.json().libraries[0];
   expect(library).toMatchObject({ name: 'Tv shows', type: 'television', upstreamType: null });
   const page = await get(`/libraries/${library.id}/items?offset=0&limit=2`);
-  expect(page.json().total).toBe(3);
+  expect(page.json().total).toBe(4);
   expect(page.json().items).toHaveLength(2);
   const tail = await get(`/libraries/${library.id}/items?offset=2&limit=2`);
-  expect(tail.json().items).toHaveLength(1);
+  expect(tail.json().items).toHaveLength(2);
   const episode = (await get(`/libraries/${library.id}/items?type=episode`)).json().items[0];
   expect(episode.type).toBe('episode');
   expect((await get(`/items/${episode.seasonId}`)).json().item.type).toBe('season');
@@ -172,7 +173,7 @@ it('persists across restart and repeats sync without password re-entry, then con
   app = await buildApp(fixture.config);
   expect((await get(`/libraries/${library.id}/items`)).json()).toEqual(before);
   await sync();
-  expect((await get(`/libraries/${library.id}/items`)).json().total).toBe(3);
+  expect((await get(`/libraries/${library.id}/items`)).json().total).toBe(4);
   expect(upstream.state.requests.filter((r) => r.path.endsWith('AuthenticateByName'))).toHaveLength(
     1,
   );

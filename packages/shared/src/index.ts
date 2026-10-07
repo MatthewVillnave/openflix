@@ -33,6 +33,8 @@ export interface MediaItem {
   title: string;
   sortTitle?: string;
   upstreamType?: string;
+  /** Known structural container; contributes no semantic library family. */
+  structural?: true;
   releaseDate?: string;
   parentId?: string;
   seriesId?: string;

@@ -53,6 +53,8 @@ export function normalizeItem(input: unknown, libraryId = ''): MediaItem {
     title: v.Name,
     type: v.Type && Object.hasOwn(types, v.Type) ? types[v.Type]! : 'unknown',
     ...(v.Type ? { upstreamType: v.Type } : {}),
+    // Only an explicitly known neutral type qualifies; unknown semantics stay conservative.
+    ...(v.Type === 'Folder' ? { structural: true as const } : {}),
     ...(v.SortName != null ? { sortTitle: v.SortName } : {}),
     ...(v.ProductionYear != null ? { year: v.ProductionYear } : {}),
     ...(v.PremiereDate ? { releaseDate: v.PremiereDate } : {}),
