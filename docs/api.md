@@ -37,3 +37,7 @@ All routes require a valid OpenFlix session. All authenticated users may browse 
 | `POST /api/v1/catalog/sync/:connectorId`  | Admin-only body `{}` for full source scan or `{libraryId}` for one existing catalog library; returns 202 with operation state; poll status; 503 when another connector mutation/sync is active or key unavailable |
 
 Browse is a database read, never an upstream request. Sync failure preserves all previous published items/memberships and timestamps. Full successful reconciliation can remove disappeared views/items; targeted sync only replaces that library's memberships. Other errors use existing sanitized 400/401/403/404/429/503 behavior. See [catalog guarantees](catalog.md) for pagination and offset-snapshot limitations. No playback/search/artwork endpoints are introduced.
+
+## Milestone 4 playback
+
+See [playback routes and authorization](playback.md#api). Playback is admin-only even though catalog metadata remains shared. Only same-origin, authenticated media routes are returned. No schema migration or persistent watch history is added.

@@ -49,6 +49,9 @@ CMD ["node", "docker/verify-browser.mjs"]
 # Disposable SDK protocol fixture; never deployed with production Compose alone.
 FROM node:24.19.0-bookworm-slim AS jellyfin-fixture
 WORKDIR /fixture
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+COPY docker/generate-media.sh ./
+RUN sh generate-media.sh
 RUN mkdir /state && chown node:node /state && chmod 0700 /state
 COPY docker/jellyfin-fixture.mjs ./
 USER node

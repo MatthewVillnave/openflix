@@ -108,6 +108,11 @@ try {
   const context = await browser.newContext();
   const page = await context.newPage();
   const failures = [];
+  const playbackResults = [];
+  const mediaRequests = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/playback/')) mediaRequests.push(request.url());
+  });
   page.on('pageerror', () => failures.push('javascript error'));
   step = 'trusted HTTPS frontend';
   await page.goto('https://localhost:8443');
@@ -152,6 +157,64 @@ try {
     await page
       .getByText('Connection verified using its saved credential.', { exact: true })
       .waitFor();
+    const exercisePlayer = async (kind, keepPlaying = false) => {
+      step = `actual ${kind} decode, pause and seek`;
+      const planned = page.waitForResponse(
+        (r) => r.url().endsWith('/playback/sessions') && r.request().method() === 'POST',
+      );
+      await page.getByRole('button', { name: 'Prepare playback', exact: true }).click();
+      const response = await planned;
+      assert.equal(response.status(), 201);
+      const safe = await response.json();
+      assert.match(safe.streamPath, /^\/api\/v1\/playback\/sessions\/[a-f0-9-]+\/stream$/);
+      for (const forbidden of [
+        jellyfin.password,
+        jellyfin.baseUrl,
+        'private/fixture',
+        'credentialEnvelope',
+        'api_key',
+        'AccessToken',
+      ])
+        assert.ok(!JSON.stringify(safe).includes(forbidden));
+      const selector = kind === 'audio' ? 'audio' : 'video';
+      await page.waitForFunction((s) => {
+        const m = document.querySelector(s);
+        return m && m.readyState >= 1 && m.duration > 10 && (s === 'audio' || m.videoWidth > 0);
+      }, selector);
+      await page.getByRole('button', { name: 'Play media', exact: true }).click();
+      await page.waitForFunction((s) => {
+        const m = document.querySelector(s);
+        return m.currentTime > 0.6 && !m.paused && !m.error;
+      }, selector);
+      await page.getByRole('button', { name: 'Pause media', exact: true }).click();
+      const paused = await page
+        .locator(selector)
+        .evaluate((m) => ({ paused: m.paused, time: m.currentTime }));
+      assert.equal(paused.paused, true);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert.ok(
+        Math.abs((await page.locator(selector).evaluate((m) => m.currentTime)) - paused.time) < 0.1,
+      );
+      await page.locator(selector).evaluate((m) => {
+        m.currentTime = 7;
+      });
+      await page.waitForFunction((s) => {
+        const m = document.querySelector(s);
+        return !m.seeking && m.currentTime >= 6.9 && m.readyState >= 2;
+      }, selector);
+      await page.getByRole('button', { name: 'Play media', exact: true }).click();
+      await page.waitForFunction((s) => {
+        const m = document.querySelector(s);
+        return m.currentTime > 7.5 && !m.error;
+      }, selector);
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.ok((await page.locator(selector).boundingBox()).width <= 390);
+      await page.setViewportSize({ width: 1280, height: 900 });
+      playbackResults.push({ kind, decoded: true, progressed: true, paused: true, sought: true });
+      if (!keepPlaying)
+        await page.getByRole('button', { name: 'Return to catalog', exact: true }).click();
+      return safe;
+    };
     step = 'catalog synchronization and TV hierarchy';
     await page.getByRole('button', { name: 'Sync Browser fixture', exact: true }).click();
     await page
@@ -168,11 +231,47 @@ try {
       .getByRole('article', { name: 'Item details' })
       .getByText('Episode 1', { exact: true })
       .waitFor();
+    await exercisePlayer('episode');
     await page
       .getByRole('button', { name: 'Fixture movies · Browser fixture (movie)', exact: true })
       .click();
     await page.getByRole('button', { name: 'Next page', exact: true }).click();
     await page.getByRole('button', { name: 'Fixture movie 051', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Fixture movie 051', exact: true }).click();
+    await exercisePlayer('movie');
+    await page
+      .getByRole('button', { name: 'Fixture music · Browser fixture (music)', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Fixture track', exact: true }).click();
+    const lastPlayback = await exercisePlayer('audio', true);
+    assert.equal(
+      await page.evaluate(
+        async (path) => (await fetch(path, { method: 'HEAD' })).status,
+        lastPlayback.streamPath,
+      ),
+      200,
+    );
+    step = 'playback logout authorization';
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await page.getByLabel('Username', { exact: true }).waitFor();
+    assert.equal(
+      await page.evaluate(async (path) => (await fetch(path)).status, lastPlayback.streamPath),
+      401,
+    );
+    await page.getByLabel('Username', { exact: true }).fill(username);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.getByRole('heading', { name: `Welcome, ${username}.` }).waitFor();
+    assert.equal(
+      await page.evaluate(async (path) => (await fetch(path)).status, lastPlayback.streamPath),
+      410,
+    );
+    assert.ok(
+      mediaRequests.every(
+        (url) => url.startsWith('https://localhost:8443/api/v1/playback/') && !url.includes('?'),
+      ),
+    );
+    await page.getByRole('button', { name: 'Settings · Media Servers', exact: true }).click();
     step = 'connector removal after catalog import';
     await page.getByRole('button', { name: 'Disconnect / remove', exact: true }).click();
     await page
@@ -191,7 +290,9 @@ try {
   );
   assert.equal(failures.length, 0);
   // Return only non-sensitive verification metadata.
-  console.log(JSON.stringify({ passed: true, browser: browser.version() }));
+  console.log(
+    JSON.stringify({ passed: true, browser: browser.version(), playback: playbackResults }),
+  );
 } catch {
   console.error(`Browser verification failed at: ${step}`);
   process.exitCode = 1;

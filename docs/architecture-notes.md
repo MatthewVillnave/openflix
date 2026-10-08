@@ -46,3 +46,9 @@ Multiple injected workspace copies can have distinct Error constructors; normali
 - Preserve unresolved source-scoped relationship IDs instead of fetching arbitrarily many missing parents/artists. Playlist objects are metadata only. Full-text search, posters/artwork, automatic scheduled polling and playback from the broad draft are deferred under the narrower authorized M3 scope; sync is explicitly administrator-triggered and runs asynchronously in-process.
 - LibraryApi's SDK augmentation declarations omit NodeNext extensions. The narrow generated-method type assertion is backed by the inspected official runtime/helper and wire tests; no SDK fork or runtime workaround is introduced.
 - No external dependency upgrade is needed. The web package now declares its existing shared workspace dependency. Audited storage code, encryption, authentication and old migration SQL remain unchanged.
+
+## Milestone 4 direct playback boundary
+
+M4 evolves the anticipated connector playback contracts into normalized source plans, binary Readable transport and explicit reporting state. Jellyfin endpoint construction/DTOs remain in its connector. SDK metadata calls retain their bounded JSON client; Node HTTP(S) provides backpressure, cancellation and header/idle deadlines for binary streams. No migration is necessary; short-lived grants remain process-local and require the original admin login on every request.
+
+The complete initial playback path supports a conservative direct-play codec/container allowlist. HLS/transcoding is deferred because safe manifest rewriting, segment authorization and client adaptation form a separate significant boundary. Unsupported formats fail explicitly. There is no guessed TranscodingUrl forwarding, OpenFlix transcoder or universal codec claim. A later approved scope can add Jellyfin-managed fallback; Milestone 5 has not begun.

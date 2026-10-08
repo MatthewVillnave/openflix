@@ -21,6 +21,8 @@ Both inspected schemas provide:
 
 PlaybackInfo response fields inspected: PlaySessionId, ErrorCode, MediaSources including Id, Protocol, Container, SupportsDirectPlay, SupportsDirectStream, SupportsTranscoding, IsRemote, IsInfiniteStream, RequiresOpening/Closing, VideoType, RunTimeTicks, MediaStreams and DefaultAudioStreamIndex. MediaStreams describe Codec, Type, Profile, Level, BitDepth, Channels, Width/Height, VideoRange/VideoRangeType, IsInterlaced, IsExternal and Index. Unconsumed fields, Path, direct/transcoding URLs and required upstream headers must never enter browser responses.
 
+The official 10.11.11 [MediaInfoController](https://github.com/jellyfin/jellyfin/blob/v10.11.11/Jellyfin.Api/Controllers/MediaInfoController.cs) also confirms body UserId and EnableDirectPlay/EnableDirectStream/EnableTranscoding/AutoOpenLiveStream handling.
+
 The official 10.11.11 [VideosController](https://github.com/jellyfin/jellyfin/blob/v10.11.11/Jellyfin.Api/Controllers/VideosController.cs) and [AudioController](https://github.com/jellyfin/jellyfin/blob/v10.11.11/Jellyfin.Api/Controllers/AudioController.cs) confirm GET/HEAD static file behavior. Range handling belongs to Jellyfin's file result; OpenFlix must preserve actual 200/206/416 semantics without inventing support or buffering the file. Static remote sources and live/disc sources are excluded from this initial path.
 
 ## Transcoding/HLS inspection and scope

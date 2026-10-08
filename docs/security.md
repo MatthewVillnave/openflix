@@ -1,6 +1,6 @@
 # Milestone 1 security assumptions
 
-Current Milestone 3 extends this foundation with [normalized catalog and synchronization](catalog.md); [M2 independent acceptance](milestone-2-audit-acceptance.md) and historical milestone reports retain their original scope.
+Current Milestone 4 adds [admin-only playback transport and lifecycle](playback.md). Milestone 3 extends this foundation with [normalized catalog and synchronization](catalog.md); [M2 independent acceptance](milestone-2-audit-acceptance.md) and historical milestone reports retain their original scope.
 
 > This file records the audited Milestone 1 baseline. On the M2 development branch, [connector security](connector-security.md) supersedes statements below about absent outbound connector calls/credential persistence. The R2 storage boundary remains unchanged.
 

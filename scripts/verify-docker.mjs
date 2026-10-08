@@ -290,6 +290,11 @@ try {
     ),
   );
   assert.equal(browser.passed, true);
+  assert.equal(browser.playback.length, 3);
+  assert.ok(browser.playback.every((p) => p.decoded && p.progressed && p.paused && p.sought));
+  mark(
+    'Chromium decodes generated movie, episode and audio through OpenFlix; pause, seek, mobile layout and logout denial',
+  );
 
   mark(`Trusted HTTPS browser login/reload/logout and HttpOnly cookie (${browser.browser})`);
   const initialContainers = await inspectPrivileges(prod, true);
@@ -464,8 +469,83 @@ try {
   mark(
     'Failed partial scan preserves published catalog; successful resync updates and prunes safely',
   );
+  phase = 'production playback transport';
+  const playbackMutation = async (path, body) =>
+    request('/api/v1/playback' + path, {
+      method: 'POST',
+      headers: { origin, cookie, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  const preparePlayback = async () => {
+    const result = await playbackMutation('/sessions', {
+      itemId: updatedCatalog.items[0].id,
+      profile: { formats: ['mp4-h264-aac'] },
+    });
+    assert.equal(result.status, 201);
+    for (const secret of secrets) assert.ok(!result.body.includes(secret));
+    assert.doesNotMatch(
+      result.body,
+      /mediaSourceId|credentialEnvelope|jellyfin-fixture|private\/fixture/,
+    );
+    return JSON.parse(result.body);
+  };
+  let oldPlayback = await preparePlayback();
+  const streamHead = await request(oldPlayback.streamPath, { method: 'HEAD', headers: { cookie } });
+  assert.equal(streamHead.status, 200);
+  assert.equal(streamHead.headers.get('content-type'), 'video/mp4');
+  const mediaSize = Number(streamHead.headers.get('content-length'));
+  assert.ok(mediaSize > 10000);
+  const range = await fetch('http://127.0.0.1:8080' + oldPlayback.streamPath, {
+    headers: { cookie, range: 'bytes=10-109' },
+  });
+  assert.equal(range.status, 206);
+  assert.equal(range.headers.get('content-range'), `bytes 10-109/${mediaSize}`);
+  assert.equal((await range.arrayBuffer()).byteLength, 100);
+  assert.equal(
+    (await request(oldPlayback.streamPath, { headers: { cookie, range: `bytes=${mediaSize}-` } }))
+      .status,
+    416,
+  );
+  assert.equal((await request(oldPlayback.streamPath)).status, 401);
+  assert.equal((await playbackMutation(`/sessions/${oldPlayback.id}/stop`, {})).status, 204);
+  mark(
+    'Authenticated production HEAD, byte ranges, Content-Range, 416 and secret-free playback plans',
+  );
+  await serverScript("await fetch('http://jellyfin-fixture:8096/__fixture/playback?mode=large');");
+  const large = await preparePlayback();
+  const memory = JSON.parse(
+    await serverScript(`
+    import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+    const rss=()=>Number.parseInt(readFileSync('/proc/1/status','utf8').split('VmRSS:')[1],10)*1024;
+    const baseline=rss();let peak=baseline,received=0;
+    const abort=new AbortController();
+    const response=await fetch('http://127.0.0.1:8787'+${JSON.stringify(large.streamPath)}, {headers:{cookie:${JSON.stringify(cookie)}},signal:abort.signal});
+    assert.equal(response.status,200);assert.equal(Number(response.headers.get('content-length')),4*1024**3);
+    for await(const chunk of response.body){received+=chunk.length;peak=Math.max(peak,rss());if(received>=16*1024**2){break;}}
+    assert.ok(peak-baseline<96*1024**2,'Streaming memory grew beyond bounded sanity limit');
+    console.log(JSON.stringify({received,rssGrowth:peak-baseline}));
+  `),
+  );
+  assert.ok(memory.received >= 16 * 1024 ** 2);
+  await delay(500);
+  const largeState = await fixtureState();
+  assert.ok(largeState.playback.bytes < 128 * 1024 ** 2);
+  assert.ok(largeState.playback.cancelled > 0);
+  assert.ok(largeState.playback.reports >= 3);
+  await playbackMutation(`/sessions/${large.id}/stop`, {});
+  await serverScript("await fetch('http://jellyfin-fixture:8096/__fixture/playback?mode=normal');");
+  mark(
+    `4 GiB synthetic stream stays bounded and cancels upstream (RSS growth ${memory.rssGrowth} bytes)`,
+  );
+  oldPlayback = await preparePlayback();
   const verifyPersistence = async () => {
     await ready('http://127.0.0.1:8080/health');
+    assert.equal((await request(oldPlayback.streamPath, { headers: { cookie } })).status, 410);
+    oldPlayback = await preparePlayback();
+    assert.equal(
+      (await request(oldPlayback.streamPath, { method: 'HEAD', headers: { cookie } })).status,
+      200,
+    );
     assert.equal((await request('/api/v1/me', { headers: { cookie } })).status, 200);
     const current = await snapshot();
     assert.equal(current.mode, 0o600);
@@ -517,6 +597,9 @@ try {
   await prod('up', '-d', '--wait', '--wait-timeout', '120');
   await verifyPersistence();
   mark('Clean shutdown exits zero; restart restores persistent state');
+  mark(
+    'Ephemeral playback grants fail after restart; persisted encrypted connector starts new playback',
+  );
   phase = 'replacement';
   await logs();
   await prod('down');
@@ -531,6 +614,7 @@ try {
     headers: { origin, cookie },
   });
   assert.equal(removed.status, 200);
+  assert.equal((await request(oldPlayback.streamPath, { headers: { cookie } })).status, 410);
   assert.equal(JSON.parse(removed.body).revocation, 'confirmed');
   assert.equal((await fixtureState()).active, 0);
   assert.equal((await catalogRead('/libraries')).libraries.length, 0);
@@ -565,7 +649,7 @@ try {
   phase = 'Linux full suite';
   const suite = await dev('run', '--rm', '--no-deps', '-T', 'server', 'pnpm', 'check');
   const passed = stripVTControlCharacters(suite).match(/Tests\s+(\d+) passed/);
-  assert.ok(passed && Number(passed[1]) >= 194, 'Expected at least 194 passing Linux tests');
+  assert.ok(passed && Number(passed[1]) >= 254, 'Expected at least 254 passing Linux tests');
   mark(
     `Complete pnpm check inside Linux container: ${passed[1]} tests, builds, types and formatting`,
   );

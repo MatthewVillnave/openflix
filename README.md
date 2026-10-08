@@ -1,10 +1,12 @@
 # OpenFlix
 
-Milestones 1 and 2 are independently audited. [Milestone 2's published release](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.2-m2) freezes the real Jellyfin 10.11.11 integration. This development branch implements **Milestone 3: normalized catalog**, awaiting its own Optimus integration audit. Playback and federation are not implemented.
+Milestones 1–3 are independently audited. [Milestone 3's published release](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.3-m3) freezes the persistent catalog verified against Jellyfin 10.11.11. This branch implements **Milestone 4: authenticated direct playback**, awaiting independent real-server integration audit. Federation and Milestone 5 are not implemented.
+
+Administrators can select a movie, episode or audio track and prepare playback in the catalog. Supported formats stream through OpenFlix; ordinary users remain browse-only. Playback reporting may update the connector account's Jellyfin watch state. Read [playback/security and supported formats](docs/playback.md), [M4 API baseline](docs/milestone-4-api-baseline.md), [verification](docs/milestone-4-verification.md) and [Optimus audit](docs/milestone-4-integration.md). HLS/transcoding and universal codec support are not implemented.
 
 Provide a private operator-generated `OPENFLIX_MASTER_KEY` (base64 of 32 random bytes), provision an OpenFlix admin with `pnpm user:create <username> --admin`, and add Jellyfin in Settings → Media Servers. Use Catalog → Sync [server] to publish accessible library metadata. All signed-in OpenFlix users can browse it; choose the connector identity accordingly. Catalog persistence survives restart without an automatic rescan.
 
-Read [catalog model and sync safety](docs/catalog.md), [catalog API baseline](docs/milestone-3-api-baseline.md), [M3 verification](docs/milestone-3-verification.md), [M3 report](docs/milestone-3-report.md), and [Optimus integration checks](docs/milestone-3-integration.md). [M2 acceptance](docs/milestone-2-audit-acceptance.md) carries forward the restricted-user and null-CollectionType notes.
+Read [catalog model and sync safety](docs/catalog.md), [catalog API baseline](docs/milestone-3-api-baseline.md), [M3 verification](docs/milestone-3-verification.md), [M3 report](docs/milestone-3-report.md), and [Optimus integration checks](docs/milestone-3-integration.md). [M3 acceptance](docs/milestone-3-audit-acceptance.md) records proven restricted-user visibility and the remaining shared-metadata policy.
 
 A standalone, self-hosted media application. Jellyfin is a media backend behind `MediaConnector`; OpenFlix owns identity, sessions, its API, and its database.
 
@@ -71,7 +73,7 @@ docker compose logs server
 docker compose down              # preserves the named data volume
 ```
 
-Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [M3 verification](docs/milestone-3-verification.md) and [the M3 report](docs/milestone-3-report.md). The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
+Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [M4 verification](docs/milestone-4-verification.md). The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
 
 ## Repository
 
@@ -90,4 +92,4 @@ scripts/                      Reproducible Docker verification
 docs/                         Architecture, security, configuration and handoff
 ```
 
-Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Catalog baseline](docs/milestone-3-api-baseline.md) records the exact official API/SDK contracts. Historical M1/M2 reports remain unchanged; M3 has not been merged or tagged as audited.
+Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Catalog baseline](docs/milestone-3-api-baseline.md) records the exact official API/SDK contracts. Historical M1/M2/M3 reports remain unchanged; [M3 acceptance](docs/milestone-3-audit-acceptance.md) records the independent audit. M4 is not merged or tagged as audited.
