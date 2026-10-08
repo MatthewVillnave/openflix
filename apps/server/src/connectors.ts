@@ -1,3 +1,4 @@
+import { registerPlayback } from './playback.js';
 import { registerCatalog } from './catalog.js';
 import { randomUUID } from 'node:crypto';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
@@ -59,6 +60,7 @@ export async function registerConnectors(
     }
   };
   await registerCatalog(app, db, auth, config, run, () => busy);
+  await registerPlayback(app, db, auth, config, vault);
   await app.register(
     async (routes) => {
       routes.addHook('preHandler', async (request, reply) => {

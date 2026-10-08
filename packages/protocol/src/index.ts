@@ -44,3 +44,5 @@ export type CatalogSyncResponse = import('@openflix/shared').CatalogSyncStatus;
 export interface CatalogSyncRequest {
   libraryId?: string;
 }
+
+export type { PlaybackView, PlaybackFormat } from '@openflix/shared';

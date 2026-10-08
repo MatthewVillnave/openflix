@@ -1,5 +1,6 @@
 /** Disposable wire fixture derived from the pinned official OpenAPI operations.
  * It is not a real Jellyfin integration or a replacement for Optimus's audit. */
+import { playbackFixtureState, servePlayback } from './playback-fixture.js';
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
 export const serverId = '11111111111111111111111111111111';
@@ -16,6 +17,7 @@ export function observedCatalog(types: readonly string[]): Record<string, unknow
 }
 export async function jellyfinFixture() {
   const state = {
+    playback: playbackFixtureState(),
     collectionType: 'movies' as string | null,
     libraryName: 'Accessible movies',
     catalog: [] as Record<string, unknown>[],
@@ -116,6 +118,7 @@ export async function jellyfinFixture() {
       return;
     }
     const catalogUrl = new URL(path, 'http://fixture');
+    if (servePlayback(state.playback, request, response, catalogUrl, body)) return;
     if (catalogUrl.pathname === '/jellyfin/Items') {
       const query = catalogUrl.searchParams;
       if (

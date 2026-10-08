@@ -63,6 +63,7 @@ function source(
     disconnect: unsupported,
     search: unsupported,
     getPlaybackInfo: unsupported,
+    openPlaybackStream: unsupported,
     reportPlaybackStart: unsupported,
     reportPlaybackProgress: unsupported,
     reportPlaybackStop: unsupported,

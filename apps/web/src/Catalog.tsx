@@ -1,3 +1,4 @@
+import { Player } from './Player.js';
 import { useEffect, useState } from 'react';
 import type {
   CatalogLibrary,
@@ -135,7 +136,9 @@ export function Catalog({ admin }: { admin: boolean }) {
   return (
     <section aria-label="Catalog">
       <h2>Catalog</h2>
-      <p>Browse synchronized metadata. Playback is not available.</p>
+      <p>
+        Browse synchronized metadata. Playback is available to administrators for supported media.
+      </p>
       <button
         onClick={() => {
           setRevision((n) => n + 1);
@@ -293,6 +296,12 @@ export function Catalog({ admin }: { admin: boolean }) {
           {detail.episodeNumber !== undefined && <p>Episode {detail.episodeNumber}</p>}
           {detail.parentId && (
             <button onClick={() => void showItem(detail.parentId!)}>View parent</button>
+          )}
+          {admin && ['movie', 'episode', 'audio'].includes(detail.type) && (
+            <Player key={detail.id} item={detail} />
+          )}
+          {!admin && ['movie', 'episode', 'audio'].includes(detail.type) && (
+            <p>Playback requires administrator authorization.</p>
           )}
           {detail.albumTitle && <p>Album: {detail.albumTitle}</p>}
           <button onClick={() => setDetail(null)}>Close details</button>

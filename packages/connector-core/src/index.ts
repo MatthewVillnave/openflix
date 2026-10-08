@@ -1,26 +1,45 @@
-import type { Library, MediaItem, ConnectorServerInfo, ConnectorErrorCode } from '@openflix/shared';
+import type { Readable } from 'node:stream';
+import type {
+  PlaybackFormat,
+  Library,
+  MediaItem,
+  ConnectorServerInfo,
+  ConnectorErrorCode,
+} from '@openflix/shared';
 export type { Library, MediaItem, MediaSource, MediaType } from '@openflix/shared';
 export type ConnectionResult =
   { ok: true; serverName: string } | { ok: false; code: ConnectorErrorCode; message: string };
 export interface ClientProfile {
-  videoCodecs: string[];
-  audioCodecs: string[];
-  maxWidth: number;
-  maxHeight: number;
+  formats: PlaybackFormat[];
 }
-/** Server-only transport information. Never serialize this object to a browser. */
+/** Server-only plan, containing source identity but no tokens or URLs. */
 export interface PlaybackInfo {
-  url: string;
-  headers: Readonly<Record<string, string>>;
-  mode: 'direct' | 'transcode';
-  expiresAt: number;
+  itemId: string;
+  sourceId: string;
+  sessionId: string;
+  kind: 'video' | 'audio';
+  mode: 'direct';
+  contentType: string;
+  durationMs: number;
 }
 export interface PlaybackSession {
   id: string;
   itemId: string;
+  sourceId: string;
   positionMs: number;
   durationMs: number;
   paused: boolean;
+}
+export interface PlaybackStreamRequest {
+  method: 'GET' | 'HEAD';
+  range?: string;
+  signal: AbortSignal;
+}
+export interface PlaybackStream {
+  status: 200 | 206 | 416;
+  headers: Readonly<Record<string, string>>;
+  body?: Readable;
+  cancel(): void;
 }
 /** IDs returned here are connector-scoped; catalog normalization assigns OpenFlix IDs later. */
 export interface MediaConnector {
@@ -34,6 +53,7 @@ export interface MediaConnector {
   getItem(id: string): Promise<MediaItem>;
   search(query: string): Promise<MediaItem[]>;
   getPlaybackInfo(itemId: string, clientProfile: ClientProfile): Promise<PlaybackInfo>;
+  openPlaybackStream(plan: PlaybackInfo, request: PlaybackStreamRequest): Promise<PlaybackStream>;
   reportPlaybackStart(session: PlaybackSession): Promise<void>;
   reportPlaybackProgress(session: PlaybackSession): Promise<void>;
   reportPlaybackStop(session: PlaybackSession): Promise<void>;

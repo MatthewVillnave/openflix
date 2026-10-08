@@ -243,3 +243,15 @@ footer {
     transition: background 0.15s;
   }
 }
+
+video,
+audio {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin-block: 1rem;
+}
+video {
+  max-height: 65vh;
+  background: #000;
+}

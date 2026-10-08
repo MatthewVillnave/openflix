@@ -122,3 +122,22 @@ export interface CatalogSyncStatus {
   error: ConnectorErrorCode | null;
   libraryId: string | null;
 }
+
+/** Explicit browser capabilities; no client-selected upstream URL/source. */
+export const playbackFormats = {
+  'mp4-h264-aac': 'video/mp4; codecs="avc1.640029, mp4a.40.2"',
+  'webm-vp8-opus': 'video/webm; codecs="vp8, opus"',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav; codecs="1"',
+} as const;
+export type PlaybackFormat = keyof typeof playbackFormats;
+export interface PlaybackView {
+  id: string;
+  itemId: string;
+  kind: 'video' | 'audio';
+  mode: 'direct';
+  contentType: string;
+  durationMs: number;
+  expiresAt: number;
+  streamPath: string;
+}

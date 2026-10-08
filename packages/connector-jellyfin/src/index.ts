@@ -1,3 +1,4 @@
+import { playbackOperations } from './playback.js';
 import type { LibraryApi } from '@jellyfin/sdk/lib/generated-client/api/library-api.js';
 import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api.js';
 import { normalizeItem, pageSchema } from './catalog.js';
@@ -23,7 +24,6 @@ import type {
   Library,
   ConnectionResult,
   MediaItem,
-  PlaybackInfo,
   MediaType,
 } from '@openflix/connector-core';
 
@@ -376,18 +376,7 @@ export function createJellyfinConnector(
     async search(): Promise<MediaItem[]> {
       throw new ConnectorNotImplementedError();
     },
-    async getPlaybackInfo(): Promise<PlaybackInfo> {
-      throw new ConnectorNotImplementedError();
-    },
-    async reportPlaybackStart() {
-      throw new ConnectorNotImplementedError();
-    },
-    async reportPlaybackProgress() {
-      throw new ConnectorNotImplementedError();
-    },
-    async reportPlaybackStop() {
-      throw new ConnectorNotImplementedError();
-    },
+    ...playbackOperations(withCredential),
   };
   return connector;
 }

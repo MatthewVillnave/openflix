@@ -66,7 +66,7 @@ export function App() {
           </span>{' '}
           OPENFLIX
         </a>
-        <span className="milestone">CATALOG / M3</span>
+        <span className="milestone">PLAYBACK / M4</span>
       </header>
       <main>
         <section className="intro">
@@ -81,7 +81,7 @@ export function App() {
             Built to connect. Designed to stay yours.
           </p>
           <div className="scope">
-            <span className="dot" /> Milestone 3 · Catalog
+            <span className="dot" /> Milestone 4 · Playback
           </div>
         </section>
         <section className="panel" aria-label={user ? 'Your account' : 'Sign in'}>
@@ -154,7 +154,7 @@ export function App() {
       </main>
       <footer>
         <span>Independent by design.</span>
-        <span>OpenFlix · Milestone 3</span>
+        <span>OpenFlix · Milestone 4</span>
       </footer>
     </div>
   );

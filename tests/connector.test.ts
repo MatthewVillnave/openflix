@@ -23,6 +23,7 @@ it('preserves the normalized async connector contract at compile time', () => {
     | 'getItem'
     | 'search'
     | 'getPlaybackInfo'
+    | 'openPlaybackStream'
     | 'reportPlaybackStart'
     | 'reportPlaybackProgress'
     | 'reportPlaybackStop'
@@ -37,14 +38,6 @@ it('defers later operations without reading credentials or contacting an upstrea
       store,
     );
     await expect(connector.search('unused')).rejects.toThrow(ConnectorNotImplementedError);
-    await expect(
-      connector.getPlaybackInfo('item', {
-        videoCodecs: [],
-        audioCodecs: [],
-        maxWidth: 1,
-        maxHeight: 1,
-      }),
-    ).rejects.toThrow(ConnectorNotImplementedError);
     expect(store.read).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
   } finally {
