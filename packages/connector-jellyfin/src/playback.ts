@@ -22,13 +22,13 @@ const streamSchema = z.object({
   Index: z.number().int().nonnegative(),
   IsExternal: z.boolean().optional(),
   BitDepth: z.number().nullish(),
-  Channels: z.number().nullish(),
-  Level: z.number().nullish(),
-  Width: z.number().nullish(),
-  Height: z.number().nullish(),
+  Channels: z.number().int().positive().max(64).nullish(),
+  Level: z.number().positive().nullish(),
+  Width: z.number().int().positive().max(32768).nullish(),
+  Height: z.number().int().positive().max(32768).nullish(),
   IsInterlaced: z.boolean().optional(),
   VideoRangeType: z.string().nullish(),
-  AverageFrameRate: z.number().nullish(),
+  AverageFrameRate: z.number().positive().nullish(),
 });
 const sourceSchema = z.object({
   Id: id,
@@ -294,6 +294,17 @@ export function playbackOperations(access: Access) {
                 Number(m[3]) <= Number(m[2]) ||
                 (length !== undefined && Number(length) !== Number(m[2]) - Number(m[1]) + 1)
               )
+                return invalid('invalid_response');
+              const requested = /^bytes=(\d*)-(\d*)$/.exec(request.range)!;
+              const total = Number(m[3]);
+              const expectedStart = requested[1]
+                ? Number(requested[1])
+                : Math.max(0, total - Number(requested[2]));
+              const expectedEnd =
+                requested[1] && requested[2]
+                  ? Math.min(total - 1, Number(requested[2]))
+                  : total - 1;
+              if (Number(m[1]) !== expectedStart || Number(m[2]) !== expectedEnd)
                 return invalid('invalid_response');
               headers['content-range'] = contentRange!;
             }

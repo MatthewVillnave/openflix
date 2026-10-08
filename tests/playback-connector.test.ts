@@ -127,7 +127,7 @@ it('supports HEAD and forwards 416 range metadata without upstream error body', 
   expect(result.headers['content-range']).toBe('bytes */4096');
   expect(result.body).toBeUndefined();
 });
-it.each(['redirect', 'html', 'bad-range', 'error'] as const)(
+it.each(['redirect', 'html', 'bad-range', 'wrong-range', 'error'] as const)(
   'rejects unsafe binary response %s',
   async (mode) => {
     fixture.state.playback.streamMode = mode;
@@ -200,3 +200,15 @@ it('returns unsupported for a valid empty media-source response', async () => {
   fixture.state.playback.sources = [];
   await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
 });
+
+it.each([{ Channels: -1 }, { Width: -1 }, { Height: 0 }, { AverageFrameRate: 0 }])(
+  'rejects malformed media dimensions/channels %j',
+  async (change) => {
+    const source = playbackSource();
+    const streams = source.MediaStreams as Record<string, unknown>[];
+    const index = 'Channels' in change ? 1 : 0;
+    streams[index] = { ...streams[index], ...change };
+    fixture.state.playback.sources = [source];
+    await expect(plan()).rejects.toMatchObject({ code: 'invalid_response' });
+  },
+);

@@ -41,7 +41,14 @@ export function playbackFixtureState() {
     reports: [] as { path: string; body: Record<string, unknown> }[],
     reportFailure: false,
     streamMode: 'normal' as
-      'normal' | 'redirect' | 'html' | 'slow' | 'bad-range' | 'ignore-range' | 'error',
+      | 'normal'
+      | 'redirect'
+      | 'html'
+      | 'slow'
+      | 'bad-range'
+      | 'wrong-range'
+      | 'ignore-range'
+      | 'error',
     bytes: Buffer.from(Array.from({ length: 4096 }, (_, i) => i % 256)),
     mime: 'video/mp4',
     cancelled: 0,
@@ -135,7 +142,9 @@ export function servePlayback(
     headers['content-range'] =
       state.streamMode === 'bad-range'
         ? 'bytes 3-1/2'
-        : `bytes ${start}-${end}/${state.bytes.length}`;
+        : state.streamMode === 'wrong-range'
+          ? 'bytes 50-59/4096'
+          : `bytes ${start}-${end}/${state.bytes.length}`;
   }
   headers['content-length'] = String(end - start + 1);
   res.writeHead(status, headers);
