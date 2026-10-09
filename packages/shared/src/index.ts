@@ -50,6 +50,12 @@ export interface MediaItem {
   runtimeSeconds?: number;
   seasonNumber?: number;
   episodeNumber?: number;
+  episodeEndNumber?: number;
+  /** Explicit upstream OpenFlixEdition tag; never inferred from title/runtime. */
+  edition?: string;
+  editionAmbiguous?: true;
+  versionCount?: number;
+  versionLabels?: string[];
 }
 export interface MediaSource {
   id: string;
@@ -143,4 +149,38 @@ export interface PlaybackView {
   durationMs: number;
   expiresAt: number;
   streamPath: string;
+}
+
+export interface CatalogWork {
+  id: string;
+  type: MediaType;
+  title: string;
+  representativeItemId: string;
+  sourceCount: number;
+  connectionCount: number;
+  memberCount: number;
+}
+export interface WorkSource {
+  itemId: string;
+  connectorId: string;
+  connectorName: string;
+  title: string;
+  edition: string | null;
+  versionLabels: string[];
+  versionCount: number | null;
+  runtimeSeconds: number | null;
+  availability: 'last-indexed';
+  versionKey: string;
+}
+export interface WorkPage {
+  items: CatalogWork[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+export interface WorkSourcePage {
+  items: WorkSource[];
+  total: number;
+  offset: number;
+  limit: number;
 }

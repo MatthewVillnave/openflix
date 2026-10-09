@@ -207,7 +207,7 @@ try {
   prodTouched = true;
   await prod('up', '-d', '--wait', '--wait-timeout', '120', 'server', 'web', 'jellyfin-fixture');
   const original = await snapshot();
-  assert.equal(original.migrations.length, 3);
+  assert.equal(original.migrations.length, 4);
   assert.equal(original.users.length, 0);
   assert.equal(original.sessions.length, 0);
   assert.equal(original.mode, 0o600);
@@ -367,7 +367,7 @@ try {
     for (const suffix of ['', '-wal', '-shm']) assert.equal(statSync(restored + suffix).mode & 0o7777, 0o600);
     const reader = new Database(restored);
     assert.equal(reader.prepare('SELECT value FROM preservation').get().value, 'sensitive-wal-probe');
-    assert.equal(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get().n, 3);
+    assert.equal(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get().n, 4);
     reader.close(); db.close(); raw.close();
     rmSync('/config/restore-probe', {recursive:true}); rmSync('/config/source-probe.sqlite');`);
   mark(

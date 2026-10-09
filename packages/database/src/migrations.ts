@@ -123,6 +123,24 @@ CREATE TABLE catalog_stage_memberships (
 ) STRICT;
 `,
   },
+  {
+    version: 4,
+    name: 'unified_works',
+    sql: `
+CREATE TABLE catalog_works (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL
+) STRICT;
+CREATE INDEX catalog_works_type ON catalog_works(type, id);
+CREATE TABLE catalog_work_members (
+  item_id TEXT PRIMARY KEY REFERENCES catalog_items(id) ON DELETE CASCADE,
+  work_id TEXT NOT NULL REFERENCES catalog_works(id) ON DELETE CASCADE,
+  version_key TEXT NOT NULL
+) STRICT;
+CREATE INDEX catalog_work_members_work ON catalog_work_members(work_id, item_id);
+CREATE INDEX catalog_work_members_version ON catalog_work_members(work_id, version_key, item_id);
+`,
+  },
 ];
 export function migrate(
   db: Database.Database,

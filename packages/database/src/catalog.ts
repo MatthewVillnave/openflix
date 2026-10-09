@@ -1,3 +1,4 @@
+import { WorkRepository } from './works.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type {
@@ -300,6 +301,7 @@ export class CatalogRepository {
             'DELETE FROM catalog_items WHERE connector_id=? AND NOT EXISTS (SELECT 1 FROM catalog_memberships m WHERE m.item_id=catalog_items.id)',
           )
           .run(run.connectorId);
+        new WorkRepository(this.db).refresh(run.connectorId);
         this.clear(runId);
         this.db
           .prepare(
