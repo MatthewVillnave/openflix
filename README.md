@@ -1,16 +1,31 @@
 # OpenFlix
 
-Milestones 1–3 are independently audited. [Milestone 3's published release](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.3-m3) freezes the persistent catalog verified against Jellyfin 10.11.11. This branch implements **Milestone 4: authenticated direct playback**, awaiting independent real-server integration audit. Federation and Milestone 5 are not implemented.
+OpenFlix is a standalone, self-hosted media application. Jellyfin is a backend behind `MediaConnector`; OpenFlix owns its API, authentication, sessions and normalized SQLite catalog. The browser talks only to OpenFlix.
 
-Administrators can select a movie, episode or audio track and prepare playback in the catalog. Supported formats stream through OpenFlix; ordinary users remain browse-only. Playback reporting may update the connector account's Jellyfin watch state. Read [playback/security and supported formats](docs/playback.md), [M4 API baseline](docs/milestone-4-api-baseline.md), [verification](docs/milestone-4-verification.md) and [Optimus audit](docs/milestone-4-integration.md). HLS/transcoding and universal codec support are not implemented.
+## Release and development status
 
-Provide a private operator-generated `OPENFLIX_MASTER_KEY` (base64 of 32 random bytes), provision an OpenFlix admin with `pnpm user:create <username> --admin`, and add Jellyfin in Settings → Media Servers. Use Catalog → Sync [server] to publish accessible library metadata. All signed-in OpenFlix users can browse it; choose the connector identity accordingly. Catalog persistence survives restart without an automatic rescan.
+**Milestones 1–4 are independently accepted within documented limits.** The current accepted release is [OpenFlix Milestone 4 — Audited Playback](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.4-m4), tagged `openflix-v0.4-m4` at `e975e3bd38cb3627b2fa3053bdb3e137c4450764`. This is early-development software, not a universal production-compatibility claim or professional third-party security certification.
 
-Read [catalog model and sync safety](docs/catalog.md), [catalog API baseline](docs/milestone-3-api-baseline.md), [M3 verification](docs/milestone-3-verification.md), [M3 report](docs/milestone-3-report.md), and [Optimus integration checks](docs/milestone-3-integration.md). [M3 acceptance](docs/milestone-3-audit-acceptance.md) records proven restricted-user visibility and the remaining shared-metadata policy.
+The released version provides administrator-managed Jellyfin connections with encrypted credentials, persistent normalized catalog browsing, atomic paginated synchronization, and administrator-only movie, episode and audio playback. Supported media uses direct streaming or Jellyfin-managed HLS remux/transcoding through authenticated OpenFlix routes. Actual household episode and movie playback was demonstrated in Chromium against Jellyfin 10.11.11.
 
-A standalone, self-hosted media application. Jellyfin is a media backend behind `MediaConnector`; OpenFlix owns identity, sessions, its API, and its database.
+**M5 is implemented separately and awaits independent acceptance.** Its [development branch](https://github.com/MatthewVillnave/openflix/tree/feat/milestone-5-multiple-servers) adds multi-backend aggregation; those capabilities are not included in this release. Conservative provider-based grouping may leave duplicates separate. Automatic substitution requires explicit equivalent-edition evidence; untagged/ambiguous versions require explicit source selection. Source switching happens before playback, not seamlessly midstream. Federation is not implemented.
 
-The audited foundation provides authentication, SQLite persistence, web/API, migrations, tests and Docker. M2 adds administrator-managed Jellyfin connections; M3 adds item normalization, atomic synchronization and authenticated catalog browsing. No real media server is required for builder verification.
+## Important limitations
+
+- Playback is administrator-only; all authenticated users share imported catalog metadata. There is no per-user OpenFlix-to-Jellyfin identity mapping.
+- Codec, source, resolution and HLS support are bounded. See [current playback scope](docs/status.md#playback-scope) before choosing media or hardware.
+- M4 acceptance did not establish Safari, actual iPhone behavior, audible-output confirmation or sustained household performance.
+- Playback reporting can affect the connector account's Jellyfin watch state. Use an appropriately authorized account/content scope.
+- Native Windows file-backed storage fails closed; use the documented Linux-container alternative.
+- Intentional cancellation can be reported as a timeout/502 in accepted M4. Prompt revocation and scoped cleanup were verified; the status improvement exists only in M5 development history.
+
+The earlier R1 movie failed; the same movie played on R2. The exact historical cause remains unconfirmed, but that uncertainty was **not a remaining M4 acceptance blocker**. See [acceptance evidence and historical records](docs/status.md).
+
+## Connect and use
+
+Supply a private operator-generated `OPENFLIX_MASTER_KEY` (canonical base64 of 32 random bytes; no default). Keep it outside source control and separate from database backups. See [configuration and key requirements](docs/configuration.md#milestone-2-connector-key).
+
+Provision an OpenFlix administrator, add Jellyfin through Settings → Media Servers, then use Catalog → Sync [server]. Catalog data survives restart without an automatic rescan. Administrators can prepare playback for supported movies, episodes and audio tracks; other users remain browse-only.
 
 ## Local setup
 
@@ -22,6 +37,7 @@ Requirements: Node **24.19.0** (`.nvmrc`), pnpm **11.19.0**, and Git. Native dep
 npm install --global pnpm@11.19.0
 pnpm install --frozen-lockfile
 cp .env.example .env
+# Set OPENFLIX_MASTER_KEY in .env before adding a connector (see configuration guide).
 pnpm build
 pnpm user:create alice --admin
 pnpm dev
@@ -32,7 +48,6 @@ The account command prompts for a password and confirmation without echoing eith
 Open [http://localhost:5173](http://localhost:5173). Vite proxies the same-origin API to port 8787. Use `localhost`, not `127.0.0.1`, in the browser unless you also change `OPENFLIX_BASE_URL`. Shut down with Ctrl+C. Server/web source edits reload automatically; after changing a shared package, restart `pnpm dev` to rebuild packages. If you change the backend port, set `OPENFLIX_DEV_API_TARGET` for the Vite process too.
 
 ```sh
-pnpm check          # production build, strict type checks (including tests), all tests
 pnpm test           # builds packages/server, runs all tests
 pnpm db:migrate     # explicitly apply pending migrations; startup also applies them
 pnpm build
@@ -61,6 +76,7 @@ For production behind an HTTPS reverse proxy:
 ```sh
 # Set this to your actual public HTTPS origin (no path).
 export OPENFLIX_BASE_URL=https://openflix.example.com
+# Supply OPENFLIX_MASTER_KEY securely through the environment or private .env.
 docker compose up --build -d --wait
 docker compose exec server node dist/cli.js user:create alice --admin
 ```
@@ -73,27 +89,27 @@ docker compose logs server
 docker compose down              # preserves the named data volume
 ```
 
-Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [M4 verification](docs/milestone-4-verification.md). The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
+Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [current verification instructions](docs/status.md#verification). The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
 
-## Repository
+## Verification
 
-```text
-apps/server/                  Fastify API, authentication, configuration, CLI
-apps/web/                     React/Vite authentication, media-server administration and catalog
-packages/connector-core/      Backend-neutral media and secret-store contracts
-packages/connector-jellyfin/  Official SDK connector; normalized connection, library and paginated item operations
-packages/protocol/            OpenFlix HTTP response/request contracts
-packages/shared/              Normalized domain types
-packages/database/            SQLite, migrations and repositories
-tests/                        Unit, HTTP, persistence, process and UI tests
-docker/                       Images, Nginx, development Compose and browser fixture
-scripts/                      Reproducible Docker verification
-.github/workflows/ci.yml       Build/test and Docker verification jobs
-docs/                         Architecture, security, configuration and handoff
+Use Node 24.19.0 and pnpm 11.19.0. Host tests require a private runtime-owned temporary directory beneath trusted ancestors; a system `TMPDIR` under an unsafe ancestor can correctly fail storage checks. For macOS, or Linux with a trusted `/tmp`:
+
+```sh
+verification_tmp=$(mktemp -d /tmp/openflix-verification.XXXXXX)
+chmod 700 "$verification_tmp"
+TMPDIR="$verification_tmp" pnpm check
+rmdir "$verification_tmp"
 ```
 
-Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Catalog baseline](docs/milestone-3-api-baseline.md) records the exact official API/SDK contracts. Historical M1/M2/M3 reports remain unchanged; [M3 acceptance](docs/milestone-3-audit-acceptance.md) records the independent audit. M4 is not merged or tagged as audited.
+`pnpm check` checks formatting, production builds, strict types and all tests. If interrupted tests leave files, inspect that specific temporary directory before removing it. Do not change shared-directory permissions or weaken storage checks. See [verification commands and prerequisites](docs/status.md#verification) for Docker, disposable Jellyfin, dependency audits and the Git-history-dependent upgrade check. Builder fixtures do not contact household Jellyfin.
 
-Milestone 4 R1 adds a Jellyfin-managed HLS fallback. See [R1 playback/security](docs/milestone-4-r1-playback.md), [API baseline](docs/milestone-4-r1-api-baseline.md), and [reproduction/audit checklist](docs/milestone-4-r1-verification.md). Independent household integration acceptance remains pending.
+## Documentation and structure
 
-M4 R2 fixes subtitle-dimension validation and adds safe failure diagnostics plus bounded movie-length playlist support. See the [R2 remediation, limits and focused re-audit checklist](docs/milestone-4-r2-remediation.md). The separately reported household HLS 502 remains unresolved until its first-failure trace is obtained; this branch is not accepted M4.
+Start with the [current status/documentation index](docs/status.md), [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security](docs/security.md), [connector security](docs/connector-security.md), [catalog](docs/catalog.md) and [API](docs/api.md). Historical reports retain their original verdicts; later acceptance is recorded separately.
+
+- `apps/server`, `apps/web`: Fastify API and React/Vite UI.
+- `packages/connector-core`, `packages/connector-jellyfin`: normalized contracts and isolated Jellyfin adapter.
+- `packages/shared`, `packages/protocol`, `packages/database`: domain/API types, SQLite and migrations.
+- `tests`, `scripts`, `docker`, `.github/workflows`: reproducible verification and deployment.
+- `docs`: guides, [architecture decisions](docs/architecture-notes.md) and [original specification](docs/technical-specification-v0.1.txt).

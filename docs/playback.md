@@ -1,4 +1,6 @@
-# Milestone 4 playback architecture and security
+# Milestone 4 direct-play foundation
+
+> This guide describes the original direct-only implementation. Accepted M4 R2 also includes [HLS remux/transcoding and revised bounds](status.md#playback-scope). Statements below about deferred HLS and direct-only limits describe the original scope, not the current release.
 
 M4 brokers actual media bytes from a trusted administrator-configured Jellyfin connector. It does not change the audited catalog, SQLite schema/storage boundary, authentication, credential encryption or connector URL policy. Read the [official API baseline](milestone-4-api-baseline.md) and [verification procedure](milestone-4-verification.md).
 
@@ -51,7 +53,7 @@ All paths are beneath `/api/v1/playback`; all require the original authenticated
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | POST `/sessions`                | `{itemId, profile:{formats:["mp4-h264-aac","webm-vp8-opus","mp3","wav"]}}`; use only supported formats. 201 `{id,itemId,kind,mode:"direct",contentType,durationMs,expiresAt,streamPath}` |
 | GET/HEAD `/sessions/:id/stream` | Same-origin bytes; optional single Range; no query parameters                                                                                                                            |
-| POST `/sessions/:id/progress`   | `{event:"start"                                                                                                                                                                          | "progress",positionMs,paused}`; 204 |
+| POST `/sessions/:id/progress`   | `{event:"start" \| "progress",positionMs,paused}`; 204                                                                                                                                   |
 | POST `/sessions/:id/stop`       | `{}`; 204, revokes local grant and aborts transfers                                                                                                                                      |
 
 Safe failures include 400 invalid input, 401 missing login, 403 forbidden role/origin, 404 missing catalog/source, 409 conflicting report, 410 expired/unavailable grant, 413 body too large, 415 unsupported media, 416 invalid/unsatisfied range, 429 capacity/rate limit, 502 sanitized upstream failure, 503 missing credential storage. Post-header transport failure terminates the stream; it cannot replace already-sent headers with JSON. Logs use safe route templates/events and existing error redaction, not media URLs or raw upstream bodies.

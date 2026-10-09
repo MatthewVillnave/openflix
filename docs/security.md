@@ -1,14 +1,14 @@
 # Milestone 1 security assumptions
 
-Current Milestone 4 adds [admin-only playback transport and lifecycle](playback.md). Milestone 3 extends this foundation with [normalized catalog and synchronization](catalog.md); [M2 independent acceptance](milestone-2-audit-acceptance.md) and historical milestone reports retain their original scope.
+Accepted Milestone 4 adds [admin-only direct/HLS playback transport and lifecycle](status.md#playback-scope). Milestone 3 extends this foundation with [normalized catalog and synchronization](catalog.md); [M2 independent acceptance](milestone-2-audit-acceptance.md) and historical milestone reports retain their original scope.
 
-> This file records the audited Milestone 1 baseline. On the M2 development branch, [connector security](connector-security.md) supersedes statements below about absent outbound connector calls/credential persistence. The R2 storage boundary remains unchanged.
+> This file records the audited Milestone 1 baseline. For the current accepted release, [connector security](connector-security.md) supersedes statements below about absent outbound connector calls/credential persistence. The R2 storage boundary remains unchanged.
 
 ## Trust boundary
 
 The operator controls the host, executable code, database volume and reverse proxy. Internet clients and browser input are untrusted. Host/root compromise, malicious browser extensions and compromised TLS terminators are outside this milestone's protection. SQLite is local to one server process; there is no distributed session or rate-limit service.
 
-The application never accesses the user's live Jellyfin server. There are no network connector endpoints, outbound URL fetches, stored connector secrets, peer inputs or media capabilities yet. SSRF defense, authenticated connector encryption, key rotation and library permission enforcement are required before Milestone 2 exposes connector management. Federation signatures and replay protection are deferred with federation itself, not simulated.
+In the M1 baseline described here, the application never accesses the user's live Jellyfin server. There are no network connector endpoints, outbound URL fetches, stored connector secrets, peer inputs or media capabilities yet. SSRF defense, authenticated connector encryption, key rotation and library permission enforcement are required before Milestone 2 exposes connector management. Federation signatures and replay protection are deferred with federation itself, not simulated.
 
 ## Authentication
 
