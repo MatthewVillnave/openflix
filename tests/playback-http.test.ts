@@ -622,3 +622,135 @@ it('rejects forged group membership and mixed source/group request selectors', a
   ).toBe(404);
   expect((await post('/sessions', { groupId, itemId, profile })).statusCode).toBe(400);
 });
+
+it('isolates two backend credentials, rejects restricted playback, and scopes HLS cleanup to the chosen connector', async () => {
+  const second = await jellyfinFixture();
+  try {
+    second.state.serverId = '4'.repeat(32);
+    const authenticated = await authenticateJellyfin({
+      baseUrl: second.baseUrl,
+      deviceId: '55555555-5555-4555-8555-555555555555',
+      username: 'fixture-user',
+      password: upstreamPassword,
+    });
+    const vault = new EncryptedCredentialStore(db, local.config.masterKey!);
+    vault.create(
+      {
+        id: '55555555-5555-4555-8555-555555555555',
+        name: 'Second backend',
+        type: 'jellyfin',
+        baseUrl: second.baseUrl,
+        server: authenticated.server,
+        libraries: authenticated.libraries,
+        state: 'connected',
+        lastCheckedAt: null,
+        lastError: null,
+        createdAt: Date.now(),
+      },
+      authenticated.secret,
+    );
+    authenticated.secret.fill(0);
+    vault.destroy();
+    for (const id of ['source', '55555555-5555-4555-8555-555555555555']) {
+      const run = db.catalog.begin(id, null);
+      db.catalog.stageLibrary(run, { id: libraryId, name: 'Fixture', mediaTypes: [] });
+      db.catalog.stagePage(run, libraryId, [
+        {
+          id: playbackItemId,
+          libraryId,
+          type: 'movie',
+          title: 'Matched',
+          providerIds: { Tmdb: '123' },
+          edition: 'theatrical',
+          runtimeSeconds: 12,
+        },
+      ]);
+      db.catalog.publish(run);
+    }
+    const groupId = db.works.binding(itemId)!.workId;
+    const secondId = catalogId('item', '55555555-5555-4555-8555-555555555555', playbackItemId);
+    second.state.playback.forbidden = true;
+    expect((await post('/sessions', { groupId, sourceItemId: secondId, profile })).statusCode).toBe(
+      502,
+    );
+    expect(upstream.state.playback.reports).toHaveLength(0);
+    second.state.playback.forbidden = false;
+    second.state.playback.hls = true;
+    second.state.playback.sources = [
+      {
+        ...playbackSource(),
+        Container: 'mkv',
+        SupportsDirectPlay: false,
+        SupportsTranscoding: true,
+        TranscodingUrl: `/videos/${playbackItemId}/master.m3u8?DeviceId=55555555-5555-4555-8555-555555555555&MediaSourceId=${sourceId}&PlaySessionId=${playSessionId}&VideoCodec=h264&AudioCodec=aac&SegmentContainer=ts`,
+      },
+    ];
+    const response = await post('/sessions', {
+      groupId,
+      sourceItemId: secondId,
+      profile: { formats: ['hls-h264-aac'] },
+    });
+    expect(response.statusCode).toBe(201);
+    const grant = response.json<PlaybackView>();
+    expect(grant.itemId).toBe(secondId);
+    expect(
+      (await app.inject({ url: grant.streamPath, headers: { cookie: admin } })).statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await post('/sessions/' + grant.id + '/progress', {
+          event: 'start',
+          positionMs: 0,
+          paused: false,
+        })
+      ).statusCode,
+    ).toBe(204);
+    expect((await post('/sessions/' + grant.id + '/stop', {})).statusCode).toBe(204);
+    await expect.poll(() => second.state.playback.cleanup.length).toBe(1);
+    expect(upstream.state.playback.cleanup).toHaveLength(0);
+    expect(upstream.state.playback.reports).toHaveLength(0);
+    const cleanup = new URLSearchParams(second.state.playback.cleanup[0]);
+    expect(cleanup.get('deviceId')).toBe('55555555-5555-4555-8555-555555555555');
+    expect(cleanup.get('playSessionId')).toBe(playSessionId);
+    expect(
+      upstream.state.requests.every((r) => !r.authorization.includes(second.state.token)),
+    ).toBe(true);
+    expect(
+      second.state.requests.every((r) => !r.authorization.includes(upstream.state.token)),
+    ).toBe(true);
+    const another = await post('/sessions', {
+      groupId,
+      sourceItemId: secondId,
+      profile: { formats: ['hls-h264-aac'] },
+    });
+    expect(another.statusCode).toBe(201);
+    const retained = await post('/sessions', { groupId, sourceItemId: itemId, profile });
+    expect(retained.statusCode).toBe(201);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: '/api/v1/connectors/55555555-5555-4555-8555-555555555555',
+          headers: { origin, cookie: admin },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (await app.inject({ url: another.json().streamPath, headers: { cookie: admin } })).statusCode,
+    ).toBe(410);
+    expect(
+      (await app.inject({ url: retained.json().streamPath, headers: { cookie: admin } }))
+        .statusCode,
+    ).toBe(200);
+    expect(db.works.work(groupId)?.sourceCount).toBe(1);
+    await expect.poll(() => second.state.playback.cleanup.length).toBe(2);
+    expect(logs).not.toContain(second.state.token);
+    expect(response.body).not.toContain(second.state.token);
+    expect(
+      (await app.inject({ url: grant.streamPath, headers: { cookie: admin } })).statusCode,
+    ).toBe(410);
+  } finally {
+    db.removeConnector('55555555-5555-4555-8555-555555555555');
+    await second.close();
+  }
+});

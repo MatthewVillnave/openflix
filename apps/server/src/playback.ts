@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import type { FastifyInstance } from 'fastify';
 import type { OpenFlixDatabase } from '@openflix/database';
-import { isConnectorError, safePlaybackDiagnostic } from '@openflix/connector-core';
+import { ConnectorError, isConnectorError, safePlaybackDiagnostic } from '@openflix/connector-core';
 import type {
   ClientProfile,
   ManagedMediaConnector,
@@ -52,6 +52,7 @@ export async function registerPlayback(
   store: EncryptedCredentialStore | undefined,
 ) {
   const grants = new Map<string, Grant>();
+  const removing = new Set<string>();
   const cleanup = new Set<Promise<unknown>>();
   let pending = 0,
     closing = false;
@@ -82,6 +83,7 @@ export async function registerPlayback(
     );
     cleanup.add(job);
     void job.finally(() => cleanup.delete(job));
+    return job;
   };
   const active = (g: Grant) => {
     const now = Date.now();
@@ -90,6 +92,7 @@ export async function registerPlayback(
     const binding = g.binding ? db.works.binding(g.itemId) : undefined;
     return (
       !closing &&
+      !removing.has(g.connectorId) &&
       now < g.expiresAt &&
       now < g.idleAt &&
       user?.id === g.userId &&
@@ -232,11 +235,13 @@ export async function registerPlayback(
                 const current = auth.currentUser(request.cookies[config.cookieName]);
                 return !closing && current?.id === user.id && current.role === 'admin';
               },
-              (record) =>
-                createJellyfinConnector(
+              (record) => {
+                if (removing.has(record.id)) throw new ConnectorError('cancelled');
+                return createJellyfinConnector(
                   { baseUrl: record.baseUrl, credential: { id: record.id } },
                   store,
-                ),
+                );
+              },
               () =>
                 app.log.info(
                   { event: 'playback.cleanup_unconfirmed' },
@@ -519,4 +524,12 @@ export async function registerPlayback(
     },
     { prefix: '/api/v1/playback' },
   );
+  return {
+    async prepareRemoval(connectorId: string) {
+      removing.add(connectorId);
+      const jobs = [...grants.values()].filter((g) => g.connectorId === connectorId).map(retire);
+      await Promise.allSettled(jobs);
+      return () => removing.delete(connectorId);
+    },
+  };
 }
