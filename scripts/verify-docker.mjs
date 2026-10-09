@@ -1,6 +1,7 @@
 /** Destructive only to freshly named test projects created by this process. */
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { randomBytes, createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -170,7 +171,15 @@ function checkLogs() {
     /\$argon2id\$|BEGIN (?:RSA )?PRIVATE KEY|ERR_MODULE_NOT_FOUND|EACCES|uncaught|\bFATAL\b/,
   );
   for (const line of combined.split('\n').filter(Boolean)) {
-    const entry = JSON.parse(line);
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch (error) {
+      writeFileSync(`/tmp/${project}-invalid-log.txt`, line, { mode: 0o600, flag: 'wx' });
+      throw new Error(
+        `Non-JSON log captured privately at /tmp/${project}-invalid-log.txt: ${error.message}`,
+      );
+    }
     assert.ok(entry.level < 50, 'Application error in container logs');
     assert.ok(!entry.req && !entry.res, 'Raw HTTP metadata in logs');
   }

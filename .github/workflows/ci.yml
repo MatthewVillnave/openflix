@@ -26,3 +26,4 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: node scripts/verify-docker.mjs
+      - run: node scripts/verify-jellyfin-hls.mjs

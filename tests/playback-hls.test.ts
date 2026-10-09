@@ -225,3 +225,46 @@ it('accepts only the same Guid in Jellyfin dashed URL form and rejects another i
   );
   await expect(plan()).rejects.toMatchObject({ code: 'invalid_response' });
 });
+
+it('requires known bounded bitrate/sample rate for copy and forces conversion otherwise', async () => {
+  const source = fixture.state.playback.sources[0]!;
+  const streams = source.MediaStreams as Record<string, unknown>[];
+  streams[0]!.BitRate = 9000000;
+  streams[1]!.SampleRate = 96000;
+  const p = await plan();
+  expect(p).toMatchObject({ mode: 'transcode', videoTranscoded: true });
+});
+
+it('normalizes only selected-source HEVC options while retaining bounded H264 output', async () => {
+  const source = fixture.state.playback.sources[0]!;
+  const streams = source.MediaStreams as Record<string, unknown>[];
+  streams[0]!.Codec = 'hevc';
+  streams[0]!.Level = 60;
+  source.TranscodingUrl =
+    String(source.TranscodingUrl) +
+    '&hevc-level=60&hevc-videobitdepth=8&hevc-profile=main&hevc-audiochannels=2&h264-level=41';
+  expect((await plan()).videoTranscoded).toBe(true);
+});
+it('converts six-channel AC3 to stereo rather than accepting source channel options as output', async () => {
+  const source = fixture.state.playback.sources[0]!;
+  const streams = source.MediaStreams as Record<string, unknown>[];
+  streams[1]!.Codec = 'ac3';
+  streams[1]!.Channels = 6;
+  source.TranscodingUrl =
+    String(source.TranscodingUrl).replace('h264-audiochannels=2', 'h264-audiochannels=6') +
+    '&ac3-profile=ac3&ac3-audiochannels=6';
+  expect(await plan()).toMatchObject({ mode: 'transcode', videoTranscoded: false });
+});
+
+it('does not trust an unsupported synthetic codec merely because transcoding is advertised', async () => {
+  const streams = fixture.state.playback.sources[0]!.MediaStreams as Record<string, unknown>[];
+  streams[0]!.Codec = 'synthetic-unsupported';
+  await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+});
+
+it('honors lower upstream/user bitrate limits in its copy policy and reporting method', async () => {
+  fixture.state.playback.sources[0]!.TranscodingUrl =
+    String(fixture.state.playback.sources[0]!.TranscodingUrl) +
+    '&VideoBitrate=100000&AudioBitrate=64000';
+  expect(await plan()).toMatchObject({ mode: 'transcode', videoTranscoded: true });
+});

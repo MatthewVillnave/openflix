@@ -90,6 +90,9 @@ export class HlsPlayback {
     raw: string,
     private readonly videoCopy: boolean,
     private readonly audioCopy: boolean,
+    private readonly audioIndex: number,
+    private readonly videoIndex: number,
+    private readonly sourceCodecs: readonly string[],
   ) {
     this.root = this.add(this.normalize(raw, new URL(api.getUri('/')), true), 0, [], 'playlist');
   }
@@ -145,8 +148,19 @@ export class HlsPlayback {
         if (value !== this.token) return bad();
         continue;
       }
-      if (!queryNames.has(lower) || value.length > 1024 || !/^[A-Za-z0-9.,_-]*$/.test(value))
+      const sourceOption = /^([a-z0-9_]{1,32})-(profile|level|videobitdepth|audiochannels)$/.exec(
+        lower,
+      );
+      const knownSourceOption = sourceOption && this.sourceCodecs.includes(sourceOption[1]!);
+      if (
+        (!queryNames.has(lower) && !knownSourceOption) ||
+        value.length > 1024 ||
+        !/^[A-Za-z0-9.,_-]*$/.test(value)
+      )
         return bad();
+      // StreamInfo carries input-codec options as well as H264/AAC output options.
+      // Only recognized properties of the selected input codecs may be discarded.
+      if (knownSourceOption && !['h264', 'aac'].includes(sourceOption[1]!)) continue;
       clean.set(lower, value);
     }
     for (const [name, expected] of [
@@ -158,6 +172,13 @@ export class HlsPlayback {
       if (generated && !clean.has(name)) return bad();
       clean.set(name, expected);
     }
+    for (const [name, index] of [
+      ['audiostreamindex', this.audioIndex],
+      ['videostreamindex', this.videoIndex],
+    ] as const) {
+      if (clean.has(name) && clean.get(name) !== String(index)) return bad();
+      clean.set(name, String(index));
+    }
     if (
       generated &&
       (clean.get('videocodec') !== 'h264' ||
@@ -168,6 +189,7 @@ export class HlsPlayback {
     for (const [name, max] of [
       ['videobitrate', 6000000],
       ['audiobitrate', 192000],
+      ['audiosamplerate', 48000],
       ['maxwidth', 1920],
       ['maxheight', 1080],
       ['maxframerate', 30],
@@ -198,20 +220,32 @@ export class HlsPlayback {
     )
       return bad();
     for (const name of ['h264-audiochannels', 'aac-audiochannels'])
-      if (clean.has(name) && !/^[12]$/.test(clean.get(name)!)) return bad();
-    if (clean.has('aac-profile') && clean.get('aac-profile') !== 'lc') return bad();
-    if (
-      clean.has('h264-level') &&
-      (!/^\d+(?:\.\d+)?$/.test(clean.get('h264-level')!) ||
-        Number(clean.get('h264-level')) > 41 ||
-        Number(clean.get('h264-level')) <= 0)
-    )
+      if (clean.has(name)) {
+        const value = clean.get(name)!;
+        if (!/^\d{1,2}$/.test(value) || Number(value) < 1 || Number(value) > 64) return bad();
+        if (this.audioCopy && Number(value) > 2) return bad();
+        clean.set(name, String(Math.min(2, Number(value))));
+      }
+    if (this.audioCopy && clean.has('aac-profile') && clean.get('aac-profile') !== 'lc')
       return bad();
+    if (!this.audioCopy) clean.set('aac-profile', 'lc');
+    if (clean.has('h264-level')) {
+      const value = clean.get('h264-level')!;
+      if (!/^\d+(?:\.\d+)?$/.test(value) || Number(value) <= 0) return bad();
+      if (this.videoCopy && Number(value) > 41) return bad();
+      clean.set('h264-level', String(Math.min(41, Number(value))));
+    }
     if (
+      this.videoCopy &&
       clean.has('h264-profile') &&
       !['baseline', 'constrainedbaseline', 'main', 'high'].includes(clean.get('h264-profile')!)
     )
       return bad();
+    if (!this.videoCopy) {
+      clean.set('h264-profile', 'high');
+      clean.set('h264-level', '41');
+      clean.set('h264-videobitdepth', '8');
+    }
     clean.set('subtitlestreamindex', '-1');
     clean.set('allowvideostreamcopy', String(this.videoCopy));
     clean.set('allowaudiostreamcopy', String(this.audioCopy));

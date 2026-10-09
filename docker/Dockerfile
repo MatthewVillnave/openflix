@@ -57,3 +57,16 @@ COPY docker/jellyfin-fixture.mjs ./
 USER node
 HEALTHCHECK --interval=2s --timeout=3s CMD node -e "fetch('http://127.0.0.1:8096/jellyfin/System/Info/Public').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "jellyfin-fixture.mjs"]
+
+# Generated MKV inputs and disposable real Jellyfin; neither belongs to production.
+FROM jellyfin-fixture AS hls-media
+COPY docker/generate-hls-media.sh /fixture/
+USER root
+RUN sh /fixture/generate-hls-media.sh && chmod -R a=rX /media
+USER node
+CMD ["node", "-e", "setInterval(()=>{},1000)"]
+
+FROM jellyfin/jellyfin:10.11.11@sha256:aefb67e6a7ff1debdd154a78a7bbb780fd0c873d8639210a7f6a2016ad2b35db AS jellyfin-real-verification
+USER root
+RUN mkdir -p /config /cache && chown -R 1000:1000 /config /cache && chmod 0700 /config /cache
+USER 1000:1000

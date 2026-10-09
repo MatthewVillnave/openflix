@@ -93,3 +93,5 @@ docs/                         Architecture, security, configuration and handoff
 ```
 
 Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Catalog baseline](docs/milestone-3-api-baseline.md) records the exact official API/SDK contracts. Historical M1/M2/M3 reports remain unchanged; [M3 acceptance](docs/milestone-3-audit-acceptance.md) records the independent audit. M4 is not merged or tagged as audited.
+
+Milestone 4 R1 adds a Jellyfin-managed HLS fallback. See [R1 playback/security](docs/milestone-4-r1-playback.md), [API baseline](docs/milestone-4-r1-api-baseline.md), and [reproduction/audit checklist](docs/milestone-4-r1-verification.md). Independent household integration acceptance remains pending.

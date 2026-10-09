@@ -25,11 +25,22 @@ export function playbackSource(kind: 'video' | 'audio' = 'video'): Record<string
               Profile: 'High',
               Level: 40,
               BitDepth: 8,
+              BitRate: 300000,
+              AverageFrameRate: 15,
               Width: 320,
               Height: 180,
               VideoRangeType: 'SDR',
             },
-            { Type: 'Audio', Index: 1, Codec: 'aac', Profile: 'LC', Channels: 2, Level: 0 },
+            {
+              Type: 'Audio',
+              Index: 1,
+              Codec: 'aac',
+              Profile: 'LC',
+              Channels: 2,
+              Level: 0,
+              BitRate: 128000,
+              SampleRate: 48000,
+            },
           ]
         : [{ Type: 'Audio', Index: 0, Codec: 'pcm_s16le', Channels: 1 }],
   };

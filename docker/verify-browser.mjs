@@ -8,7 +8,7 @@ import { chromium } from '/opt/browser/node_modules/playwright-core/index.mjs';
 
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
-const { username, password, jellyfin } = JSON.parse(input);
+const { username, password, jellyfin, realHls, expectedModes } = JSON.parse(input);
 const dir = '/tmp/browser-home';
 mkdirSync(dir, { recursive: true, mode: 0o700 });
 const openssl = (...args) => execFileSync('openssl', args, { cwd: dir, stdio: 'pipe' });
@@ -98,6 +98,8 @@ const proxy = createServer(
 await new Promise((resolve) => proxy.listen(8443, '127.0.0.1', resolve));
 let browser;
 let step = 'launch';
+const responseStatuses = [];
+let diagnosticPage;
 try {
   // Only this disposable test browser disables Chromium's OS sandbox; the
   // container is non-root, cap-drop ALL, read-only, and visits only this fixture.
@@ -107,6 +109,11 @@ try {
   });
   const context = await browser.newContext();
   const page = await context.newPage();
+  page.setDefaultTimeout(30000);
+  diagnosticPage = page;
+  page.on('response', (r) => {
+    if (r.url().includes('/playback/')) responseStatuses.push(r.status());
+  });
   const failures = [];
   const playbackResults = [];
   const mediaRequests = [];
@@ -148,7 +155,7 @@ try {
     const publicBody = await added.text();
     assert.ok(!publicBody.includes(jellyfin.password));
     assert.ok(!publicBody.includes('credentialEnvelope'));
-    await page.getByText('Fixture movies', { exact: true }).waitFor();
+    await page.getByText(realHls ? 'Generated' : 'Fixture movies', { exact: true }).waitFor();
     assert.equal(await page.getByLabel('Jellyfin password', { exact: true }).inputValue(), '');
     await page.reload();
     await page.getByRole('button', { name: 'Settings · Media Servers', exact: true }).click();
@@ -157,15 +164,24 @@ try {
     await page
       .getByText('Connection verified using its saved credential.', { exact: true })
       .waitFor();
-    const exercisePlayer = async (kind, keepPlaying = false) => {
+    const exercisePlayer = async (kind, keepPlaying = false, expectedMode) => {
       step = `actual ${kind} decode, pause and seek`;
       const planned = page.waitForResponse(
         (r) => r.url().endsWith('/playback/sessions') && r.request().method() === 'POST',
       );
       await page.getByRole('button', { name: 'Prepare playback', exact: true }).click();
       const response = await planned;
+      step = `planning ${expectedMode ?? kind}: HTTP ${response.status()}`;
       assert.equal(response.status(), 201);
-      const safe = await response.json();
+      step = `metadata ${expectedMode ?? kind}`;
+      const safe = await Promise.race([
+        response.json(),
+        new Promise((_, reject) => {
+          const t = setTimeout(() => reject(new Error('Playback response deadline')), 10000);
+          t.unref();
+        }),
+      ]);
+      if (expectedMode) assert.equal(safe.mode, expectedMode);
       assert.match(safe.streamPath, /^\/api\/v1\/playback\/sessions\/[a-f0-9-]+\/stream$/);
       for (const forbidden of [
         jellyfin.password,
@@ -177,15 +193,24 @@ try {
       ])
         assert.ok(!JSON.stringify(safe).includes(forbidden));
       const selector = kind === 'audio' ? 'audio' : 'video';
-      await page.waitForFunction((s) => {
-        const m = document.querySelector(s);
-        return m && m.readyState >= 1 && m.duration > 10 && (s === 'audio' || m.videoWidth > 0);
-      }, selector);
+      await page.waitForFunction(
+        (s) => {
+          const m = document.querySelector(s);
+          return m && m.readyState >= 1 && m.duration > 10 && (s === 'audio' || m.videoWidth > 0);
+        },
+        selector,
+        { timeout: 30000 },
+      );
+      step = `progress ${expectedMode ?? kind}`;
       await page.getByRole('button', { name: 'Play media', exact: true }).click();
-      await page.waitForFunction((s) => {
-        const m = document.querySelector(s);
-        return m.currentTime > 0.6 && !m.paused && !m.error;
-      }, selector);
+      await page.waitForFunction(
+        (s) => {
+          const m = document.querySelector(s);
+          return m.currentTime > 0.6 && !m.paused && !m.error;
+        },
+        selector,
+        { timeout: 30000 },
+      );
       await page.getByRole('button', { name: 'Pause media', exact: true }).click();
       const paused = await page
         .locator(selector)
@@ -195,55 +220,91 @@ try {
       assert.ok(
         Math.abs((await page.locator(selector).evaluate((m) => m.currentTime)) - paused.time) < 0.1,
       );
+      step = `seek ${expectedMode ?? kind}`;
       await page.locator(selector).evaluate((m) => {
         m.currentTime = 7;
       });
-      await page.waitForFunction((s) => {
-        const m = document.querySelector(s);
-        return !m.seeking && m.currentTime >= 6.9 && m.readyState >= 2;
-      }, selector);
+      await page.waitForFunction(
+        (s) => {
+          const m = document.querySelector(s);
+          return !m.seeking && m.currentTime >= 6.9 && m.readyState >= 2;
+        },
+        selector,
+        { timeout: 30000 },
+      );
       await page.getByRole('button', { name: 'Play media', exact: true }).click();
-      await page.waitForFunction((s) => {
-        const m = document.querySelector(s);
-        return m.currentTime > 7.5 && !m.error;
-      }, selector);
+      await page.waitForFunction(
+        (s) => {
+          const m = document.querySelector(s);
+          return m.currentTime > 7.5 && !m.error;
+        },
+        selector,
+        { timeout: 30000 },
+      );
       await page.setViewportSize({ width: 390, height: 844 });
       assert.ok((await page.locator(selector).boundingBox()).width <= 390);
       await page.setViewportSize({ width: 1280, height: 900 });
-      playbackResults.push({ kind, decoded: true, progressed: true, paused: true, sought: true });
+      playbackResults.push({
+        kind,
+        mode: safe.mode,
+        decoded: true,
+        progressed: true,
+        paused: true,
+        sought: true,
+      });
       if (!keepPlaying)
         await page.getByRole('button', { name: 'Return to catalog', exact: true }).click();
       return safe;
     };
-    step = 'catalog synchronization and TV hierarchy';
-    await page.getByRole('button', { name: 'Sync Browser fixture', exact: true }).click();
-    await page
-      .getByRole('button', { name: 'Tv shows · Browser fixture (television)', exact: true })
-      .click();
-    await page
-      .getByRole('button', { name: 'Browse children of Fixture series', exact: true })
-      .click();
-    await page
-      .getByRole('button', { name: 'Browse children of Fixture season', exact: true })
-      .click();
-    await page.getByRole('button', { name: 'Fixture episode', exact: true }).click();
-    await page
-      .getByRole('article', { name: 'Item details' })
-      .getByText('Episode 1', { exact: true })
-      .waitFor();
-    await exercisePlayer('episode');
-    await page
-      .getByRole('button', { name: 'Fixture movies · Browser fixture (movie)', exact: true })
-      .click();
-    await page.getByRole('button', { name: 'Next page', exact: true }).click();
-    await page.getByRole('button', { name: 'Fixture movie 051', exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Fixture movie 051', exact: true }).click();
-    await exercisePlayer('movie');
-    await page
-      .getByRole('button', { name: 'Fixture music · Browser fixture (music)', exact: true })
-      .click();
-    await page.getByRole('button', { name: 'Fixture track', exact: true }).click();
-    const lastPlayback = await exercisePlayer('audio', true);
+    let lastPlayback;
+    if (realHls) {
+      step = 'real Jellyfin generated catalog synchronization';
+      await page.getByRole('button', { name: 'Sync Browser fixture', exact: true }).click();
+      await page
+        .getByRole('button', { name: 'Generated · Browser fixture (movie)', exact: true })
+        .click();
+      const fixtures = expectedModes ?? [
+        ['Direct Fixture', 'direct'],
+        ['Remux Fixture', 'remux'],
+        ['Audio Conversion Fixture', 'transcode'],
+        ['Video Conversion Fixture', 'transcode'],
+      ];
+      for (const [title, mode] of fixtures) {
+        await page.getByRole('button', { name: title, exact: true }).click();
+        lastPlayback = await exercisePlayer('movie', title === fixtures.at(-1)[0], mode);
+      }
+      assert.ok(mediaRequests.some((url) => url.includes('/resources/')));
+    } else {
+      step = 'catalog synchronization and TV hierarchy';
+      await page.getByRole('button', { name: 'Sync Browser fixture', exact: true }).click();
+      await page
+        .getByRole('button', { name: 'Tv shows · Browser fixture (television)', exact: true })
+        .click();
+      await page
+        .getByRole('button', { name: 'Browse children of Fixture series', exact: true })
+        .click();
+      await page
+        .getByRole('button', { name: 'Browse children of Fixture season', exact: true })
+        .click();
+      await page.getByRole('button', { name: 'Fixture episode', exact: true }).click();
+      await page
+        .getByRole('article', { name: 'Item details' })
+        .getByText('Episode 1', { exact: true })
+        .waitFor();
+      await exercisePlayer('episode');
+      await page
+        .getByRole('button', { name: 'Fixture movies · Browser fixture (movie)', exact: true })
+        .click();
+      await page.getByRole('button', { name: 'Next page', exact: true }).click();
+      await page.getByRole('button', { name: 'Fixture movie 051', exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Fixture movie 051', exact: true }).click();
+      await exercisePlayer('movie');
+      await page
+        .getByRole('button', { name: 'Fixture music · Browser fixture (music)', exact: true })
+        .click();
+      await page.getByRole('button', { name: 'Fixture track', exact: true }).click();
+      lastPlayback = await exercisePlayer('audio', true);
+    }
     assert.equal(
       await page.evaluate(
         async (path) => (await fetch(path, { method: 'HEAD' })).status,
@@ -251,32 +312,37 @@ try {
       ),
       200,
     );
+    const heldPaths = [
+      lastPlayback.streamPath,
+      ...mediaRequests
+        .filter((url) => url.includes('/resources/'))
+        .slice(-2)
+        .map((url) => new URL(url).pathname),
+    ];
     step = 'playback logout authorization';
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await page.getByLabel('Username', { exact: true }).waitFor();
-    assert.equal(
-      await page.evaluate(async (path) => (await fetch(path)).status, lastPlayback.streamPath),
-      401,
-    );
+    for (const path of heldPaths)
+      assert.equal(await page.evaluate(async (p) => (await fetch(p)).status, path), 401);
     await page.getByLabel('Username', { exact: true }).fill(username);
     await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await page.getByRole('heading', { name: `Welcome, ${username}.` }).waitFor();
-    assert.equal(
-      await page.evaluate(async (path) => (await fetch(path)).status, lastPlayback.streamPath),
-      410,
-    );
+    for (const path of heldPaths)
+      assert.equal(await page.evaluate(async (p) => (await fetch(p)).status, path), 410);
     assert.ok(
       mediaRequests.every(
         (url) => url.startsWith('https://localhost:8443/api/v1/playback/') && !url.includes('?'),
       ),
     );
-    await page.getByRole('button', { name: 'Settings · Media Servers', exact: true }).click();
-    step = 'connector removal after catalog import';
-    await page.getByRole('button', { name: 'Disconnect / remove', exact: true }).click();
-    await page
-      .getByText('Connection removed and its Jellyfin session ended.', { exact: true })
-      .waitFor();
+    if (!realHls) {
+      await page.getByRole('button', { name: 'Settings · Media Servers', exact: true }).click();
+      step = 'connector removal after catalog import';
+      await page.getByRole('button', { name: 'Disconnect / remove', exact: true }).click();
+      await page
+        .getByText('Connection removed and its Jellyfin session ended.', { exact: true })
+        .waitFor();
+    }
     assert.equal(await page.evaluate(() => localStorage.length), 0);
   }
   step = 'logout';
@@ -294,7 +360,24 @@ try {
     JSON.stringify({ passed: true, browser: browser.version(), playback: playbackResults }),
   );
 } catch {
-  console.error(`Browser verification failed at: ${step}`);
+  const media = await diagnosticPage
+    ?.evaluate(() => {
+      const m = document.querySelector('video,audio');
+      return m
+        ? {
+            readyState: m.readyState,
+            networkState: m.networkState,
+            error: m.error?.code,
+            time: m.currentTime,
+            hasSource: Boolean(m.getAttribute('src')),
+            alert: document.querySelector('[role=alert]')?.textContent,
+          }
+        : null;
+    })
+    .catch(() => null);
+  console.error(
+    JSON.stringify({ failureStep: step, statuses: responseStatuses.slice(-20), media }),
+  );
   process.exitCode = 1;
 } finally {
   await browser?.close();

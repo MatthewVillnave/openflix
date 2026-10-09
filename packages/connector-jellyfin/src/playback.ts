@@ -25,11 +25,15 @@ const streamSchema = z.object({
   BitDepth: z.number().nullish(),
   Channels: z.number().int().positive().max(64).nullish(),
   Level: z.number().nonnegative().nullish(),
+  BitRate: z.number().int().nonnegative().max(1000000000).nullish(),
+  SampleRate: z.number().int().nonnegative().max(384000).nullish(),
   Width: z.number().int().positive().max(32768).nullish(),
   Height: z.number().int().positive().max(32768).nullish(),
   IsInterlaced: z.boolean().optional(),
+  IsAVC: z.boolean().nullish(),
   VideoRangeType: z.string().nullish(),
   AverageFrameRate: z.number().positive().nullish(),
+  RealFrameRate: z.number().positive().nullish(),
 });
 const sourceSchema = z.object({
   Id: id,
@@ -170,17 +174,56 @@ function hlsSource(source: z.infer<typeof sourceSchema>) {
   )
     return;
   const a = audios.find((a) => a.Index === source.DefaultAudioStreamIndex) ?? audios[0]!;
-  if (!a.Codec || !a.Channels) return;
+  if (
+    !a.Codec ||
+    !a.Channels ||
+    !['h264', 'hevc', 'h265', 'vp8', 'vp9', 'av1', 'mpeg2video', 'mpeg4', 'vc1'].includes(
+      v.Codec,
+    ) ||
+    ![
+      'aac',
+      'ac3',
+      'eac3',
+      'dts',
+      'truehd',
+      'flac',
+      'mp3',
+      'opus',
+      'vorbis',
+      'alac',
+      'pcm_s16le',
+      'pcm_s24le',
+      'pcm_f32le',
+    ].includes(a.Codec)
+  )
+    return;
   return {
     videoCopy:
       v.Codec === 'h264' &&
+      v.BitRate != null &&
+      v.BitRate > 0 &&
+      v.BitRate <= 6000000 &&
       v.BitDepth === 8 &&
       ['Baseline', 'Constrained Baseline', 'Main', 'High'].includes(v.Profile ?? '') &&
       v.Level != null &&
       v.Level > 0 &&
       v.Level <= 41 &&
-      (v.AverageFrameRate ?? 30) <= 30,
-    audioCopy: a.Codec === 'aac' && a.Channels <= 2 && (!a.Profile || a.Profile === 'LC'),
+      (v.AverageFrameRate ?? v.RealFrameRate) != null &&
+      (v.AverageFrameRate ?? v.RealFrameRate)! <= 30 &&
+      (source.Container !== 'avi' || v.IsAVC === true),
+    sourceCodecs: [v.Codec, a.Codec],
+    audioIndex: a.Index,
+    videoIndex: v.Index,
+    audioCopy:
+      a.Codec === 'aac' &&
+      a.Channels <= 2 &&
+      a.BitRate != null &&
+      a.BitRate > 0 &&
+      a.BitRate <= 192000 &&
+      a.SampleRate != null &&
+      a.SampleRate > 0 &&
+      a.SampleRate <= 48000 &&
+      (!a.Profile || a.Profile === 'LC'),
   };
 }
 export function playbackOperations(access: Access) {
@@ -299,6 +342,23 @@ export function playbackOperations(access: Access) {
           for (const source of fallback.MediaSources) {
             const copy = hlsSource(source);
             if (!copy || !source.SupportsTranscoding || !source.TranscodingUrl) continue;
+            // Server/user limits may be narrower than our client profile. Honor them in the reported method.
+            const target = new URL(source.TranscodingUrl, api.getUri('/'));
+            const limit = (name: string, max: number) => {
+              const raw = [...target.searchParams].find(([key]) => key.toLowerCase() === name)?.[1];
+              return raw === undefined ? max : Math.min(max, Number(raw));
+            };
+            const video = source.MediaStreams.find((s) => s.Type === 'Video' && !s.IsExternal)!;
+            const audio = source.MediaStreams.find((s) => s.Index === copy.audioIndex)!;
+            copy.videoCopy &&=
+              video.BitRate! <= limit('videobitrate', 6000000) &&
+              video.Width! <= limit('maxwidth', 1920) &&
+              video.Height! <= limit('maxheight', 1080) &&
+              (video.AverageFrameRate ?? video.RealFrameRate)! <= limit('maxframerate', 30);
+            copy.audioCopy &&=
+              audio.BitRate! <= limit('audiobitrate', 192000) &&
+              audio.SampleRate! <= limit('audiosamplerate', 48000) &&
+              audio.Channels! <= limit('transcodingmaxaudiochannels', 2);
             const plan: PlaybackInfo = {
               itemId,
               sourceId: source.Id,
@@ -319,6 +379,9 @@ export function playbackOperations(access: Access) {
                 source.TranscodingUrl,
                 copy.videoCopy,
                 copy.audioCopy,
+                copy.audioIndex,
+                copy.videoIndex,
+                copy.sourceCodecs,
               ),
             );
             return plan;

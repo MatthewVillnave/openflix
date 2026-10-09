@@ -1,0 +1,55 @@
+# Only scripts/verify-jellyfin-hls.mjs creates/removes this disposable stack.
+services:
+  web:
+    ports: !override
+      - '127.0.0.1::8080'
+  jellyfin-real:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: jellyfin-real-verification
+    environment:
+      JELLYFIN_PublishedServerUrl: http://jellyfin-real:8096
+    ports:
+      - '127.0.0.1::8096'
+    volumes:
+      - jellyfin-real-config:/config
+      - jellyfin-real-cache:/cache
+      - hls-media:/media:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    depends_on: [hls-media]
+  hls-media:
+    healthcheck:
+      disable: true
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: hls-media
+    volumes:
+      - hls-media:/media
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+  browser:
+    profiles: [verification]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: browser-verification
+    environment:
+      HOME: /tmp/browser-home
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+volumes:
+  jellyfin-real-config:
+  jellyfin-real-cache:
+  hls-media:
