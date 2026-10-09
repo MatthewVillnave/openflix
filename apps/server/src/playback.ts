@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import type { FastifyInstance } from 'fastify';
 import type { OpenFlixDatabase } from '@openflix/database';
-import { isConnectorError } from '@openflix/connector-core';
+import { isConnectorError, safePlaybackDiagnostic } from '@openflix/connector-core';
 import type {
   ClientProfile,
   ManagedMediaConnector,
@@ -136,7 +136,11 @@ export async function registerPlayback(
                   ? 400
                   : 502;
           request.log.info(
-            { event: 'playback.failed', code: error.code },
+            {
+              event: 'playback.failed',
+              code: error.code,
+              diagnostic: safePlaybackDiagnostic(error.diagnostic),
+            },
             'Playback request failed',
           );
           return reply.code(status).send({ error: error.message, code: error.code });
@@ -287,10 +291,18 @@ export async function registerPlayback(
           },
           handler: async (request, reply) => {
             const g = find(request.params.id, request.cookies[config.cookieName]);
-            if (!g)
+            if (!g) {
+              request.log.info(
+                {
+                  event: 'playback.failed',
+                  diagnostic: { stage: 'grant_lookup', reason: 'inactive_grant' },
+                },
+                'Playback grant unavailable',
+              );
               return reply
                 .code(410)
                 .send({ error: 'Playback session expired or unavailable', code: 'expired' });
+            }
             if (Date.now() - g.requestWindow >= 60000) {
               g.requestWindow = Date.now();
               g.requestCount = 0;
@@ -350,7 +362,20 @@ export async function registerPlayback(
               for (const [key, value] of Object.entries(upstream.headers)) reply.header(key, value);
               reply.header('Cache-Control', 'private, no-store, no-transform');
               reply.header('X-Accel-Buffering', 'no');
-              if (upstream.body) return reply.send(upstream.body);
+              if (upstream.body) {
+                upstream.body.once('error', (error: unknown) => {
+                  if (isConnectorError(error))
+                    request.log.info(
+                      {
+                        event: 'playback.transport_failed',
+                        code: error.code,
+                        diagnostic: safePlaybackDiagnostic(error.diagnostic),
+                      },
+                      'Playback transport failed',
+                    );
+                });
+                return reply.send(upstream.body);
+              }
               release();
               return reply.send();
             } catch (error) {

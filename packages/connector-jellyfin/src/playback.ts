@@ -16,29 +16,30 @@ import type {
   PlaybackStreamRequest,
 } from '@openflix/connector-core';
 const id = z.string().regex(/^[a-zA-Z0-9-]{1,128}$/);
+// Shared DTO fields are bounded, not required to have video/audio semantics on subtitles or data.
 const streamSchema = z.object({
-  Type: z.string(),
+  Type: z.string().min(1).max(64),
   Codec: z.string().max(64).nullish(),
   Profile: z.string().max(64).nullish(),
   Index: z.number().int().nonnegative(),
   IsExternal: z.boolean().optional(),
-  BitDepth: z.number().nullish(),
-  Channels: z.number().int().positive().max(64).nullish(),
-  Level: z.number().nonnegative().nullish(),
+  BitDepth: z.number().int().nonnegative().max(64).nullish(),
+  Channels: z.number().int().nonnegative().max(64).nullish(),
+  Level: z.number().nonnegative().max(1000).nullish(),
   BitRate: z.number().int().nonnegative().max(1000000000).nullish(),
   SampleRate: z.number().int().nonnegative().max(384000).nullish(),
-  Width: z.number().int().positive().max(32768).nullish(),
-  Height: z.number().int().positive().max(32768).nullish(),
+  Width: z.number().int().nonnegative().max(32768).nullish(),
+  Height: z.number().int().nonnegative().max(32768).nullish(),
   IsInterlaced: z.boolean().optional(),
   IsAVC: z.boolean().nullish(),
-  VideoRangeType: z.string().nullish(),
-  AverageFrameRate: z.number().positive().nullish(),
-  RealFrameRate: z.number().positive().nullish(),
+  VideoRangeType: z.string().max(64).nullish(),
+  AverageFrameRate: z.number().nonnegative().max(1000).nullish(),
+  RealFrameRate: z.number().nonnegative().max(1000).nullish(),
 });
 const sourceSchema = z.object({
   Id: id,
   Protocol: z.string(),
-  Container: z.string().max(64),
+  Container: z.string().max(64).nullish(),
   SupportsDirectPlay: z.boolean(),
   SupportsTranscoding: z.boolean().optional(),
   TranscodingUrl: z.string().max(8192).nullish(),
@@ -47,8 +48,8 @@ const sourceSchema = z.object({
   RequiresOpening: z.boolean().optional(),
   RequiresClosing: z.boolean().optional(),
   VideoType: z.string().nullish(),
-  RunTimeTicks: z.number().int().positive().max(864000000000),
-  MediaStreams: z.array(streamSchema).max(128),
+  RunTimeTicks: z.number().int().nonnegative().max(864000000000).nullish(),
+  MediaStreams: z.array(streamSchema).max(128).nullish(),
   DefaultAudioStreamIndex: z.number().int().nullish(),
 });
 const responseSchema = z.object({
@@ -56,6 +57,25 @@ const responseSchema = z.object({
   ErrorCode: z.string().nullish(),
   MediaSources: z.array(sourceSchema).max(16),
 });
+function parsePlaybackInfo(value: unknown) {
+  const parsed = responseSchema.safeParse(value);
+  if (!parsed.success)
+    throw new ConnectorError('invalid_response', {
+      stage: 'planning',
+      resourceKind: 'playback_info',
+      reason: 'malformed_metadata',
+    });
+  return parsed.data;
+}
+type Source = z.infer<typeof sourceSchema>;
+function hasRuntime(source: Source): source is Source & { RunTimeTicks: number } {
+  return source.RunTimeTicks != null && source.RunTimeTicks > 0;
+}
+function invalidFrameRate(stream: z.infer<typeof streamSchema>, max: number): boolean {
+  return [stream.AverageFrameRate, stream.RealFrameRate].some(
+    (rate) => rate != null && (rate <= 0 || rate > max),
+  );
+}
 type Access = <T>(
   action: (api: Api, credential: { userId: string; token: string }) => Promise<T>,
 ) => Promise<T>;
@@ -89,8 +109,8 @@ function choose(
     (source.VideoType && source.VideoType !== 'VideoFile')
   )
     return;
-  const videos = source.MediaStreams.filter((s) => s.Type === 'Video' && !s.IsExternal);
-  const audios = source.MediaStreams.filter((s) => s.Type === 'Audio' && !s.IsExternal);
+  const videos = (source.MediaStreams ?? []).filter((s) => s.Type === 'Video' && !s.IsExternal);
+  const audios = (source.MediaStreams ?? []).filter((s) => s.Type === 'Audio' && !s.IsExternal);
   // A native element may choose a different track; require every embedded audio track to be supported.
   if (audios.some((a) => !a.Channels || a.Channels > 2)) return;
   if (videos.length === 0) {
@@ -114,12 +134,13 @@ function choose(
   if (
     !v.Width ||
     !v.Height ||
+    (v.BitDepth != null && v.BitDepth <= 0) ||
     v.Width > 1920 ||
     v.Height > 1080 ||
     (v.BitDepth != null && v.BitDepth !== 8) ||
     v.IsInterlaced ||
     (v.VideoRangeType && v.VideoRangeType !== 'SDR') ||
-    (v.AverageFrameRate != null && v.AverageFrameRate > 30)
+    invalidFrameRate(v, 30)
   )
     return;
   if (
@@ -155,22 +176,24 @@ function hlsSource(source: z.infer<typeof sourceSchema>) {
     source.RequiresOpening ||
     source.RequiresClosing ||
     (source.VideoType && source.VideoType !== 'VideoFile') ||
+    !hasRuntime(source) ||
     source.RunTimeTicks > 144000000000
   )
     return;
-  const videos = source.MediaStreams.filter((s) => s.Type === 'Video' && !s.IsExternal);
-  const audios = source.MediaStreams.filter((s) => s.Type === 'Audio' && !s.IsExternal);
+  const videos = (source.MediaStreams ?? []).filter((s) => s.Type === 'Video' && !s.IsExternal);
+  const audios = (source.MediaStreams ?? []).filter((s) => s.Type === 'Audio' && !s.IsExternal);
   if (videos.length !== 1 || !audios.length) return;
   const v = videos[0]!;
   if (
     !v.Codec ||
     !v.Width ||
     !v.Height ||
+    (v.BitDepth != null && v.BitDepth <= 0) ||
     v.Width > 1920 ||
     v.Height > 1080 ||
     v.IsInterlaced ||
     (v.VideoRangeType && v.VideoRangeType !== 'SDR') ||
-    (v.AverageFrameRate != null && v.AverageFrameRate > 60)
+    invalidFrameRate(v, 60)
   )
     return;
   const a = audios.find((a) => a.Index === source.DefaultAudioStreamIndex) ?? audios[0]!;
@@ -198,6 +221,7 @@ function hlsSource(source: z.infer<typeof sourceSchema>) {
   )
     return;
   return {
+    durationMs: source.RunTimeTicks / 10000,
     videoCopy:
       v.Codec === 'h264' &&
       v.BitRate != null &&
@@ -239,7 +263,7 @@ export function playbackOperations(access: Access) {
       )
         throw new ConnectorError('invalid_configuration');
       return access(async (api, credential) => {
-        const data = responseSchema.parse(
+        const data = parsePlaybackInfo(
           (
             await getMediaInfoApi(api).getPostedPlaybackInfo({
               itemId,
@@ -264,6 +288,7 @@ export function playbackOperations(access: Access) {
         );
         if (data.ErrorCode) throw new ConnectorError('unsupported');
         for (const source of data.MediaSources) {
+          if (!hasRuntime(source)) continue;
           const selected = choose(source, profile);
           if (selected) {
             const plan: PlaybackInfo = {
@@ -280,7 +305,7 @@ export function playbackOperations(access: Access) {
           }
         }
         if (profile.formats.includes('hls-h264-aac') && data.MediaSources.some(hlsSource)) {
-          const fallback = responseSchema.parse(
+          const fallback = parsePlaybackInfo(
             (
               await getMediaInfoApi(api).getPostedPlaybackInfo({
                 itemId,
@@ -348,8 +373,10 @@ export function playbackOperations(access: Access) {
               const raw = [...target.searchParams].find(([key]) => key.toLowerCase() === name)?.[1];
               return raw === undefined ? max : Math.min(max, Number(raw));
             };
-            const video = source.MediaStreams.find((s) => s.Type === 'Video' && !s.IsExternal)!;
-            const audio = source.MediaStreams.find((s) => s.Index === copy.audioIndex)!;
+            const video = (source.MediaStreams ?? []).find(
+              (s) => s.Type === 'Video' && !s.IsExternal,
+            )!;
+            const audio = (source.MediaStreams ?? []).find((s) => s.Index === copy.audioIndex)!;
             copy.videoCopy &&=
               video.BitRate! <= limit('videobitrate', 6000000) &&
               video.Width! <= limit('maxwidth', 1920) &&
@@ -367,7 +394,7 @@ export function playbackOperations(access: Access) {
               mode: copy.videoCopy && copy.audioCopy ? 'remux' : 'transcode',
               videoTranscoded: !copy.videoCopy,
               contentType: 'application/vnd.apple.mpegurl',
-              durationMs: source.RunTimeTicks / 10000,
+              durationMs: copy.durationMs,
             };
             if (hls.size >= 8 || hls.has(plan.sessionId)) throw new ConnectorError('unsupported');
             hls.set(
@@ -387,7 +414,14 @@ export function playbackOperations(access: Access) {
             return plan;
           }
         }
-        throw new ConnectorError('unsupported');
+        throw new ConnectorError('unsupported', {
+          stage: 'planning',
+          resourceKind: 'playback_info',
+          reason:
+            data.MediaSources.length > 0 && data.MediaSources.every((s) => !hasRuntime(s))
+              ? 'insufficient_runtime'
+              : 'no_supported_source',
+        });
       });
     },
     async openPlaybackStream(

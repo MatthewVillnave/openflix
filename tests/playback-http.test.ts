@@ -510,3 +510,40 @@ it('HLS expiry and restart invalidate grants while persisted credentials remain 
   );
   expect((await preparedHls()).mode).toBe('remux');
 });
+
+it('keeps HLS upstream and parser diagnostics internal and secret-safe', async () => {
+  const grant = await preparedHls();
+  upstream.state.playback.streamMode = 'error';
+  const upstreamError = await app.inject({ url: grant.streamPath, headers: { cookie: admin } });
+  expect(upstreamError.statusCode).toBe(502);
+  expect(logs).toContain('"upstreamStatus":500');
+  expect(logs).toContain('"reason":"unexpected_status"');
+  expect(upstreamError.body).not.toContain('diagnostic');
+  upstream.state.playback.streamMode = 'normal';
+  upstream.state.playback.manifest =
+    '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="synthetic-private-token"\n#EXTINF:6,\nhls1/main/0.ts\n';
+  const parserError = await app.inject({ url: grant.streamPath, headers: { cookie: admin } });
+  expect(parserError.statusCode).toBe(502);
+  expect(logs).toContain('"upstreamStatus":200');
+  expect(logs).toContain('"stage":"manifest_parse"');
+  expect(parserError.body).not.toContain('diagnostic');
+  for (const secret of [
+    upstream.state.token,
+    upstreamPassword,
+    'synthetic-private-token',
+    'must-not-escape',
+    upstream.baseUrl,
+  ])
+    expect(logs + parserError.body + upstreamError.body).not.toContain(secret);
+});
+it.each([null, undefined])(
+  'classifies unavailable duration without sending invented playback reports (%s)',
+  async (runtime) => {
+    upstream.state.playback.sources = [{ ...playbackSource(), RunTimeTicks: runtime }];
+    const response = await start();
+    expect(response.statusCode).toBe(415);
+    expect(logs).toContain('"reason":"insufficient_runtime"');
+    expect(response.body).not.toContain('insufficient_runtime');
+    expect(upstream.state.playback.reports).toEqual([]);
+  },
+);

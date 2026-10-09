@@ -1,3 +1,7 @@
+import { safePlaybackDiagnostic } from './diagnostics.js';
+import type { PlaybackDiagnostic } from './diagnostics.js';
+export { safePlaybackDiagnostic, safePlaybackContentType } from './diagnostics.js';
+export type { PlaybackDiagnostic } from './diagnostics.js';
 import type { Readable } from 'node:stream';
 import type {
   PlaybackFormat,
@@ -107,9 +111,14 @@ const messages: Record<ConnectorErrorCode, string> = {
   not_found: 'Media server connection was not found.',
 };
 export class ConnectorError extends Error {
-  constructor(readonly code: ConnectorErrorCode) {
+  readonly diagnostic: PlaybackDiagnostic | undefined;
+  constructor(
+    readonly code: ConnectorErrorCode,
+    diagnostic?: PlaybackDiagnostic,
+  ) {
     super(messages[code]);
     this.name = 'ConnectorError';
+    this.diagnostic = safePlaybackDiagnostic(diagnostic);
   }
 }
 

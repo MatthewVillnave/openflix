@@ -201,15 +201,20 @@ it('returns unsupported for a valid empty media-source response', async () => {
   await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
 });
 
-it.each([{ Channels: -1 }, { Width: -1 }, { Height: 0 }, { AverageFrameRate: 0 }])(
-  'rejects malformed media dimensions/channels %j',
-  async (change) => {
+it.each([
+  [{ Channels: -1 }, 'invalid_response'],
+  [{ Width: -1 }, 'invalid_response'],
+  [{ Height: 0 }, 'unsupported'],
+  [{ AverageFrameRate: 0 }, 'unsupported'],
+] as const)(
+  'rejects malformed or unplayable media dimensions/channels %j as %s',
+  async (change, code) => {
     const source = playbackSource();
     const streams = source.MediaStreams as Record<string, unknown>[];
     const index = 'Channels' in change ? 1 : 0;
     streams[index] = { ...streams[index], ...change };
     fixture.state.playback.sources = [source];
-    await expect(plan()).rejects.toMatchObject({ code: 'invalid_response' });
+    await expect(plan()).rejects.toMatchObject({ code });
   },
 );
 
@@ -235,6 +240,97 @@ it('R2 reproduction: zero-dimension subtitle metadata does not block valid video
   });
   fixture.state.playback.sources = [source];
   await expect(plan()).resolves.toMatchObject({ mode: 'direct', kind: 'video', durationMs: 12000 });
+  expect(fixture.state.playback.reports).toHaveLength(0);
+  expect(fixture.state.playback.streamRequests).toHaveLength(0);
+});
+
+it.each([{}, { Width: null, Height: null }, { Width: 0, Height: 0 }])(
+  'accepts nullable/omitted/zero non-video dimensions %j without using subtitle URLs',
+  async (dimensions) => {
+    const source = playbackSource();
+    (source.MediaStreams as Record<string, unknown>[]).push({
+      Type: 'Subtitle',
+      Index: 2,
+      Codec: 'subrip',
+      ...dimensions,
+      Channels: 0,
+      AverageFrameRate: 0,
+      RealFrameRate: 0,
+      Path: 'file:///must-not-be-followed',
+      DeliveryUrl: 'https://must-not-be-followed.invalid',
+    });
+    fixture.state.playback.sources = [source];
+    await expect(plan()).resolves.toMatchObject({ mode: 'direct' });
+    expect(fixture.state.requests.every((r) => !r.path.includes('Subtitle'))).toBe(true);
+  },
+);
+it.each([
+  { Width: 0 },
+  { Height: 0 },
+  { Width: null },
+  { Height: undefined },
+  { AverageFrameRate: 0 },
+  { RealFrameRate: 120 },
+])('does not relax selected video requirements %j', async (change) => {
+  Object.assign(
+    (fixture.state.playback.sources[0]!.MediaStreams as Record<string, unknown>[])[0]!,
+    change,
+  );
+  await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+});
+it.each([
+  { Width: -1 },
+  { Width: '320' },
+  { Height: 32769 },
+  { Channels: 65 },
+  { BitDepth: 10000 },
+  { BitRate: 1000000001 },
+  { AverageFrameRate: 1001 },
+  { SampleRate: '48000' },
+])('keeps bounded strict parsing on unused metadata %j', async (change) => {
+  (fixture.state.playback.sources[0]!.MediaStreams as Record<string, unknown>[]).push({
+    Type: 'Subtitle',
+    Index: 2,
+    ...change,
+  });
+  await expect(plan()).rejects.toMatchObject({ code: 'invalid_response' });
+});
+it('non-video zero fields cannot bypass selected audio channel validation', async () => {
+  const source = playbackSource();
+  const streams = source.MediaStreams as Record<string, unknown>[];
+  streams[1]!.Channels = 0;
+  streams.push({ Type: 'Subtitle', Index: 2, Width: 0, Height: 0 });
+  fixture.state.playback.sources = [source];
+  await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+});
+it.each(['Subtitle', 'Data', 'UnknownFutureType'])('never plays unused type %s', async (Type) => {
+  fixture.state.playback.sources = [
+    { ...playbackSource(), MediaStreams: [{ Type, Index: 0, Width: 0, Height: 0 }] },
+  ];
+  await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+});
+it.each([undefined, null, 0])(
+  'does not fabricate runtime or reports for %s runtime',
+  async (RunTimeTicks) => {
+    fixture.state.playback.sources = [{ ...playbackSource(), RunTimeTicks }];
+    await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+    expect(fixture.state.playback.reports).toHaveLength(0);
+    expect(fixture.state.playback.streamRequests).toHaveLength(0);
+  },
+);
+it.each([-1, '120000000', 864000000001, 0.5])(
+  'rejects malformed/excessive runtime %s',
+  async (RunTimeTicks) => {
+    fixture.state.playback.sources = [{ ...playbackSource(), RunTimeTicks }];
+    await expect(plan()).rejects.toMatchObject({ code: 'invalid_response' });
+    expect(fixture.state.playback.reports).toHaveLength(0);
+  },
+);
+it('classifies inaccessible-source metadata as unsupported without assuming file access', async () => {
+  fixture.state.playback.sources = [
+    { ...playbackSource(), RunTimeTicks: null, Container: null, MediaStreams: null },
+  ];
+  await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
   expect(fixture.state.playback.reports).toHaveLength(0);
   expect(fixture.state.playback.streamRequests).toHaveLength(0);
 });

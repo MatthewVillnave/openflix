@@ -268,3 +268,102 @@ it('honors lower upstream/user bitrate limits in its copy policy and reporting m
     '&VideoBitrate=100000&AudioBitrate=64000';
   expect(await plan()).toMatchObject({ mode: 'transcode', videoTranscoded: true });
 });
+
+it.each([
+  ['aac', 'h264', 'remux'],
+  ['ac3', 'h264', 'transcode'],
+  ['aac', 'hevc', 'transcode'],
+] as const)('plans %s/%s with zero-dimension subtitles as %s', async (audio, video, mode) => {
+  const streams = fixture.state.playback.sources[0]!.MediaStreams as Record<string, unknown>[];
+  streams[0]!.Codec = video;
+  streams[1]!.Codec = audio;
+  streams.push({ Type: 'Subtitle', Index: 2, Codec: 'subrip', Width: 0, Height: 0 });
+  expect((await plan()).mode).toBe(mode);
+  expect(fixture.state.playback.reports).toHaveLength(0);
+});
+it.each([undefined, null, 0])(
+  'does not open or report HLS when runtime is %s',
+  async (RunTimeTicks) => {
+    fixture.state.playback.sources[0]!.RunTimeTicks = RunTimeTicks;
+    await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+    expect(fixture.state.requests.filter((r) => r.path.endsWith('/PlaybackInfo'))).toHaveLength(1);
+    expect(fixture.state.playback.reports).toHaveLength(0);
+    expect(fixture.state.playback.cleanup).toHaveLength(0);
+  },
+);
+
+it.each([
+  ['error', 'unexpected_status', 500, 'application/json'],
+  ['html', 'unexpected_content_type', 200, 'text/html'],
+  ['redirect', 'unexpected_status', 302, 'missing'],
+] as const)(
+  'classifies upstream %s without exposing upstream content',
+  async (mode, reason, upstreamStatus, upstreamContentType) => {
+    fixture.state.playback.streamMode = mode;
+    await expect(connector.openPlaybackStream(await plan(), request())).rejects.toMatchObject({
+      diagnostic: {
+        stage: 'upstream_headers',
+        resourceKind: 'master',
+        reason,
+        upstreamStatus,
+        upstreamContentType,
+      },
+    });
+  },
+);
+it('distinguishes a valid upstream media response from an OpenFlix directive rejection', async () => {
+  const p = await plan();
+  const master = await body(await connector.openPlaybackStream(p, request()));
+  fixture.state.playback.mediaManifest =
+    '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="private-token"\n#EXTINF:6,\nhls1/main/0.ts\n';
+  await expect(
+    connector.openPlaybackResource(p, master.trim().split('/').at(-1)!, request()),
+  ).rejects.toMatchObject({
+    code: 'invalid_response',
+    diagnostic: {
+      stage: 'manifest_parse',
+      resourceKind: 'media',
+      reason: 'unsupported_directive',
+      manifestTag: 'EXT-X-KEY',
+      upstreamStatus: 200,
+      upstreamContentType: 'application/vnd.apple.mpegurl',
+    },
+  });
+});
+it('identifies an oversized playlist independently of upstream HTTP status', async () => {
+  fixture.state.playback.manifest = '#EXTM3U\n' + 'x'.repeat(4 * 1024 * 1024 + 1);
+  await expect(connector.openPlaybackStream(await plan(), request())).rejects.toMatchObject({
+    diagnostic: { reason: 'response_limit', resourceKind: 'master', upstreamStatus: 200 },
+  });
+});
+
+// Mirrors 10.11.11 DynamicHlsPlaylistGenerator: query repeated for every six-second segment.
+it.each([120, 240])(
+  'handles a %i-minute movie playlist with bounded private resource mappings',
+  async (minutes) => {
+    const p = await plan();
+    const master = await body(await connector.openPlaybackStream(p, request()));
+    const query = String(fixture.state.playback.sources[0]!.TranscodingUrl).split('?')[1]!;
+    fixture.state.playback.mediaManifest =
+      '#EXTM3U\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:0\n' +
+      Array.from(
+        { length: minutes * 10 },
+        (_, n) =>
+          `#EXTINF:6.000000, nodesc\nhls1/main/${n}.ts?${query}&runtimeTicks=${n * 60000000}&actualSegmentLengthTicks=60000000\n`,
+      ).join('') +
+      '#EXT-X-ENDLIST\n';
+    expect(Buffer.byteLength(fixture.state.playback.mediaManifest)).toBeGreaterThan(128 * 1024);
+    const media = await body(
+      await connector.openPlaybackResource(p, master.trim().split('/').at(-1)!, request()),
+    );
+    const refs = media.split('\n').filter((line) => line.startsWith(resourceBase));
+    expect(refs).toHaveLength(minutes * 10);
+    expect(new Set(refs).size).toBe(minutes * 10);
+    expect(media).not.toContain(fixture.state.token);
+    expect(
+      await body(
+        await connector.openPlaybackResource(p, refs.at(-1)!.split('/').at(-1)!, request()),
+      ),
+    ).not.toHaveLength(0);
+  },
+);

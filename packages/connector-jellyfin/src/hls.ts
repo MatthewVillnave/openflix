@@ -2,13 +2,29 @@
 import { randomBytes } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { Api } from '@jellyfin/sdk/lib/api.js';
-import { ConnectorError } from '@openflix/connector-core';
-import type { PlaybackInfo, PlaybackStreamRequest, PlaybackStream } from '@openflix/connector-core';
-import { binaryTransport } from './playback-transport.js';
-const bad = (): never => {
-  throw new ConnectorError('invalid_response');
+import { ConnectorError, isConnectorError } from '@openflix/connector-core';
+import type {
+  PlaybackInfo,
+  PlaybackStreamRequest,
+  PlaybackStream,
+  PlaybackDiagnostic,
+} from '@openflix/connector-core';
+import { binaryTransport, type TransportDiagnosticContext } from './playback-transport.js';
+const bad = (
+  reason: PlaybackDiagnostic['reason'] = 'unsafe_reference',
+  stage: PlaybackDiagnostic['stage'] = 'resource_reference',
+  manifestTag?: PlaybackDiagnostic['manifestTag'],
+): never => {
+  throw new ConnectorError('invalid_response', {
+    stage,
+    reason,
+    ...(manifestTag ? { manifestTag } : {}),
+  });
 };
-const playlistLimit = 128 * 1024;
+// 10.11.11 repeats its validated query on each segment. Four-hour movie fixtures
+// exceed 128 KiB. Keep independent finite input/output, line and resource budgets.
+const playlistLimit = 4 * 1024 * 1024;
+const outputLimit = 512 * 1024;
 const key = () => randomBytes(16).toString('hex');
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 interface Resource {
@@ -265,7 +281,7 @@ export class HlsPlayback {
       ancestors.some((ancestor) => new URL(ancestor).pathname === url.pathname) ||
       depth > 2
     )
-      return bad();
+      return bad('recursion_limit', 'resource_bounds');
     const kind = url.pathname.endsWith('.m3u8')
       ? 'playlist'
       : url.pathname.endsWith('/-1.mp4')
@@ -279,23 +295,28 @@ export class HlsPlayback {
       (kind === 'playlist' &&
         [...this.resources.values()].filter((r) => r.kind === 'playlist').length >= 16)
     )
-      return bad();
+      return bad('resource_limit', 'resource_bounds');
     const result: Resource = { id: key(), url, kind, depth, ancestors };
     this.resources.set(result.id, result);
     this.byUrl.set(url.href, result);
     return result;
   }
   private rewrite(text: string, parent: Resource, base: string): string {
+    const invalid = (
+      reason: PlaybackDiagnostic['reason'] = 'invalid_manifest',
+      tag?: PlaybackDiagnostic['manifestTag'],
+    ): never => bad(reason, 'manifest_parse', tag);
     if (!/^\/api\/v1\/playback\/sessions\/[a-f0-9-]{36}\/resources\/$/.test(base)) return bad();
     const lines = text.replace(/\r\n/g, '\n').split('\n');
-    if (lines[0] !== '#EXTM3U' || lines.length > 4096) return bad();
+    if (lines.length > 8192) return invalid('manifest_line_limit');
+    if (lines[0] !== '#EXTM3U') return invalid();
     let pending: 'playlist' | 'segment' | undefined,
       master = false,
       media = false;
     const result: string[] = [];
     const reference = (raw: string, kind: Resource['kind']) => {
       const target = this.normalize(raw, parent.url);
-      if (kind === 'playlist' && parent.depth >= 2) return bad();
+      if (kind === 'playlist' && parent.depth >= 2) return invalid();
       const resource = this.add(
         target,
         parent.depth + (kind === 'playlist' ? 1 : 0),
@@ -306,20 +327,20 @@ export class HlsPlayback {
     };
     for (const line of lines) {
       if (!line) continue;
-      if (line.length > 8192 || /[\u0000-\u0008\u000b-\u001f]/.test(line)) return bad();
+      if (line.length > 8192 || /[\u0000-\u0008\u000b-\u001f]/.test(line)) return invalid();
       if (!line.startsWith('#')) {
-        if (!pending) return bad();
+        if (!pending) return invalid();
         result.push(reference(line, pending));
         pending = undefined;
         continue;
       }
       const [tag] = line.split(':');
       if (tag === '#EXT-X-STREAM-INF') {
-        if (pending || media) return bad();
+        if (pending || media) return invalid();
         master = true;
         pending = 'playlist';
         const attrs = parseAttributes(line.slice(tag.length + 1));
-        if (!attrs.BANDWIDTH || !/^\d{1,9}$/.test(attrs.BANDWIDTH)) return bad();
+        if (!attrs.BANDWIDTH || !/^\d{1,9}$/.test(attrs.BANDWIDTH)) return invalid();
         if (
           Object.keys(attrs).some(
             (k) =>
@@ -333,19 +354,19 @@ export class HlsPlayback {
               ].includes(k),
           )
         )
-          return bad();
+          return invalid();
       } else if (tag === '#EXTINF') {
-        if (pending || master || !/^#EXTINF:\d+(?:\.\d+)?,[^\r\n]*$/.test(line)) return bad();
+        if (pending || master || !/^#EXTINF:\d+(?:\.\d+)?,[^\r\n]*$/.test(line)) return invalid();
         media = true;
         pending = 'segment';
       } else if (tag === '#EXT-X-MAP') {
-        if (master) return bad();
+        if (master) return invalid();
         media = true;
         const attrs = parseAttributes(line.slice(tag.length + 1));
         if (!attrs.URI || Object.keys(attrs).some((k) => !['URI', 'BYTERANGE'].includes(k)))
-          return bad();
+          return invalid();
         const uri = reference(attrs.URI, 'init');
-        if (attrs.BYTERANGE && !/^\d+(?:@\d+)?$/.test(attrs.BYTERANGE)) return bad();
+        if (attrs.BYTERANGE && !/^\d+(?:@\d+)?$/.test(attrs.BYTERANGE)) return invalid();
         result.push(
           `#EXT-X-MAP:URI="${uri}"${attrs.BYTERANGE ? `,BYTERANGE="${attrs.BYTERANGE}"` : ''}`,
         );
@@ -358,7 +379,7 @@ export class HlsPlayback {
           '#EXT-X-INDEPENDENT-SEGMENTS',
         ].includes(tag!)
       ) {
-        if (line !== tag) return bad();
+        if (line !== tag) return invalid();
       } else if (
         [
           '#EXT-X-VERSION',
@@ -367,11 +388,11 @@ export class HlsPlayback {
           '#EXT-X-DISCONTINUITY-SEQUENCE',
         ].includes(tag!)
       ) {
-        if (!new RegExp('^' + tag + ':[0-9]{1,10}$').test(line)) return bad();
+        if (!new RegExp('^' + tag + ':[0-9]{1,10}$').test(line)) return invalid();
       } else if (tag === '#EXT-X-PLAYLIST-TYPE') {
-        if (!/^#EXT-X-PLAYLIST-TYPE:(VOD|EVENT)$/.test(line)) return bad();
+        if (!/^#EXT-X-PLAYLIST-TYPE:(VOD|EVENT)$/.test(line)) return invalid();
       } else if (tag === '#EXT-X-BYTERANGE') {
-        if (!/^#EXT-X-BYTERANGE:\d+(?:@\d+)?$/.test(line)) return bad();
+        if (!/^#EXT-X-BYTERANGE:\d+(?:@\d+)?$/.test(line)) return invalid();
       } else if (tag === '#EXT-X-START') {
         const attrs = parseAttributes(line.slice(tag.length + 1));
         if (
@@ -379,18 +400,19 @@ export class HlsPlayback {
           !/^-?\d+(?:\.\d+)?$/.test(attrs['TIME-OFFSET']) ||
           Object.keys(attrs).some((k) => !['TIME-OFFSET', 'PRECISE'].includes(k))
         )
-          return bad();
-      } else return bad(); // Keys, DRM, subtitles, external tracks, low-latency and unknown tags fail closed.
+          return invalid();
+      } else
+        return invalid(
+          'unsupported_directive',
+          tag === '#EXT-X-KEY' ? 'EXT-X-KEY' : tag === '#EXT-X-MEDIA' ? 'EXT-X-MEDIA' : 'other',
+        ); // Keys, DRM, subtitles, external tracks, low-latency and unknown tags fail closed.
       result.push(line);
     }
-    if (pending || (!master && !media)) return bad();
+    if (pending || (!master && !media)) return invalid();
     const output = result.join('\n') + '\n';
-    if (
-      output.includes(this.token) ||
-      /api[_-]?key|authorization|access[_-]?token/i.test(output) ||
-      Buffer.byteLength(output) > playlistLimit
-    )
-      return bad();
+    if (output.includes(this.token) || /api[_-]?key|authorization|access[_-]?token/i.test(output))
+      return invalid('credential_reflection');
+    if (Buffer.byteLength(output) > outputLimit) return invalid('manifest_output_limit');
     return output;
   }
   async open(
@@ -400,7 +422,42 @@ export class HlsPlayback {
   ): Promise<PlaybackStream> {
     if (this.closed) throw new ConnectorError('not_found');
     const resource = id ? this.resources.get(id) : this.root;
-    if (!resource) throw new ConnectorError('not_found');
+    if (!resource)
+      throw new ConnectorError('not_found', {
+        stage: 'resource_lookup',
+        reason: 'unknown_resource',
+      });
+    const context: TransportDiagnosticContext = {
+      resourceKind:
+        resource.kind === 'playlist'
+          ? resource === this.root
+            ? 'master'
+            : 'media'
+          : resource.kind,
+    };
+    try {
+      return await this.openResource(api, resource, request, context);
+    } catch (error) {
+      if (isConnectorError(error))
+        throw new ConnectorError(error.code, {
+          ...context,
+          stage: 'upstream_body',
+          reason: 'transport_failure',
+          ...error.diagnostic,
+        });
+      throw new ConnectorError('invalid_response', {
+        ...context,
+        stage: 'manifest_parse',
+        reason: 'invalid_manifest',
+      });
+    }
+  }
+  private async openResource(
+    api: Api,
+    resource: Resource,
+    request: PlaybackStreamRequest,
+    context: TransportDiagnosticContext,
+  ): Promise<PlaybackStream> {
     if (resource.kind !== 'playlist') {
       const mime = resource.url.pathname.endsWith('.ts') ? 'video/mp2t' : 'video/mp4';
       return binaryTransport(
@@ -411,6 +468,7 @@ export class HlsPlayback {
         mime === 'video/mp4' ? ['video/mp4', 'application/mp4'] : [mime],
         64 * 1024 * 1024,
         12000,
+        context,
       );
     }
     if (!request.resourceBase) throw new ConnectorError('invalid_configuration');
@@ -427,24 +485,25 @@ export class HlsPlayback {
       ['application/vnd.apple.mpegurl', 'application/x-mpegurl', 'audio/mpegurl'],
       playlistLimit,
       12000,
+      context,
     );
     if (upstream.status !== 200 || !upstream.body) {
       upstream.cancel();
-      return bad();
+      return bad('unexpected_status', 'upstream_headers');
     }
     const chunks: Buffer[] = [];
     let size = 0;
     try {
       for await (const chunk of upstream.body) {
         size += chunk.length;
-        if (size > playlistLimit) return bad();
+        if (size > playlistLimit) return bad('response_limit', 'upstream_body');
         chunks.push(chunk);
       }
       let text: string;
       try {
         text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks));
       } catch {
-        return bad();
+        return bad('invalid_utf8', 'manifest_parse');
       }
       const rewritten = this.rewrite(text, resource, request.resourceBase);
       return {
@@ -473,7 +532,8 @@ export function parseAttributes(value: string): Record<string, string> {
   let rest = value;
   while (rest) {
     const m = /^([A-Z0-9-]+)=(?:"([^"\r\n]*)"|([^,\r\n]+))(?:,|$)/.exec(rest);
-    if (!m || Object.hasOwn(out, m[1]!) || Object.keys(out).length >= 16) return bad();
+    if (!m || Object.hasOwn(out, m[1]!) || Object.keys(out).length >= 16)
+      return bad('invalid_manifest', 'manifest_parse');
     out[m[1]!] = m[2] ?? m[3]!;
     rest = rest.slice(m[0].length);
   }

@@ -2,8 +2,20 @@ import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { Readable } from 'node:stream';
 import type { Api } from '@jellyfin/sdk/lib/api.js';
-import { ConnectorError } from '@openflix/connector-core';
-import type { PlaybackStream, PlaybackStreamRequest } from '@openflix/connector-core';
+import {
+  ConnectorError,
+  isConnectorError,
+  safePlaybackContentType,
+} from '@openflix/connector-core';
+import type {
+  PlaybackStream,
+  PlaybackStreamRequest,
+  PlaybackDiagnostic,
+} from '@openflix/connector-core';
+export type TransportDiagnosticContext = Pick<
+  PlaybackDiagnostic,
+  'resourceKind' | 'upstreamStatus' | 'upstreamContentType'
+>;
 export function binaryTransport(
   api: Api,
   url: URL,
@@ -12,6 +24,7 @@ export function binaryTransport(
   acceptedTypes: readonly string[],
   maxBytes?: number,
   headerTimeout = 5000,
+  context: TransportDiagnosticContext = { resourceKind: 'direct' },
 ): Promise<PlaybackStream> {
   return new Promise<PlaybackStream>((resolve, reject) => {
     const fail = (
@@ -22,7 +35,8 @@ export function binaryTransport(
         | 'unsafe_redirect'
         | 'unauthorized'
         | 'not_found',
-    ) => reject(new ConnectorError(code));
+      reason: PlaybackDiagnostic['reason'],
+    ) => reject(new ConnectorError(code, { ...context, stage: 'upstream_headers', reason }));
     const upstream = (url.protocol === 'https:' ? httpsRequest : httpRequest)(url, {
       method: request.method,
       agent: false,
@@ -41,47 +55,53 @@ export function binaryTransport(
     );
     deadline.unref();
     upstream.setTimeout(30000, () => upstream.destroy(new ConnectorError('timeout')));
-    upstream.on('error', () => {
+    upstream.on('error', (error) => {
       clearTimeout(deadline);
-      fail(request.signal.aborted ? 'timeout' : 'unavailable');
+      const timeout =
+        request.signal.aborted || (isConnectorError(error) && error.code === 'timeout');
+      fail(timeout ? 'timeout' : 'unavailable', timeout ? 'timeout' : 'transport_failure');
     });
     upstream.once('response', (response) => {
       clearTimeout(deadline);
       const status = response.statusCode ?? 0;
+      context.upstreamStatus = status;
+      context.upstreamContentType = safePlaybackContentType(response.headers['content-type']);
       const cancel = () => {
         response.destroy();
         upstream.destroy();
       };
-      const invalid = (code: Parameters<typeof fail>[0]) => {
+      const invalid = (code: Parameters<typeof fail>[0], reason: PlaybackDiagnostic['reason']) => {
         cancel();
-        fail(code);
+        fail(code, reason);
       };
-      if (status >= 300 && status < 400) return invalid('unsafe_redirect');
-      if (status === 401 || status === 403) return invalid('unauthorized');
-      if (status === 404) return invalid('not_found');
-      if (![200, 206, 416].includes(status)) return invalid('unavailable');
+      if (status >= 300 && status < 400) return invalid('unsafe_redirect', 'unexpected_status');
+      if (status === 401 || status === 403) return invalid('unauthorized', 'unexpected_status');
+      if (status === 404) return invalid('not_found', 'unexpected_status');
+      if (![200, 206, 416].includes(status)) return invalid('unavailable', 'unexpected_status');
       const headers: Record<string, string> = {};
       const contentRange = response.headers['content-range'];
       if (status === 416) {
         if (!request.range || !contentRange || !/^bytes \*\/\d{1,15}$/.test(contentRange))
-          return invalid('invalid_response');
+          return invalid('invalid_response', 'invalid_range');
         headers['content-range'] = contentRange;
         cancel();
         resolve({ status: 416, headers, cancel });
         return;
       }
       const mime = response.headers['content-type']?.split(';')[0]?.trim().toLowerCase();
+      if (!acceptedTypes.includes(mime ?? ''))
+        return invalid('invalid_response', 'unexpected_content_type');
       if (
-        !acceptedTypes.includes(mime ?? '') ||
-        (response.headers['content-encoding'] &&
-          response.headers['content-encoding'] !== 'identity')
+        response.headers['content-encoding'] &&
+        response.headers['content-encoding'] !== 'identity'
       )
-        return invalid('invalid_response');
+        return invalid('invalid_response', 'unexpected_encoding');
       headers['content-type'] = contentType;
       const length = response.headers['content-length'];
       if (length !== undefined) {
-        if (!/^\d{1,15}$/.test(length) || (maxBytes !== undefined && Number(length) > maxBytes))
-          return invalid('invalid_response');
+        if (!/^\d{1,15}$/.test(length)) return invalid('invalid_response', 'invalid_length');
+        if (maxBytes !== undefined && Number(length) > maxBytes)
+          return invalid('invalid_response', 'response_limit');
         headers['content-length'] = length;
       }
       if (status === 206) {
@@ -93,7 +113,7 @@ export function binaryTransport(
           Number(m[3]) <= Number(m[2]) ||
           (length !== undefined && Number(length) !== Number(m[2]) - Number(m[1]) + 1)
         )
-          return invalid('invalid_response');
+          return invalid('invalid_response', 'invalid_range');
         const requested = /^bytes=(\d*)-(\d*)$/.exec(request.range)!;
         const total = Number(m[3]);
         const expectedStart = requested[1]
@@ -102,7 +122,7 @@ export function binaryTransport(
         const expectedEnd =
           requested[1] && requested[2] ? Math.min(total - 1, Number(requested[2])) : total - 1;
         if (Number(m[1]) !== expectedStart || Number(m[2]) !== expectedEnd)
-          return invalid('invalid_response');
+          return invalid('invalid_response', 'invalid_range');
         headers['content-range'] = contentRange!;
       }
       if (response.headers['accept-ranges'] === 'bytes') headers['accept-ranges'] = 'bytes';
@@ -119,12 +139,20 @@ export function binaryTransport(
             for await (const chunk of response) {
               received += chunk.length;
               if (maxBytes !== undefined && received > maxBytes)
-                throw new ConnectorError('invalid_response');
+                throw new ConnectorError('invalid_response', {
+                  ...context,
+                  stage: 'upstream_body',
+                  reason: 'response_limit',
+                });
               yield chunk;
             }
           } catch (error) {
             if (error instanceof ConnectorError) throw error;
-            throw new ConnectorError('unavailable');
+            throw new ConnectorError('unavailable', {
+              ...context,
+              stage: 'upstream_body',
+              reason: 'transport_failure',
+            });
           } finally {
             cancel();
           }
