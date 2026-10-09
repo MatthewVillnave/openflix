@@ -547,3 +547,43 @@ it.each([null, undefined])(
     expect(upstream.state.playback.reports).toEqual([]);
   },
 );
+
+async function pendingHlsSegment() {
+  const grant = await preparedHls();
+  const root = await app.inject({ url: grant.streamPath, headers: { cookie: admin } });
+  const child = root.body.split('\n').find((line) => line.startsWith('/api/'))!;
+  const playlist = await app.inject({ url: child, headers: { cookie: admin } });
+  const segment = playlist.body.split('\n').find((line) => line.startsWith('/api/'))!;
+  await app.listen({ host: '127.0.0.1', port: 0 });
+  const address = app.server.address();
+  if (!address || typeof address === 'string') throw new Error('Missing test listener');
+  upstream.state.playback.streamMode = 'hold-headers';
+  const pending = fetch(`http://127.0.0.1:${address.port}${segment}`, {
+    headers: { cookie: admin },
+  });
+  await expect.poll(() => upstream.state.playback.waitingHeaders).toBe(1);
+  return { grant, pending, segment };
+}
+it('stop promptly cancels a real pending HLS HTTP request with 410 and exactly scoped cleanup', async () => {
+  const { grant, pending, segment } = await pendingHlsSegment();
+  expect((await post(`/sessions/${grant.id}/stop`, {})).statusCode).toBe(204);
+  const response = await pending;
+  expect(response.status).toBe(410);
+  expect((await response.json()).code).toBe('expired');
+  await expect.poll(() => upstream.state.playback.cancelled).toBe(1);
+  await expect.poll(() => upstream.state.playback.cleanup.length).toBe(1);
+  const cleanup = new URLSearchParams(upstream.state.playback.cleanup[0]);
+  expect(cleanup.get('deviceId')).toBe('source');
+  expect(cleanup.get('playSessionId')).toBe(playSessionId);
+  expect((await app.inject({ url: segment, headers: { cookie: admin } })).statusCode).toBe(410);
+  expect(logs).not.toContain('"reason":"timeout"');
+});
+it('a genuine HLS header deadline remains an upstream timeout, not successful cancellation', async () => {
+  const { grant, pending } = await pendingHlsSegment();
+  const response = await pending;
+  expect(response.status).toBe(504);
+  expect((await response.json()).code).toBe('timeout');
+  expect(logs).toContain('"reason":"timeout"');
+  expect(upstream.state.playback.cleanup).toHaveLength(0);
+  expect((await post(`/sessions/${grant.id}/stop`, {})).statusCode).toBe(204);
+}, 20000);

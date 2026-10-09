@@ -135,7 +135,7 @@ export function Player({ item }: { item: CatalogItem }) {
           backBufferLength: 30,
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal && mounted.current) {
+          if (data.fatal && mounted.current && activeSession.current === session.id) {
             setError('HLS playback failed. Return to the catalog and retry.');
             setSession(null);
           }
@@ -187,6 +187,7 @@ export function Player({ item }: { item: CatalogItem }) {
       void report().finally(() => setSession(null));
     },
     onError: () => {
+      if (!mounted.current || !session || activeSession.current !== session.id) return;
       setError('Media playback failed or authorization expired. Return to the catalog and retry.');
       setSession(null);
     },

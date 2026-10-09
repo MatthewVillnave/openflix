@@ -68,6 +68,7 @@ export type ConnectorErrorCode =
   | 'invalid_configuration'
   | 'unavailable'
   | 'timeout'
+  | 'cancelled'
   | 'unauthorized'
   | 'unsupported'
   | 'invalid_response'

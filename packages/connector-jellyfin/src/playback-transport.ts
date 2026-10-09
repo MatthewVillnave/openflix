@@ -25,18 +25,29 @@ export function binaryTransport(
   maxBytes?: number,
   headerTimeout = 5000,
   context: TransportDiagnosticContext = { resourceKind: 'direct' },
+  idleTimeout = 30000,
 ): Promise<PlaybackStream> {
   return new Promise<PlaybackStream>((resolve, reject) => {
     const fail = (
       code:
         | 'unavailable'
         | 'timeout'
+        | 'cancelled'
         | 'invalid_response'
         | 'unsafe_redirect'
         | 'unauthorized'
         | 'not_found',
       reason: PlaybackDiagnostic['reason'],
     ) => reject(new ConnectorError(code, { ...context, stage: 'upstream_headers', reason }));
+    let timedOut = false;
+    const abortCode = () =>
+      request.signal.aborted
+        ? request.signal.reason?.name === 'TimeoutError'
+          ? 'timeout'
+          : 'cancelled'
+        : timedOut
+          ? 'timeout'
+          : 'unavailable';
     const upstream = (url.protocol === 'https:' ? httpsRequest : httpRequest)(url, {
       method: request.method,
       agent: false,
@@ -49,17 +60,19 @@ export function binaryTransport(
       },
       maxHeaderSize: 16384,
     });
-    const deadline = setTimeout(
-      () => upstream.destroy(new ConnectorError('timeout')),
-      headerTimeout,
-    );
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      upstream.destroy(new ConnectorError('timeout'));
+    }, headerTimeout);
     deadline.unref();
-    upstream.setTimeout(30000, () => upstream.destroy(new ConnectorError('timeout')));
+    upstream.setTimeout(idleTimeout, () => {
+      timedOut = true;
+      upstream.destroy(new ConnectorError('timeout'));
+    });
     upstream.on('error', (error) => {
       clearTimeout(deadline);
-      const timeout =
-        request.signal.aborted || (isConnectorError(error) && error.code === 'timeout');
-      fail(timeout ? 'timeout' : 'unavailable', timeout ? 'timeout' : 'transport_failure');
+      const code = isConnectorError(error) && error.code === 'timeout' ? 'timeout' : abortCode();
+      fail(code, code === 'unavailable' ? 'transport_failure' : code);
     });
     upstream.once('response', (response) => {
       clearTimeout(deadline);
@@ -148,10 +161,11 @@ export function binaryTransport(
             }
           } catch (error) {
             if (error instanceof ConnectorError) throw error;
-            throw new ConnectorError('unavailable', {
+            const code = abortCode();
+            throw new ConnectorError(code, {
               ...context,
               stage: 'upstream_body',
-              reason: 'transport_failure',
+              reason: code === 'unavailable' ? 'transport_failure' : code,
             });
           } finally {
             cancel();

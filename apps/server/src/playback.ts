@@ -128,13 +128,17 @@ export async function registerPlayback(
       routes.setErrorHandler((error, request, reply) => {
         if (isConnectorError(error)) {
           const status =
-            error.code === 'unsupported'
-              ? 415
-              : error.code === 'not_found'
-                ? 404
-                : error.code === 'invalid_configuration'
-                  ? 400
-                  : 502;
+            error.code === 'cancelled'
+              ? 410
+              : error.code === 'timeout'
+                ? 504
+                : error.code === 'unsupported'
+                  ? 415
+                  : error.code === 'not_found'
+                    ? 404
+                    : error.code === 'invalid_configuration'
+                      ? 400
+                      : 502;
           request.log.info(
             {
               event: 'playback.failed',
@@ -356,6 +360,10 @@ export async function registerPlayback(
               cancel = upstream.cancel;
               if (abort.signal.aborted || !active(g)) {
                 release();
+                if (reply.raw.destroyed || reply.raw.writableEnded) {
+                  reply.hijack();
+                  return;
+                }
                 return reply.code(410).send({ error: 'Playback expired', code: 'expired' });
               }
               reply.code(upstream.status);
@@ -379,7 +387,21 @@ export async function registerPlayback(
               release();
               return reply.send();
             } catch (error) {
+              // Inspect cancellation before release(), which itself aborts the request.
+              const cancelled =
+                abort.signal.aborted ||
+                !active(g) ||
+                (isConnectorError(error) && error.code === 'cancelled');
               release();
+              if (reply.raw.destroyed || reply.raw.writableEnded || reply.raw.headersSent) {
+                reply.hijack();
+                if (!reply.raw.destroyed && !reply.raw.writableEnded) reply.raw.destroy();
+                return;
+              }
+              if (cancelled)
+                return reply
+                  .code(410)
+                  .send({ error: 'Playback expired or cancelled', code: 'expired' });
               throw error;
             }
           },

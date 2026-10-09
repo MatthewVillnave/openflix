@@ -99,6 +99,7 @@ const messages: Record<ConnectorErrorCode, string> = {
   invalid_configuration: 'Invalid media server configuration.',
   unavailable: 'Media server is unavailable.',
   timeout: 'Media server request timed out.',
+  cancelled: 'Playback request was cancelled.',
   unauthorized: 'Media server authentication was rejected.',
   unsupported: 'Media server version or operation is unsupported.',
   invalid_response: 'Media server returned an invalid response.',
