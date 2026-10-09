@@ -38,7 +38,16 @@ const mark = (label) => {
 };
 let phase = 'build';
 try {
-  await compose('build', 'server', 'web', 'jellyfin-a', 'jellyfin-b', 'multiple-media', 'browser');
+  await compose(
+    'build',
+    'server',
+    'web',
+    'jellyfin-a',
+    'jellyfin-b',
+    'multiple-media-a',
+    'multiple-media-b',
+    'browser',
+  );
   phase = 'startup';
   await compose(
     'up',
@@ -48,7 +57,8 @@ try {
     'web',
     'jellyfin-a',
     'jellyfin-b',
-    'multiple-media',
+    'multiple-media-a',
+    'multiple-media-b',
   );
   const port = async (service) =>
     Number(
@@ -180,6 +190,20 @@ try {
       password: restrictedPassword,
       baseUrl: 'http://jellyfin-' + name + ':8096',
     });
+  }
+  const backendContainers = await Promise.all(
+    ['jellyfin-a', 'jellyfin-b'].map(
+      async (service) =>
+        JSON.parse(await run(['inspect', (await compose('ps', '-q', service)).trim()]))[0],
+    ),
+  );
+  for (const path of ['/config', '/cache', '/media']) {
+    const mounted = backendContainers.map((container) =>
+      container.Mounts.find((m) => m.Destination === path),
+    );
+    assert.ok(mounted.every(Boolean));
+    assert.notEqual(mounted[0].Name, mounted[1].Name, 'Independent backend volume: ' + path);
+    if (path === '/media') assert.ok(mounted.every((m) => m.RW === false));
   }
   assert.notEqual(servers[0].id, servers[1].id);
   assert.notEqual(await port('jellyfin-a'), await port('jellyfin-b'));

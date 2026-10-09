@@ -13,22 +13,25 @@ services:
     volumes:
       - jf-a-config:/config
       - jf-a-cache:/cache
-      - multiple-media:/media:ro
+      - multiple-media-a:/media:ro
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     init: true
     depends_on:
-      multiple-media:
+      multiple-media-a:
         condition: service_healthy
   jellyfin-b:
     <<: *jellyfin
     volumes:
       - jf-b-config:/config
       - jf-b-cache:/cache
-      - multiple-media:/media:ro
-  multiple-media:
+      - multiple-media-b:/media:ro
+    depends_on:
+      multiple-media-b:
+        condition: service_healthy
+  multiple-media-a: &media
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -39,11 +42,15 @@ services:
       timeout: 3s
       retries: 10
     volumes:
-      - multiple-media:/media
+      - multiple-media-a:/media
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     init: true
+  multiple-media-b:
+    <<: *media
+    volumes:
+      - multiple-media-b:/media
   browser:
     profiles: [verification]
     build:
@@ -63,4 +70,5 @@ volumes:
   jf-a-cache:
   jf-b-config:
   jf-b-cache:
-  multiple-media:
+  multiple-media-a:
+  multiple-media-b:
