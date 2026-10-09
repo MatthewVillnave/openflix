@@ -1,8 +1,10 @@
 # OpenFlix
 
-Milestones 1–3 are independently audited. [Milestone 3's published release](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.3-m3) freezes the persistent catalog verified against Jellyfin 10.11.11. This branch implements **Milestone 4: authenticated direct playback**, awaiting independent real-server integration audit. Federation and Milestone 5 are not implemented.
+Milestones 1–4 are independently accepted. [Milestone 4's audited playback release](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.4-m4) freezes the exact accepted M4 R2 source. This development branch implements **Milestone 5: multiple Jellyfin servers**, pending independent M5 acceptance. No federation or later milestone is included.
 
-Administrators can select a movie, episode or audio track and prepare playback in the catalog. Supported formats stream through OpenFlix; ordinary users remain browse-only. Playback reporting may update the connector account's Jellyfin watch state. Read [playback/security and supported formats](docs/playback.md), [M4 API baseline](docs/milestone-4-api-baseline.md), [verification](docs/milestone-4-verification.md) and [Optimus audit](docs/milestone-4-integration.md). HLS/transcoding and universal codec support are not implemented.
+Open **Unified catalog** to browse grouped movies/series/episodes and choose an indexed source/version. Existing source/library browsing remains available. Grouping is conservative: complete provider identities must agree; missing/conflicting evidence stays separate. Automatic fallback requires explicitly equivalent editions. Read [M5 identity, version and selection rules](docs/milestone-5-architecture.md), [verification and audit checklist](docs/milestone-5-verification.md), and [the design plan](docs/milestone-5-plan.md).
+
+Administrators can play movies, episodes and audio through OpenFlix. Compatible sources use direct streaming; supported incompatible video uses Jellyfin-managed HLS remux/transcoding. Ordinary users remain browse-only. Reporting may update the connector account's Jellyfin watch state. Read [supported playback](docs/milestone-4-r1-playback.md), [R2 remediation](docs/milestone-4-r2-remediation.md), and [bounded independent M4 acceptance](docs/milestone-4-audit-acceptance.md). Universal codec/device support is not claimed.
 
 Provide a private operator-generated `OPENFLIX_MASTER_KEY` (base64 of 32 random bytes), provision an OpenFlix admin with `pnpm user:create <username> --admin`, and add Jellyfin in Settings → Media Servers. Use Catalog → Sync [server] to publish accessible library metadata. All signed-in OpenFlix users can browse it; choose the connector identity accordingly. Catalog persistence survives restart without an automatic rescan.
 
@@ -73,7 +75,7 @@ docker compose logs server
 docker compose down              # preserves the named data volume
 ```
 
-Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [M4 verification](docs/milestone-4-verification.md). The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
+Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [M5 verification](docs/milestone-5-verification.md), including two independent disposable Jellyfin servers with generated media. The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
 
 ## Repository
 
@@ -92,7 +94,7 @@ scripts/                      Reproducible Docker verification
 docs/                         Architecture, security, configuration and handoff
 ```
 
-Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Catalog baseline](docs/milestone-3-api-baseline.md) records the exact official API/SDK contracts. Historical M1/M2/M3 reports remain unchanged; [M3 acceptance](docs/milestone-3-audit-acceptance.md) records the independent audit. M4 is not merged or tagged as audited.
+Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security assumptions](docs/security.md), [API](docs/api.md), [architecture notes](docs/architecture-notes.md), and [the original specification](docs/technical-specification-v0.1.txt) before continuing. [Catalog baseline](docs/milestone-3-api-baseline.md) records the exact official API/SDK contracts. Historical M1–M4 builder reports remain unchanged; later acceptance is recorded separately. M5 is not merged, tagged, or released as independently accepted.
 
 Milestone 4 R1 adds a Jellyfin-managed HLS fallback. See [R1 playback/security](docs/milestone-4-r1-playback.md), [API baseline](docs/milestone-4-r1-api-baseline.md), and [reproduction/audit checklist](docs/milestone-4-r1-verification.md). Independent household integration acceptance remains pending.
 

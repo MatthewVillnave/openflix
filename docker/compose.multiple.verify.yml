@@ -1,0 +1,66 @@
+# Only the verifier creates this randomly named, disposable two-backend project.
+services:
+  web:
+    ports: !override
+      - '127.0.0.1::8080'
+  jellyfin-a: &jellyfin
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: jellyfin-real-verification
+    ports:
+      - '127.0.0.1::8096'
+    volumes:
+      - jf-a-config:/config
+      - jf-a-cache:/cache
+      - multiple-media:/media:ro
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    depends_on:
+      multiple-media:
+        condition: service_healthy
+  jellyfin-b:
+    <<: *jellyfin
+    volumes:
+      - jf-b-config:/config
+      - jf-b-cache:/cache
+      - multiple-media:/media:ro
+  multiple-media:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: multiple-media
+    healthcheck:
+      test: [CMD, node, -e, "require('node:fs').statSync('/media/multiple-ready')"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - multiple-media:/media
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+  browser:
+    profiles: [verification]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: browser-verification
+    command: [node, docker/verify-multiple-browser.mjs]
+    environment:
+      HOME: /tmp/browser-home
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+volumes:
+  jf-a-config:
+  jf-a-cache:
+  jf-b-config:
+  jf-b-cache:
+  multiple-media:

@@ -43,6 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends chromium libnss
 RUN npm install --prefix /opt/browser --ignore-scripts playwright-core@1.62.1
 WORKDIR /app
 COPY docker/verify-browser.mjs docker/verify-browser.mjs
+COPY docker/verify-multiple-browser.mjs docker/verify-multiple-browser.mjs
 USER node
 CMD ["node", "docker/verify-browser.mjs"]
 
@@ -70,3 +71,11 @@ FROM jellyfin/jellyfin:10.11.11@sha256:aefb67e6a7ff1debdd154a78a7bbb780fd0c873d8
 USER root
 RUN mkdir -p /config /cache && chown -R 1000:1000 /config /cache && chmod 0700 /config /cache
 USER 1000:1000
+
+# Two-backend generated media, never included in deployment or review archives.
+FROM hls-media AS multiple-media
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+COPY docker/generate-multiple-media.py /fixture/
+RUN python3 /fixture/generate-multiple-media.py && chmod -R a=rX /media
+USER node
