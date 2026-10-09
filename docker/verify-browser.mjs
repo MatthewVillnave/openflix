@@ -266,6 +266,7 @@ try {
       const fixtures = expectedModes ?? [
         ['Direct Fixture', 'direct'],
         ['Remux Fixture', 'remux'],
+        ['Subtitle Fixture', 'remux'],
         ['Audio Conversion Fixture', 'transcode'],
         ['Video Conversion Fixture', 'transcode'],
       ];

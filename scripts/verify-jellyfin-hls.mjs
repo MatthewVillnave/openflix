@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
-const project = `openflix-hls-r1-${process.pid}-${randomBytes(4).toString('hex')}`;
+const project = `openflix-hls-r2-${process.pid}-${randomBytes(4).toString('hex')}`;
 const password = randomBytes(32).toString('base64url');
 const upstreamPassword = randomBytes(32).toString('base64url');
 const key = randomBytes(32).toString('base64');
@@ -107,11 +107,45 @@ try {
       undefined,
       true,
     );
-    if (items.Items.length === 4) break;
+    if (items.Items.length === 5) break;
     if (n === 119) throw new Error('Generated library scan timeout');
     await delay(1000);
   }
-  mark('Real disposable Jellyfin 10.11.11 with four generated sources');
+  mark('Real disposable Jellyfin 10.11.11 with five generated sources');
+  const generated = await api(
+    `/Users/${auth.User.Id}/Items?Recursive=true&IncludeItemTypes=Movie`,
+    undefined,
+    true,
+  );
+  const subtitleItem = generated.Items.find((item) => item.Name === 'Subtitle Fixture');
+  assert.ok(subtitleItem, 'Missing generated subtitle item');
+  const metadata = await api(
+    `/Items/${subtitleItem.Id}/PlaybackInfo?UserId=${auth.User.Id}`,
+    { UserId: auth.User.Id, IsPlayback: false, AutoOpenLiveStream: false },
+    true,
+  );
+  const subtitle = metadata.MediaSources.flatMap((source) => source.MediaStreams ?? []).find(
+    (stream) => stream.Type === 'Subtitle',
+  );
+  assert.ok(subtitle, 'Generated MKV must expose an actual subtitle stream');
+  for (const field of ['Width', 'Height'])
+    assert.ok(
+      subtitle[field] == null || subtitle[field] === 0,
+      'Unexpected generated subtitle dimension',
+    );
+  console.log(
+    JSON.stringify({
+      subtitleShape: {
+        Type: subtitle.Type,
+        Width: subtitle.Width ?? null,
+        Height: subtitle.Height ?? null,
+      },
+    }),
+  );
+  mark(
+    'Actual subtitle metadata conforms to nullable/non-video dimensions; exact zero shape also covered by contract fixture',
+  );
+
   const source = `import {openDatabase} from '@openflix/database';import {provisionUser} from './dist/auth.js';const db=openDatabase('/config/openflix.sqlite');await provisionUser(db,'hls-admin',${JSON.stringify(password)},'admin');await provisionUser(db,'hls-viewer',${JSON.stringify(password)},'user');db.close();`;
   await run(
     ['compose', '-p', project, ...files, 'exec', '-T', 'server', 'node', '--input-type=module'],
@@ -137,7 +171,7 @@ try {
     ),
   );
   assert.ok(result.passed);
-  assert.equal(result.playback.length, 4);
+  assert.equal(result.playback.length, 5);
   const afterStats = JSON.parse(
     (await run(['stats', '--no-stream', '--format', '{{json .}}', serverId])).trim(),
   );
@@ -166,6 +200,7 @@ try {
   const encodingEvidence = [];
   for (const [title, videoCopy, audioCopy] of [
     ['Remux Fixture', true, true],
+    ['Subtitle Fixture', true, true],
     ['Audio Conversion Fixture', true, false],
     ['Video Conversion Fixture', false, true],
   ]) {

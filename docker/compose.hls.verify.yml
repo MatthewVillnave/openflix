@@ -31,7 +31,7 @@ services:
         - CMD
         - node
         - -e
-        - "for (const n of ['Direct Fixture.mp4','Remux Fixture.mkv','Audio Conversion Fixture.mkv','Video Conversion Fixture.mkv']) { if (!require('node:fs').statSync('/media/generated/'+n).size) process.exit(1); }"
+        - "for (const n of ['Direct Fixture.mp4','Remux Fixture.mkv','Audio Conversion Fixture.mkv','Video Conversion Fixture.mkv','Subtitle Fixture.mkv']) { if (!require('node:fs').statSync('/media/generated/'+n).size) process.exit(1); }"
       interval: 2s
       timeout: 3s
       retries: 10
