@@ -112,7 +112,8 @@ function choose(
   const videos = (source.MediaStreams ?? []).filter((s) => s.Type === 'Video' && !s.IsExternal);
   const audios = (source.MediaStreams ?? []).filter((s) => s.Type === 'Audio' && !s.IsExternal);
   // A native element may choose a different track; require every embedded audio track to be supported.
-  if (audios.some((a) => !a.Channels || a.Channels > 2)) return;
+  if (audios.some((a) => !a.Channels || a.Channels > 2 || (a.BitDepth != null && a.BitDepth <= 0)))
+    return;
   if (videos.length === 0) {
     if (!audios.length) return;
     if (
@@ -200,6 +201,7 @@ function hlsSource(source: z.infer<typeof sourceSchema>) {
   if (
     !a.Codec ||
     !a.Channels ||
+    (a.BitDepth != null && a.BitDepth <= 0) ||
     !['h264', 'hevc', 'h265', 'vp8', 'vp9', 'av1', 'mpeg2video', 'mpeg4', 'vc1'].includes(
       v.Codec,
     ) ||

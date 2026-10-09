@@ -367,3 +367,44 @@ it.each([120, 240])(
     ).not.toHaveLength(0);
   },
 );
+
+it.each(['Channels', 'BitDepth'])(
+  'HLS does not bypass selected audio %s validation',
+  async (field) => {
+    const streams = fixture.state.playback.sources[0]!.MediaStreams as Record<string, unknown>[];
+    streams[1]![field] = 0;
+    streams.push({ Type: 'Subtitle', Index: 2, Width: 0, Height: 0 });
+    await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+    expect(fixture.state.playback.reports).toEqual([]);
+  },
+);
+
+it('retains independent line and rewritten-output budgets', async () => {
+  const p = await plan();
+  fixture.state.playback.manifest = '#EXTM3U\n' + '\n'.repeat(8192);
+  await expect(connector.openPlaybackStream(p, request())).rejects.toMatchObject({
+    diagnostic: { reason: 'manifest_line_limit' },
+  });
+  fixture.state.playback.manifest =
+    '#EXTM3U\n' +
+    Array.from({ length: 600 }, (_, n) => `#EXTINF:6,${'x'.repeat(900)}\nhls1/main/${n}.ts\n`).join(
+      '',
+    ) +
+    '#EXT-X-ENDLIST\n';
+  await expect(connector.openPlaybackStream(p, request())).rejects.toMatchObject({
+    diagnostic: { reason: 'manifest_output_limit' },
+  });
+});
+it('does not expand the resource map indefinitely across playlist reloads', async () => {
+  const p = await plan();
+  const manifest = (offset: number) =>
+    '#EXTM3U\n' +
+    Array.from({ length: 2200 }, (_, n) => `#EXTINF:6,\nhls1/main/${n + offset}.ts\n`).join('') +
+    '#EXT-X-ENDLIST\n';
+  fixture.state.playback.manifest = manifest(0);
+  await body(await connector.openPlaybackStream(p, request()));
+  fixture.state.playback.manifest = manifest(2200);
+  await expect(connector.openPlaybackStream(p, request())).rejects.toMatchObject({
+    diagnostic: { stage: 'resource_bounds', reason: 'resource_limit' },
+  });
+});

@@ -295,14 +295,17 @@ it.each([
   });
   await expect(plan()).rejects.toMatchObject({ code: 'invalid_response' });
 });
-it('non-video zero fields cannot bypass selected audio channel validation', async () => {
-  const source = playbackSource();
-  const streams = source.MediaStreams as Record<string, unknown>[];
-  streams[1]!.Channels = 0;
-  streams.push({ Type: 'Subtitle', Index: 2, Width: 0, Height: 0 });
-  fixture.state.playback.sources = [source];
-  await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
-});
+it.each(['Channels', 'BitDepth'])(
+  'non-video zero fields cannot bypass selected audio %s validation',
+  async (field) => {
+    const source = playbackSource();
+    const streams = source.MediaStreams as Record<string, unknown>[];
+    streams[1]![field] = 0;
+    streams.push({ Type: 'Subtitle', Index: 2, Width: 0, Height: 0 });
+    fixture.state.playback.sources = [source];
+    await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+  },
+);
 it.each(['Subtitle', 'Data', 'UnknownFutureType'])('never plays unused type %s', async (Type) => {
   fixture.state.playback.sources = [
     { ...playbackSource(), MediaStreams: [{ Type, Index: 0, Width: 0, Height: 0 }] },
