@@ -222,3 +222,19 @@ it('accepts Jellyfin 10.11.11 AAC Level zero without weakening video constraints
   streams[0]!.Level = 0;
   await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
 });
+
+it('R2 reproduction: zero-dimension subtitle metadata does not block valid video/audio', async () => {
+  const source = playbackSource();
+  (source.MediaStreams as Record<string, unknown>[]).push({
+    Type: 'Subtitle',
+    Index: 2,
+    Codec: 'subrip',
+    Width: 0,
+    Height: 0,
+    IsExternal: false,
+  });
+  fixture.state.playback.sources = [source];
+  await expect(plan()).resolves.toMatchObject({ mode: 'direct', kind: 'video', durationMs: 12000 });
+  expect(fixture.state.playback.reports).toHaveLength(0);
+  expect(fixture.state.playback.streamRequests).toHaveLength(0);
+});
