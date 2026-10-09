@@ -16,7 +16,7 @@ node scripts/verify-docker.mjs
 node scripts/verify-jellyfin-hls.mjs
 ```
 
-On Linux use a runtime-owned private temporary directory beneath a trusted ancestor, normally the system temporary directory. The historical Docker verifier retains all 24 M1–M4 groups, including real generated direct media decoding and a 4 GiB virtual streaming resource/cancellation check. The new real-Jellyfin verifier builds a separate, uniquely named production/test stack and performs five additional verification groups. CI runs both scripts.
+On Linux use a runtime-owned private temporary directory beneath a trusted ancestor, normally the system temporary directory. The historical Docker verifier retains all 24 M1–M4 groups and adds a backend-DNS recovery group, including real generated direct media decoding and a 4 GiB virtual streaming resource/cancellation check. The new real-Jellyfin verifier builds a separate, uniquely named production/test stack and performs five additional verification groups. CI runs both scripts.
 
 The actual Jellyfin suite uses pinned official 10.11.11, generated 18-second H264/AAC MP4, H264/AAC MKV, H264/six-channel AC3 MKV and HEVC/AAC MKV. The verifier initializes only its own disposable server, disables remote metadata fetchers, authenticates, discovers and synchronizes generated movies, and runs Chromium over trusted test HTTPS. It checks decode/currentTime progression, pause/resume and seeking through OpenFlix, expected playback modes, original-login/logout rejection, ordinary-user denial, scoped cleanup and actual Jellyfin FFmpeg copy/re-encode command evidence. No household URL is accepted by the script.
 

@@ -583,6 +583,27 @@ try {
       'persistent-config',
     );
   };
+  phase = 'backend DNS recovery';
+  await prod('stop', '--timeout', '15', 'server');
+  await prod('rm', '-f', 'server');
+  await prod('restart', 'web');
+  let staticReady = false;
+  for (let i = 0; i < 30; i++) {
+    try {
+      if ((await request('/')).status === 200) {
+        staticReady = true;
+        break;
+      }
+    } catch {
+      /* Nginx startup */
+    }
+    await delay(200);
+  }
+  assert.ok(staticReady, 'Frontend must start without a DNS-resolvable backend');
+  assert.ok([502, 503].includes((await request('/health')).status));
+  await prod('up', '-d', '--wait', '--wait-timeout', '120');
+  await verifyPersistence();
+  mark('Nginx starts without backend DNS and recovers after server recreation');
   phase = 'restart';
   await logs();
   // Simulate a database restored with permissive mode bits, using test data only.

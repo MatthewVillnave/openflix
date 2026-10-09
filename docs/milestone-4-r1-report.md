@@ -19,7 +19,7 @@ Commands and prerequisites are in `milestone-4-r1-verification.md`.
 | Full `pnpm check`                                    | 302/302 tests, 23 suites; formatting, production builds and type checks pass              |
 | Targeted HLS/playback/player                         | 108/108 tests, four suites                                                                |
 | Explicit storage/auth/credential/catalog regressions | 94/94 tests, seven suites                                                                 |
-| Historical Docker verifier                           | 24/24 groups, including Linux full check with 302 tests                                   |
+| Historical Docker verifier                           | 25/25 groups (24 preserved plus DNS recovery), including Linux full check with 302 tests  |
 | Real disposable Jellyfin verifier                    | 5/5 groups                                                                                |
 | Production and complete dependency audits            | Both report no known vulnerabilities                                                      |
 | Actual audited M3 → current startup                  | Users, login, encrypted credential, catalog IDs, migration ledger and integrity preserved |
@@ -37,7 +37,7 @@ Real-server startup, authentication, catalog discovery/sync, ordinary-user denia
 
 The virtual 4 GiB streaming regression received at least 16 MiB, observed zero RSS growth in this run, and cancelled upstream; its threshold remains 96 MiB. OpenFlix server memory in the real HLS run changed from 60.62 MiB to 75.71 MiB. This is a sanity check, not a production benchmark or a measurement of OptiPlex transcoding capacity.
 
-An earlier Docker run failed strict parsing of a non-JSON log line. A private mode-0600 diagnostic capture was added without weakening assertions; the final complete run passed. The transient cause remains undetermined. Intermediate encoding-contract differences (GUID representation, AAC Level zero, input-codec parameters and libfdk_aac encoder naming) were resolved against official implementation and real fixture evidence, with regressions retained.
+Frozen-copy verification captured the earlier non-JSON log failure: Nginx startup could fail when Docker DNS temporarily lacked the backend name. The production proxy now uses a shared runtime-resolved upstream through Docker's embedded resolver, supported by the pinned Nginx version. A new regression removes the backend, restarts the frontend without that DNS name, checks a safe unavailable response, then recreates the backend and verifies recovery/persistence. Existing strict log/error assertions remain unchanged. The earlier candidate archive is retained separately and is not the final R1 artifact. Intermediate encoding-contract differences (GUID representation, AAC Level zero, input-codec parameters and libfdk_aac encoder naming) were resolved against official implementation and real fixture evidence, with regressions retained.
 
 ## Security and architecture
 
