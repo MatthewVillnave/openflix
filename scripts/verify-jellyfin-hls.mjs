@@ -300,7 +300,7 @@ try {
   const logs = await compose('logs', '--no-color', 'server');
   for (const secret of [password, upstreamPassword, token, key]) assert.ok(!logs.includes(secret));
   mark('Restart/recreation and secret-safe OpenFlix logs');
-  console.log('Real Jellyfin HLS verification: 5/5 groups passed');
+  console.log('Real Jellyfin HLS verification: 6/6 groups passed');
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;
