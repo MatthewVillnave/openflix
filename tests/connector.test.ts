@@ -24,6 +24,8 @@ it('preserves the normalized async connector contract at compile time', () => {
     | 'search'
     | 'getPlaybackInfo'
     | 'openPlaybackStream'
+    | 'openPlaybackResource'
+    | 'closePlayback'
     | 'reportPlaybackStart'
     | 'reportPlaybackProgress'
     | 'reportPlaybackStop'

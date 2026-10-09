@@ -30,6 +30,9 @@ importers:
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3
+      hls.js:
+        specifier: 1.7.3
+        version: 1.7.3
       jsdom:
         specifier: ^27.0.0
         version: 27.4.0
@@ -106,6 +109,9 @@ importers:
       '@openflix/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      hls.js:
+        specifier: 1.7.3
+        version: 1.7.3
       react:
         specifier: ^19.0.0
         version: 19.3.0
@@ -1129,6 +1135,9 @@ packages:
   helmet@8.3.0:
     resolution: {integrity: sha512-Qgpiaws3Sm30Av8Eah6sjMCZZwjlBu+E68rhpCWBshY1lb09HtLwj5GviX0OyQIn+ulUS0iX0AxN5n3tLZzz1w==}
     engines: {node: '>=18.0.0'}
+
+  hls.js@1.7.3:
+    resolution: {integrity: sha512-MsPlx6yVW4Qv4C7mEVou4/gk/5cN2dVxOTnrNjPSmyH2f0Ln+/UkG10Ax1PE6OvrmTVPKgQYozTtBaPOuCzq7A==}
 
   html-encoding-sniffer@6.0.0:
     resolution: {integrity: sha512-CV9TW3Y3f8/wT0BRFc1/KAVQ3TUHiXmaAb6VW9vtiMFf7SLoMd1PdAc4W3KFOFETBJUb90KatHqlsZMWV+R9Gg==}
@@ -2443,6 +2452,8 @@ snapshots:
       function-bind: 1.1.2
 
   helmet@8.3.0: {}
+
+  hls.js@1.7.3: {}
 
   html-encoding-sniffer@6.0.0:
     dependencies:

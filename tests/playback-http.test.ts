@@ -11,7 +11,7 @@ import { authenticateJellyfin } from '../packages/connector-jellyfin/dist/index.
 import type { PlaybackView, MediaType } from '../packages/shared/dist/index.js';
 import { temporaryConfig } from './helpers.js';
 import { jellyfinFixture, libraryId, upstreamPassword } from './jellyfin-fixture.js';
-import { playbackItemId, playbackSource } from './playback-fixture.js';
+import { playbackItemId, playbackSource, sourceId, playSessionId } from './playback-fixture.js';
 const origin = 'https://openflix.example';
 let local: ReturnType<typeof temporaryConfig>,
   upstream: Awaited<ReturnType<typeof jellyfinFixture>>;
@@ -410,4 +410,103 @@ it('normalizes reporting failure and permits cleanup without persisting playback
   expect((await post(`/sessions/${s.id}/stop`, {})).statusCode).toBe(204);
   for (const secret of [upstream.state.token, upstreamPassword, local.config.masterKey!])
     expect(logs).not.toContain(secret);
+});
+
+async function preparedHls() {
+  upstream.state.playback.hls = true;
+  upstream.state.playback.sources = [
+    {
+      ...playbackSource(),
+      Container: 'mkv',
+      SupportsDirectPlay: false,
+      SupportsTranscoding: true,
+      TranscodingUrl: `/videos/${playbackItemId}/master.m3u8?DeviceId=source&MediaSourceId=${sourceId}&PlaySessionId=${playSessionId}&VideoCodec=h264&AudioCodec=aac&SegmentContainer=ts&ApiKey=${upstream.state.token}`,
+    },
+  ];
+  const r = await post('/sessions', {
+    itemId,
+    profile: { formats: ['mp4-h264-aac', 'hls-h264-aac'] },
+  });
+  expect(r.statusCode).toBe(201);
+  return r.json<PlaybackView>();
+}
+it('authorizes every HLS manifest/segment with role and original login binding', async () => {
+  const g = await preparedHls();
+  const root = await app.inject({ url: g.streamPath, headers: { cookie: admin } });
+  expect(root.statusCode).toBe(200);
+  const child = root.body.split('\n').find((s) => s.startsWith('/api/'))!;
+  const media = await app.inject({ url: child, headers: { cookie: admin } });
+  expect(media.statusCode).toBe(200);
+  const segment = media.body.split('\n').find((s) => s.startsWith('/api/'))!;
+  for (const url of [g.streamPath, child, segment]) {
+    expect((await app.inject({ url })).statusCode).toBe(401);
+    expect((await app.inject({ url, headers: { cookie: viewer } })).statusCode).toBe(403);
+    expect((await app.inject({ url, headers: { cookie: other } })).statusCode).toBe(410);
+  }
+  expect((await app.inject({ url: segment, headers: { cookie: admin } })).statusCode).toBe(200);
+  expect(root.body + media.body + logs).not.toContain(upstream.state.token);
+});
+it('revokes HLS segments on logout and connector removal', async () => {
+  const g = await preparedHls();
+  await app.inject({ url: g.streamPath, headers: { cookie: admin } });
+  db.revokeSession(tokenDigest(admin.split('=')[1]!));
+  expect((await app.inject({ url: g.streamPath, headers: { cookie: admin } })).statusCode).toBe(
+    401,
+  );
+  db.removeConnector('source');
+  expect((await app.inject({ url: g.streamPath, headers: { cookie: other } })).statusCode).toBe(
+    410,
+  );
+});
+it('rejects forged HLS resource identifiers, query injection and source switching', async () => {
+  const g = await preparedHls();
+  expect(
+    (
+      await app.inject({
+        url: `/api/v1/playback/sessions/${g.id}/resources/${'0'.repeat(32)}`,
+        headers: { cookie: admin },
+      })
+    ).statusCode,
+  ).toBe(404);
+  expect(
+    (
+      await app.inject({
+        url: g.streamPath + '?url=https://evil.invalid',
+        headers: { cookie: admin },
+      })
+    ).statusCode,
+  ).toBe(400);
+  expect(
+    (
+      await app.inject({
+        url: `/api/v1/playback/sessions/${g.id}/resources/%2e%2e`,
+        headers: { cookie: admin },
+      })
+    ).statusCode,
+  ).toBe(404);
+});
+it('stop cancels HLS and scopes cleanup without waiting for a start report', async () => {
+  const g = await preparedHls();
+  expect((await post(`/sessions/${g.id}/stop`, {})).statusCode).toBe(204);
+  await delay(30);
+  expect(upstream.state.playback.cleanup).toHaveLength(1);
+  expect((await app.inject({ url: g.streamPath, headers: { cookie: admin } })).statusCode).toBe(
+    410,
+  );
+});
+
+it('HLS expiry and restart invalidate grants while persisted credentials remain usable', async () => {
+  const g = await preparedHls();
+  const now = Date.now();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now + 301000);
+  expect((await app.inject({ url: g.streamPath, headers: { cookie: admin } })).statusCode).toBe(
+    410,
+  );
+  clock.mockRestore();
+  await app.close();
+  app = await buildApp(local.config);
+  expect((await app.inject({ url: g.streamPath, headers: { cookie: admin } })).statusCode).toBe(
+    410,
+  );
+  expect((await preparedHls()).mode).toBe('remux');
 });

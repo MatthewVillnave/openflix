@@ -1,9 +1,10 @@
+import Hls from 'hls.js';
 import { useEffect, useRef, useState } from 'react';
 import type { CatalogItem, PlaybackFormat, PlaybackView } from '@openflix/shared';
 import { playbackFormats } from '@openflix/shared';
 const message = (status: number) =>
   status === 415
-    ? 'This format cannot be played directly by this browser. M4 does not transcode media.'
+    ? 'This source cannot be played with the supported direct or HLS profiles.'
     : status === 401 || status === 403
       ? 'Your account is not authorized for playback.'
       : status === 410
@@ -22,6 +23,9 @@ async function mutation<T>(path: string, body: unknown, keepalive = false): Prom
   if (!response.ok) throw new Error(message(response.status));
   return response.status === 204 ? (undefined as T) : (response.json() as Promise<T>);
 }
+const nativeHls = (node: HTMLMediaElement) =>
+  Boolean(node.canPlayType('application/vnd.apple.mpegurl')) &&
+  (/Apple/.test(navigator.vendor) || !Hls.isSupported());
 export function Player({ item }: { item: CatalogItem }) {
   const [session, setSession] = useState<PlaybackView | null>(null);
   const [error, setError] = useState('');
@@ -44,13 +48,15 @@ export function Player({ item }: { item: CatalogItem }) {
     setError('');
     const video = document.createElement('video'),
       audio = document.createElement('audio');
-    const formats = (Object.keys(playbackFormats) as PlaybackFormat[]).filter(
-      (f) =>
-        (playbackFormats[f].startsWith('video') ? video : audio).canPlayType(playbackFormats[f]) !==
-        '',
+    const formats = (Object.keys(playbackFormats) as PlaybackFormat[]).filter((f) =>
+      f === 'hls-h264-aac'
+        ? video.canPlayType(playbackFormats[f]) !== '' || Hls.isSupported()
+        : (playbackFormats[f].startsWith('video') ? video : audio).canPlayType(
+            playbackFormats[f],
+          ) !== '',
     );
     if (!formats.length) {
-      setError('This browser does not support the M4 direct playback formats.');
+      setError('This browser does not support the supported playback formats.');
       setLoading(false);
       return;
     }
@@ -117,6 +123,30 @@ export function Player({ item }: { item: CatalogItem }) {
   useEffect(() => {
     if (!session) return;
     const node = media.current;
+    let hls: Hls | undefined;
+    if (node && session.mode !== 'direct' && nativeHls(node)) node.src = session.streamPath;
+    if (node && session.mode !== 'direct' && !nativeHls(node)) {
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          enableWorker: false,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          maxBufferSize: 30 * 1024 * 1024,
+          backBufferLength: 30,
+        });
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal && mounted.current) {
+            setError('HLS playback failed. Return to the catalog and retry.');
+            setSession(null);
+          }
+        });
+        hls.attachMedia(node);
+        hls.loadSource(session.streamPath);
+      } else {
+        setError('HLS is unsupported in this browser.');
+        setSession(null);
+      }
+    }
     const timer = setInterval(() => {
       void report();
     }, 15000);
@@ -128,6 +158,7 @@ export function Player({ item }: { item: CatalogItem }) {
       if (activeSession.current === session.id) activeSession.current = null;
       clearInterval(timer);
       window.removeEventListener('pagehide', stop);
+      hls?.destroy();
       node?.pause();
       node?.removeAttribute('src');
       node?.load();
@@ -138,7 +169,7 @@ export function Player({ item }: { item: CatalogItem }) {
   const events = {
     controls: true,
     preload: 'metadata' as const,
-    src: session?.streamPath,
+    src: session?.mode === 'direct' ? session.streamPath : undefined,
     onPlaying: () => {
       setStatus('Playing');
       void report(true);
@@ -172,6 +203,7 @@ export function Player({ item }: { item: CatalogItem }) {
       ) : (
         <>
           <h4>{item.title}</h4>
+          <p>Playback mode: {session.mode}</p>
           {session.kind === 'video' ? (
             <video ref={media} playsInline {...events} aria-label="Video player" />
           ) : (

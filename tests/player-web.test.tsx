@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import Hls from 'hls.js';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { Player } from '../apps/web/src/Player.js';
@@ -49,7 +50,7 @@ it('prepares only a catalog identity and bounded capabilities, then reports actu
   expect(view.container.querySelector('script')).toBeNull();
   expect(JSON.parse(fetch.mock.calls[0]![1]!.body as string)).toEqual({
     itemId: item.id,
-    profile: { formats: ['mp4-h264-aac', 'webm-vp8-opus', 'mp3', 'wav'] },
+    profile: { formats: ['hls-h264-aac', 'mp4-h264-aac', 'webm-vp8-opus', 'mp3', 'wav'] },
   });
   Object.defineProperty(media, 'currentTime', { value: 3.5, configurable: true });
   Object.defineProperty(media, 'paused', { value: false, configurable: true });
@@ -72,7 +73,9 @@ it('shows unsupported media clearly without loading a stream', async () => {
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 415 }));
   render(<Player item={item} />);
   fireEvent.click(screen.getByRole('button', { name: 'Prepare playback' }));
-  expect((await screen.findByRole('alert')).textContent).toContain('does not transcode');
+  expect((await screen.findByRole('alert')).textContent).toContain(
+    'supported direct or HLS profiles',
+  );
   expect(screen.queryByLabelText('Video player')).toBeNull();
 });
 it('never loads a privileged or arbitrary server-provided URL', async () => {
@@ -104,4 +107,54 @@ it('renders native audio controls and stops the session when navigating away', a
   await waitFor(() =>
     expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/stop'))).toBe(true),
   );
+});
+
+it('uses native HLS on capable browsers with same-origin URL and inline playback', async () => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(
+    async (url) =>
+      new Response(
+        String(url).endsWith('/sessions')
+          ? JSON.stringify({
+              ...session,
+              mode: 'remux',
+              contentType: 'application/vnd.apple.mpegurl',
+            })
+          : null,
+        { status: String(url).endsWith('/sessions') ? 201 : 204 },
+      ),
+  );
+  render(<Player item={item} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Prepare playback' }));
+  const media = await screen.findByLabelText('Video player');
+  await waitFor(() => expect(media.getAttribute('src')).toBe(session.streamPath));
+  expect(media.hasAttribute('playsinline')).toBe(true);
+});
+it('attaches and destroys HLS.js when native HLS is unavailable', async () => {
+  vi.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockImplementation((type) =>
+    type === 'application/vnd.apple.mpegurl' ? '' : 'probably',
+  );
+  vi.spyOn(Hls, 'isSupported').mockReturnValue(true);
+  const attach = vi.spyOn(Hls.prototype, 'attachMedia').mockImplementation(() => {});
+  const load = vi.spyOn(Hls.prototype, 'loadSource').mockImplementation(() => {});
+  const destroy = vi.spyOn(Hls.prototype, 'destroy').mockImplementation(() => {});
+  vi.spyOn(globalThis, 'fetch').mockImplementation(
+    async (url) =>
+      new Response(
+        String(url).endsWith('/sessions')
+          ? JSON.stringify({
+              ...session,
+              mode: 'transcode',
+              contentType: 'application/vnd.apple.mpegurl',
+            })
+          : null,
+        { status: String(url).endsWith('/sessions') ? 201 : 204 },
+      ),
+  );
+  const view = render(<Player item={item} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Prepare playback' }));
+  await screen.findByLabelText('Video player');
+  expect(attach).toHaveBeenCalledOnce();
+  expect(load).toHaveBeenCalledWith(session.streamPath);
+  view.unmount();
+  expect(destroy).toHaveBeenCalledOnce();
 });

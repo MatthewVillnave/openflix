@@ -212,3 +212,13 @@ it.each([{ Channels: -1 }, { Width: -1 }, { Height: 0 }, { AverageFrameRate: 0 }
     await expect(plan()).rejects.toMatchObject({ code: 'invalid_response' });
   },
 );
+
+it('accepts Jellyfin 10.11.11 AAC Level zero without weakening video constraints', async () => {
+  const source = playbackSource();
+  const streams = source.MediaStreams as Record<string, unknown>[];
+  streams[1]!.Level = 0;
+  fixture.state.playback.sources = [source];
+  expect((await plan()).mode).toBe('direct');
+  streams[0]!.Level = 0;
+  await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+});

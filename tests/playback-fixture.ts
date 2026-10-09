@@ -29,7 +29,7 @@ export function playbackSource(kind: 'video' | 'audio' = 'video'): Record<string
               Height: 180,
               VideoRangeType: 'SDR',
             },
-            { Type: 'Audio', Index: 1, Codec: 'aac', Profile: 'LC', Channels: 2 },
+            { Type: 'Audio', Index: 1, Codec: 'aac', Profile: 'LC', Channels: 2, Level: 0 },
           ]
         : [{ Type: 'Audio', Index: 0, Codec: 'pcm_s16le', Channels: 1 }],
   };
@@ -38,6 +38,12 @@ export function playbackFixtureState() {
   return {
     sources: [playbackSource()],
     forbidden: false,
+    hls: false,
+    manifest:
+      '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000,CODECS="avc1.640028,mp4a.40.2"\nmain.m3u8\n',
+    mediaManifest:
+      '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:6,\nhls1/main/0.ts\n#EXTINF:6,\nhls1/main/1.ts\n#EXT-X-ENDLIST\n',
+    cleanup: [] as string[],
     reports: [] as { path: string; body: Record<string, unknown> }[],
     reportFailure: false,
     streamMode: 'normal' as
@@ -69,8 +75,7 @@ export function servePlayback(
   if (/\/Items\/[^/]+\/PlaybackInfo$/.test(url.pathname)) {
     const input = JSON.parse(body);
     if (
-      input.EnableTranscoding !== false ||
-      input.EnableDirectStream !== false ||
+      (!state.hls && (input.EnableTranscoding !== false || input.EnableDirectStream !== false)) ||
       input.AutoOpenLiveStream !== false ||
       !input.UserId
     ) {
@@ -85,6 +90,50 @@ export function servePlayback(
     state.reports.push({ path: url.pathname, body: JSON.parse(body) });
     res.writeHead(state.reportFailure ? 503 : 204);
     res.end();
+    return true;
+  }
+  if (url.pathname.endsWith('/Videos/ActiveEncodings') && req.method === 'DELETE') {
+    state.cleanup.push(url.search);
+    res.writeHead(204);
+    res.end();
+    return true;
+  }
+  if (
+    /\/videos\/[^/]+\/(master\.m3u8|main\.m3u8|hls1\/main\/(?:-1|\d+)\.(?:ts|mp4))$/i.test(
+      url.pathname,
+    )
+  ) {
+    if (state.streamMode === 'redirect') {
+      res.writeHead(302, { location: 'https://credential-trap.invalid' });
+      res.end();
+      return true;
+    }
+    if (state.streamMode === 'error') {
+      json({ secret: 'must-not-escape' }, 500);
+      return true;
+    }
+    if (url.pathname.endsWith('.m3u8')) {
+      res.writeHead(200, {
+        'content-type': state.streamMode === 'html' ? 'text/html' : 'application/vnd.apple.mpegurl',
+      });
+      res.end(url.pathname.endsWith('master.m3u8') ? state.manifest : state.mediaManifest);
+      return true;
+    }
+    if (state.streamMode === 'slow') {
+      res.writeHead(200, { 'content-type': 'video/mp2t' });
+      res.write(state.bytes);
+      const timer = setInterval(() => res.write(state.bytes), 50);
+      res.once('close', () => {
+        state.cancelled++;
+        clearInterval(timer);
+      });
+      return true;
+    }
+    res.writeHead(200, {
+      'content-type': url.pathname.endsWith('.ts') ? 'video/mp2t' : 'video/mp4',
+      'content-length': state.bytes.length,
+    });
+    res.end(req.method === 'HEAD' ? undefined : state.bytes);
     return true;
   }
   if (!/\/(Videos|Audio)\/[^/]+\/stream$/.test(url.pathname)) return false;

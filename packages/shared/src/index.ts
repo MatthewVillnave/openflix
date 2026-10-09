@@ -124,7 +124,9 @@ export interface CatalogSyncStatus {
 }
 
 /** Explicit browser capabilities; no client-selected upstream URL/source. */
+export type PlaybackMode = 'direct' | 'remux' | 'transcode';
 export const playbackFormats = {
+  'hls-h264-aac': 'application/vnd.apple.mpegurl',
   'mp4-h264-aac': 'video/mp4; codecs="avc1.640029, mp4a.40.2"',
   'webm-vp8-opus': 'video/webm; codecs="vp8, opus"',
   mp3: 'audio/mpeg',
@@ -135,7 +137,7 @@ export interface PlaybackView {
   id: string;
   itemId: string;
   kind: 'video' | 'audio';
-  mode: 'direct';
+  mode: PlaybackMode;
   contentType: string;
   durationMs: number;
   expiresAt: number;

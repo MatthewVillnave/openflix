@@ -64,6 +64,8 @@ function source(
     search: unsupported,
     getPlaybackInfo: unsupported,
     openPlaybackStream: unsupported,
+    openPlaybackResource: unsupported,
+    closePlayback: async () => {},
     reportPlaybackStart: unsupported,
     reportPlaybackProgress: unsupported,
     reportPlaybackStop: unsupported,

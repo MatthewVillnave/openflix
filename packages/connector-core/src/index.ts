@@ -1,6 +1,7 @@
 import type { Readable } from 'node:stream';
 import type {
   PlaybackFormat,
+  PlaybackMode,
   Library,
   MediaItem,
   ConnectorServerInfo,
@@ -18,7 +19,8 @@ export interface PlaybackInfo {
   sourceId: string;
   sessionId: string;
   kind: 'video' | 'audio';
-  mode: 'direct';
+  mode: PlaybackMode;
+  videoTranscoded?: boolean;
   contentType: string;
   durationMs: number;
 }
@@ -29,11 +31,14 @@ export interface PlaybackSession {
   positionMs: number;
   durationMs: number;
   paused: boolean;
+  mode?: PlaybackMode;
+  videoTranscoded?: boolean;
 }
 export interface PlaybackStreamRequest {
   method: 'GET' | 'HEAD';
   range?: string;
   signal: AbortSignal;
+  resourceBase?: string;
 }
 export interface PlaybackStream {
   status: 200 | 206 | 416;
@@ -54,6 +59,12 @@ export interface MediaConnector {
   search(query: string): Promise<MediaItem[]>;
   getPlaybackInfo(itemId: string, clientProfile: ClientProfile): Promise<PlaybackInfo>;
   openPlaybackStream(plan: PlaybackInfo, request: PlaybackStreamRequest): Promise<PlaybackStream>;
+  openPlaybackResource(
+    plan: PlaybackInfo,
+    resourceId: string,
+    request: PlaybackStreamRequest,
+  ): Promise<PlaybackStream>;
+  closePlayback(plan: PlaybackInfo): Promise<void>;
   reportPlaybackStart(session: PlaybackSession): Promise<void>;
   reportPlaybackProgress(session: PlaybackSession): Promise<void>;
   reportPlaybackStop(session: PlaybackSession): Promise<void>;

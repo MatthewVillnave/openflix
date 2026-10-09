@@ -38,6 +38,8 @@ interface Grant {
   started: boolean;
   reporting: boolean;
   streams: Set<AbortController>;
+  requestWindow: number;
+  requestCount: number;
 }
 /** Small in-process broker; no credential/URL/session persistence and no catalog-based implicit permission. */
 export async function registerPlayback(
@@ -58,20 +60,26 @@ export async function registerPlayback(
     durationMs: g.plan.durationMs,
     positionMs: g.positionMs,
     paused: g.paused,
+    mode: g.plan.mode,
+    videoTranscoded: g.plan.videoTranscoded ?? false,
   });
   const retire = (g: Grant) => {
     if (!grants.delete(g.id)) return;
     for (const abort of g.streams) abort.abort();
-    if (g.started) {
-      const job = g.connector.reportPlaybackStop(state(g)).catch(() => {
-        app.log.info(
-          { event: 'playback.cleanup_unconfirmed' },
-          'Upstream playback cleanup unconfirmed',
-        );
-      });
-      cleanup.add(job);
-      void job.finally(() => cleanup.delete(job));
-    }
+    const job = (async () => {
+      try {
+        if (g.started) await g.connector.reportPlaybackStop(state(g));
+      } finally {
+        await g.connector.closePlayback(g.plan);
+      }
+    })().catch(() =>
+      app.log.info(
+        { event: 'playback.cleanup_unconfirmed' },
+        'Upstream playback cleanup unconfirmed',
+      ),
+    );
+    cleanup.add(job);
+    void job.finally(() => cleanup.delete(job));
   };
   const active = (g: Grant) => {
     const now = Date.now();
@@ -163,7 +171,7 @@ export async function registerPlayback(
                     formats: {
                       type: 'array',
                       minItems: 1,
-                      maxItems: 4,
+                      maxItems: 5,
                       uniqueItems: true,
                       items: { type: 'string', enum: Object.keys(playbackFormats) },
                     },
@@ -222,6 +230,8 @@ export async function registerPlayback(
               started: false,
               reporting: false,
               streams: new Set(),
+              requestWindow: now,
+              requestCount: 0,
             };
             // Revalidate after upstream awaits: logout/removal/expiry must not race initialization.
             if (!active(g))
@@ -235,7 +245,7 @@ export async function registerPlayback(
               id: g.id,
               itemId: item.id,
               kind: plan.kind,
-              mode: 'direct',
+              mode: plan.mode,
               contentType: plan.contentType,
               durationMs: plan.durationMs,
               expiresAt: g.expiresAt,
@@ -256,69 +266,99 @@ export async function registerPlayback(
         }
         return g;
       };
-      routes.route<{ Params: { id: string } }>({
-        method: ['GET', 'HEAD'],
-        url: '/sessions/:id/stream',
-        exposeHeadRoute: false,
-        schema: { params: schemaId, querystring: emptyQuery },
-        handler: async (request, reply) => {
-          const g = find(request.params.id, request.cookies[config.cookieName]);
-          if (!g)
-            return reply
-              .code(410)
-              .send({ error: 'Playback session expired or unavailable', code: 'expired' });
-          const range = request.headers.range;
-          if (
-            range !== undefined &&
-            (range.length > 40 ||
-              !/^bytes=(\d{0,15})-(\d{0,15})$/.test(range) ||
-              range === 'bytes=-' ||
-              range === 'bytes=-0' ||
-              (range.match(/^bytes=(\d+)-(\d+)$/) &&
-                Number(range.split('=')[1]!.split('-')[0]) > Number(range.split('-')[1])))
-          )
-            return reply
-              .code(416)
-              .send({ error: 'Only one valid byte range is supported', code: 'invalid_range' });
-          if (
-            g.streams.size >= 2 ||
-            [...grants.values()].reduce((n, v) => n + v.streams.size, 0) >= 16
-          )
-            return reply.code(429).send({ error: 'Too many active streams', code: 'busy' });
-          const abort = new AbortController();
-          g.streams.add(abort);
-          let cancel: (() => void) | undefined;
-          const release = () => {
-            abort.abort();
-            cancel?.();
-            g.streams.delete(abort);
-          };
-          reply.raw.once('close', release);
-          request.raw.once('aborted', release);
-          try {
-            const upstream = await g.connector.openPlaybackStream(g.plan, {
-              method: request.method as 'GET' | 'HEAD',
-              ...(range ? { range } : {}),
-              signal: abort.signal,
-            });
-            cancel = upstream.cancel;
-            if (abort.signal.aborted || !active(g)) {
-              release();
-              return reply.code(410).send({ error: 'Playback expired', code: 'expired' });
+      for (const resource of [false, true])
+        routes.route<{ Params: { id: string; resource?: string } }>({
+          method: ['GET', 'HEAD'],
+          url: resource ? '/sessions/:id/resources/:resource' : '/sessions/:id/stream',
+          config: { rateLimit: { max: 240, timeWindow: '1 minute' } },
+          exposeHeadRoute: false,
+          schema: {
+            params: resource
+              ? {
+                  ...schemaId,
+                  required: ['id', 'resource'],
+                  properties: {
+                    ...schemaId.properties,
+                    resource: { type: 'string', pattern: '^[a-f0-9]{32}$' },
+                  },
+                }
+              : schemaId,
+            querystring: emptyQuery,
+          },
+          handler: async (request, reply) => {
+            const g = find(request.params.id, request.cookies[config.cookieName]);
+            if (!g)
+              return reply
+                .code(410)
+                .send({ error: 'Playback session expired or unavailable', code: 'expired' });
+            if (Date.now() - g.requestWindow >= 60000) {
+              g.requestWindow = Date.now();
+              g.requestCount = 0;
             }
-            reply.code(upstream.status);
-            for (const [key, value] of Object.entries(upstream.headers)) reply.header(key, value);
-            reply.header('Cache-Control', 'private, no-store, no-transform');
-            reply.header('X-Accel-Buffering', 'no');
-            if (upstream.body) return reply.send(upstream.body);
-            release();
-            return reply.send();
-          } catch (error) {
-            release();
-            throw error;
-          }
-        },
-      });
+            if (++g.requestCount > 120)
+              return reply
+                .code(429)
+                .send({ error: 'Playback request limit reached', code: 'busy' });
+            const range = request.headers.range;
+            if (
+              range !== undefined &&
+              (range.length > 40 ||
+                !/^bytes=(\d{0,15})-(\d{0,15})$/.test(range) ||
+                range === 'bytes=-' ||
+                range === 'bytes=-0' ||
+                (range.match(/^bytes=(\d+)-(\d+)$/) &&
+                  Number(range.split('=')[1]!.split('-')[0]) > Number(range.split('-')[1])))
+            )
+              return reply
+                .code(416)
+                .send({ error: 'Only one valid byte range is supported', code: 'invalid_range' });
+            if (
+              g.streams.size >= (g.plan.mode === 'direct' ? 2 : 6) ||
+              [...grants.values()].reduce((n, v) => n + v.streams.size, 0) >= 32
+            )
+              return reply.code(429).send({ error: 'Too many active streams', code: 'busy' });
+            const abort = new AbortController();
+            g.streams.add(abort);
+            let cancel: (() => void) | undefined;
+            const release = () => {
+              abort.abort();
+              cancel?.();
+              g.streams.delete(abort);
+            };
+            reply.raw.once('close', release);
+            request.raw.once('aborted', release);
+            try {
+              const streamRequest = {
+                method: request.method as 'GET' | 'HEAD',
+                ...(range ? { range } : {}),
+                signal: abort.signal,
+                resourceBase: `/api/v1/playback/sessions/${g.id}/resources/`,
+              };
+              const upstream = request.params.resource
+                ? await g.connector.openPlaybackResource(
+                    g.plan,
+                    request.params.resource,
+                    streamRequest,
+                  )
+                : await g.connector.openPlaybackStream(g.plan, streamRequest);
+              cancel = upstream.cancel;
+              if (abort.signal.aborted || !active(g)) {
+                release();
+                return reply.code(410).send({ error: 'Playback expired', code: 'expired' });
+              }
+              reply.code(upstream.status);
+              for (const [key, value] of Object.entries(upstream.headers)) reply.header(key, value);
+              reply.header('Cache-Control', 'private, no-store, no-transform');
+              reply.header('X-Accel-Buffering', 'no');
+              if (upstream.body) return reply.send(upstream.body);
+              release();
+              return reply.send();
+            } catch (error) {
+              release();
+              throw error;
+            }
+          },
+        });
       routes.post<{
         Params: { id: string };
         Body: { positionMs: number; paused: boolean; event: 'start' | 'progress' };

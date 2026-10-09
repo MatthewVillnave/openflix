@@ -1,7 +1,8 @@
 /** Jellyfin-only planning, DTOs, reporting and authenticated binary transport. */
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { Readable } from 'node:stream';
+import { binaryTransport } from './playback-transport.js';
+import { HlsPlayback } from './hls.js';
 import { z } from 'zod';
 import type { Api } from '@jellyfin/sdk/lib/api.js';
 import { getMediaInfoApi } from '@jellyfin/sdk/lib/utils/api/media-info-api.js';
@@ -23,7 +24,7 @@ const streamSchema = z.object({
   IsExternal: z.boolean().optional(),
   BitDepth: z.number().nullish(),
   Channels: z.number().int().positive().max(64).nullish(),
-  Level: z.number().positive().nullish(),
+  Level: z.number().nonnegative().nullish(),
   Width: z.number().int().positive().max(32768).nullish(),
   Height: z.number().int().positive().max(32768).nullish(),
   IsInterlaced: z.boolean().optional(),
@@ -35,6 +36,8 @@ const sourceSchema = z.object({
   Protocol: z.string(),
   Container: z.string().max(64),
   SupportsDirectPlay: z.boolean(),
+  SupportsTranscoding: z.boolean().optional(),
+  TranscodingUrl: z.string().max(8192).nullish(),
   IsRemote: z.boolean().optional(),
   IsInfiniteStream: z.boolean().optional(),
   RequiresOpening: z.boolean().optional(),
@@ -121,6 +124,7 @@ function choose(
     v.Codec === 'h264' &&
     ['Baseline', 'Constrained Baseline', 'Main', 'High'].includes(v.Profile ?? '') &&
     v.Level != null &&
+    v.Level > 0 &&
     v.Level <= 41 &&
     audios.every((a) => a.Codec === 'aac' && (!a.Profile || a.Profile === 'LC'))
   )
@@ -139,15 +143,56 @@ export function validRange(range: string): boolean {
   if (!m[1]) return Number(m[2]) > 0;
   return !m[2] || Number(m[2]) >= Number(m[1]);
 }
+function hlsSource(source: z.infer<typeof sourceSchema>) {
+  if (
+    source.Protocol !== 'File' ||
+    source.IsRemote ||
+    source.IsInfiniteStream ||
+    source.RequiresOpening ||
+    source.RequiresClosing ||
+    (source.VideoType && source.VideoType !== 'VideoFile') ||
+    source.RunTimeTicks > 144000000000
+  )
+    return;
+  const videos = source.MediaStreams.filter((s) => s.Type === 'Video' && !s.IsExternal);
+  const audios = source.MediaStreams.filter((s) => s.Type === 'Audio' && !s.IsExternal);
+  if (videos.length !== 1 || !audios.length) return;
+  const v = videos[0]!;
+  if (
+    !v.Codec ||
+    !v.Width ||
+    !v.Height ||
+    v.Width > 1920 ||
+    v.Height > 1080 ||
+    v.IsInterlaced ||
+    (v.VideoRangeType && v.VideoRangeType !== 'SDR') ||
+    (v.AverageFrameRate != null && v.AverageFrameRate > 60)
+  )
+    return;
+  const a = audios.find((a) => a.Index === source.DefaultAudioStreamIndex) ?? audios[0]!;
+  if (!a.Codec || !a.Channels) return;
+  return {
+    videoCopy:
+      v.Codec === 'h264' &&
+      v.BitDepth === 8 &&
+      ['Baseline', 'Constrained Baseline', 'Main', 'High'].includes(v.Profile ?? '') &&
+      v.Level != null &&
+      v.Level > 0 &&
+      v.Level <= 41 &&
+      (v.AverageFrameRate ?? 30) <= 30,
+    audioCopy: a.Codec === 'aac' && a.Channels <= 2 && (!a.Profile || a.Profile === 'LC'),
+  };
+}
 export function playbackOperations(access: Access) {
+  const hls = new Map<string, HlsPlayback>();
   return {
     async getPlaybackInfo(itemId: string, profile: ClientProfile): Promise<PlaybackInfo> {
       if (
         !/^[a-fA-F0-9-]{16,64}$/.test(itemId) ||
         !Array.isArray(profile.formats) ||
         !profile.formats.length ||
-        profile.formats.length > 4 ||
-        profile.formats.some((f) => !Object.hasOwn(profiles, f))
+        profile.formats.length > 5 ||
+        profile.formats.some((f) => f !== 'hls-h264-aac' && !Object.hasOwn(profiles, f))
       )
         throw new ConnectorError('invalid_configuration');
       return access(async (api, credential) => {
@@ -165,7 +210,9 @@ export function playbackOperations(access: Access) {
                 DeviceProfile: {
                   Name: 'OpenFlix M4 direct',
                   MaxStreamingBitrate: 100000000,
-                  DirectPlayProfiles: profile.formats.map((f) => profiles[f]),
+                  DirectPlayProfiles: profile.formats
+                    .filter((f): f is keyof typeof profiles => f !== 'hls-h264-aac')
+                    .map((f) => profiles[f]),
                   TranscodingProfiles: [],
                 },
               },
@@ -189,6 +236,94 @@ export function playbackOperations(access: Access) {
             return plan;
           }
         }
+        if (profile.formats.includes('hls-h264-aac') && data.MediaSources.some(hlsSource)) {
+          const fallback = responseSchema.parse(
+            (
+              await getMediaInfoApi(api).getPostedPlaybackInfo({
+                itemId,
+                playbackInfoDto: {
+                  UserId: credential.userId,
+                  EnableDirectPlay: true,
+                  EnableDirectStream: true,
+                  EnableTranscoding: true,
+                  AutoOpenLiveStream: false,
+                  StartTimeTicks: 0,
+                  SubtitleStreamIndex: -1,
+                  MaxStreamingBitrate: 6192000,
+                  DeviceProfile: {
+                    Name: 'OpenFlix M4 R1 HLS',
+                    MaxStreamingBitrate: 6192000,
+                    DirectPlayProfiles: profile.formats
+                      .filter((f): f is keyof typeof profiles => f !== 'hls-h264-aac')
+                      .map((f) => profiles[f]),
+                    TranscodingProfiles: [
+                      {
+                        Type: 'Video',
+                        Container: 'ts',
+                        Protocol: 'hls',
+                        VideoCodec: 'h264',
+                        AudioCodec: 'aac',
+                        Context: 'Streaming',
+                        MaxAudioChannels: '2',
+                        SegmentLength: 6,
+                        MinSegments: 1,
+                        EnableSubtitlesInManifest: false,
+                      },
+                    ],
+                    CodecProfiles: [
+                      {
+                        Type: 'Video',
+                        Codec: 'h264',
+                        Conditions: [
+                          { Condition: 'LessThanEqual', Property: 'Width', Value: '1920' },
+                          { Condition: 'LessThanEqual', Property: 'Height', Value: '1080' },
+                          { Condition: 'LessThanEqual', Property: 'VideoBitDepth', Value: '8' },
+                          { Condition: 'LessThanEqual', Property: 'VideoLevel', Value: '41' },
+                          { Condition: 'LessThanEqual', Property: 'VideoFramerate', Value: '30' },
+                        ],
+                      },
+                      {
+                        Type: 'VideoAudio',
+                        Codec: 'aac',
+                        Conditions: [
+                          { Condition: 'LessThanEqual', Property: 'AudioChannels', Value: '2' },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              })
+            ).data,
+          );
+          if (fallback.ErrorCode) throw new ConnectorError('unsupported');
+          for (const source of fallback.MediaSources) {
+            const copy = hlsSource(source);
+            if (!copy || !source.SupportsTranscoding || !source.TranscodingUrl) continue;
+            const plan: PlaybackInfo = {
+              itemId,
+              sourceId: source.Id,
+              sessionId: fallback.PlaySessionId,
+              kind: 'video',
+              mode: copy.videoCopy && copy.audioCopy ? 'remux' : 'transcode',
+              videoTranscoded: !copy.videoCopy,
+              contentType: 'application/vnd.apple.mpegurl',
+              durationMs: source.RunTimeTicks / 10000,
+            };
+            if (hls.size >= 8 || hls.has(plan.sessionId)) throw new ConnectorError('unsupported');
+            hls.set(
+              plan.sessionId,
+              new HlsPlayback(
+                api,
+                credential.token,
+                plan,
+                source.TranscodingUrl,
+                copy.videoCopy,
+                copy.audioCopy,
+              ),
+            );
+            return plan;
+          }
+        }
         throw new ConnectorError('unsupported');
       });
     },
@@ -204,6 +339,11 @@ export function playbackOperations(access: Access) {
       )
         throw new ConnectorError('invalid_configuration');
       return access(async (api) => {
+        if (plan.mode !== 'direct') {
+          const playback = hls.get(plan.sessionId);
+          if (!playback || playback.plan !== plan) throw new ConnectorError('not_found');
+          return playback.open(api, undefined, request);
+        }
         // Construct only the inspected static endpoint. Never follow a DTO URL or filesystem path.
         const url = new URL(
           api.getUri(
@@ -216,124 +356,57 @@ export function playbackOperations(access: Access) {
           playSessionId: plan.sessionId,
           deviceId: api.deviceInfo.id,
         }).toString();
-        return new Promise<PlaybackStream>((resolve, reject) => {
-          const fail = (
-            code:
-              | 'unavailable'
-              | 'timeout'
-              | 'invalid_response'
-              | 'unsafe_redirect'
-              | 'unauthorized'
-              | 'not_found',
-          ) => reject(new ConnectorError(code));
-          const upstream = (url.protocol === 'https:' ? httpsRequest : httpRequest)(url, {
-            method: request.method,
-            agent: false,
-            signal: request.signal,
-            headers: {
-              Authorization: api.authorizationHeader,
-              Accept: plan.contentType,
-              'Accept-Encoding': 'identity',
-              ...(request.range ? { Range: request.range } : {}),
-            },
-            maxHeaderSize: 16384,
-          });
-          const deadline = setTimeout(() => upstream.destroy(new ConnectorError('timeout')), 5000);
-          deadline.unref();
-          upstream.setTimeout(30000, () => upstream.destroy(new ConnectorError('timeout')));
-          upstream.on('error', () => {
-            clearTimeout(deadline);
-            fail(request.signal.aborted ? 'timeout' : 'unavailable');
-          });
-          upstream.once('response', (response) => {
-            clearTimeout(deadline);
-            const status = response.statusCode ?? 0;
-            const cancel = () => {
-              response.destroy();
-              upstream.destroy();
-            };
-            const invalid = (code: Parameters<typeof fail>[0]) => {
-              cancel();
-              fail(code);
-            };
-            if (status >= 300 && status < 400) return invalid('unsafe_redirect');
-            if (status === 401 || status === 403) return invalid('unauthorized');
-            if (status === 404) return invalid('not_found');
-            if (![200, 206, 416].includes(status)) return invalid('unavailable');
-            const headers: Record<string, string> = {};
-            const contentRange = response.headers['content-range'];
-            if (status === 416) {
-              if (!request.range || !contentRange || !/^bytes \*\/\d{1,15}$/.test(contentRange))
-                return invalid('invalid_response');
-              headers['content-range'] = contentRange;
-              cancel();
-              resolve({ status: 416, headers, cancel });
-              return;
-            }
-            const mime = response.headers['content-type']?.split(';')[0]?.trim().toLowerCase();
-            if (
-              (mime !== plan.contentType &&
-                !(plan.contentType === 'audio/wav' && mime === 'audio/x-wav')) ||
-              (response.headers['content-encoding'] &&
-                response.headers['content-encoding'] !== 'identity')
-            )
-              return invalid('invalid_response');
-            headers['content-type'] = plan.contentType;
-            const length = response.headers['content-length'];
-            if (length !== undefined) {
-              if (!/^\d{1,15}$/.test(length)) return invalid('invalid_response');
-              headers['content-length'] = length;
-            }
-            if (status === 206) {
-              const m =
-                contentRange && /^bytes (\d{1,15})-(\d{1,15})\/(\d{1,15})$/.exec(contentRange);
-              if (
-                !request.range ||
-                !m ||
-                Number(m[2]) < Number(m[1]) ||
-                Number(m[3]) <= Number(m[2]) ||
-                (length !== undefined && Number(length) !== Number(m[2]) - Number(m[1]) + 1)
-              )
-                return invalid('invalid_response');
-              const requested = /^bytes=(\d*)-(\d*)$/.exec(request.range)!;
-              const total = Number(m[3]);
-              const expectedStart = requested[1]
-                ? Number(requested[1])
-                : Math.max(0, total - Number(requested[2]));
-              const expectedEnd =
-                requested[1] && requested[2]
-                  ? Math.min(total - 1, Number(requested[2]))
-                  : total - 1;
-              if (Number(m[1]) !== expectedStart || Number(m[2]) !== expectedEnd)
-                return invalid('invalid_response');
-              headers['content-range'] = contentRange!;
-            }
-            if (response.headers['accept-ranges'] === 'bytes') headers['accept-ranges'] = 'bytes';
-            if (request.method === 'HEAD') {
-              cancel();
-              resolve({ status: status as 200 | 206, headers, cancel });
-              return;
-            }
-            response.on('error', () => {});
-            const body = Readable.from(
-              (async function* () {
-                try {
-                  for await (const chunk of response) yield chunk;
-                } catch {
-                  throw new ConnectorError('unavailable');
-                } finally {
-                  cancel();
-                }
-              })(),
-              { objectMode: false, highWaterMark: 65536 },
-            );
-            body.on('error', () => {});
-            body.once('close', cancel);
-            resolve({ status: status as 200 | 206, headers, body, cancel });
-          });
-          upstream.end();
-        });
+        return binaryTransport(
+          api,
+          url,
+          request,
+          plan.contentType,
+          plan.contentType === 'audio/wav' ? ['audio/wav', 'audio/x-wav'] : [plan.contentType],
+        );
       });
+    },
+    async openPlaybackResource(
+      plan: PlaybackInfo,
+      resourceId: string,
+      request: PlaybackStreamRequest,
+    ): Promise<PlaybackStream> {
+      if (!/^[a-f0-9]{32}$/.test(resourceId)) throw new ConnectorError('not_found');
+      const playback = hls.get(plan.sessionId);
+      if (!playback || playback.plan !== plan) throw new ConnectorError('not_found');
+      return access((api) => playback.open(api, resourceId, request));
+    },
+    async closePlayback(plan: PlaybackInfo) {
+      const playback = hls.get(plan.sessionId);
+      if (!playback || playback.plan !== plan) return;
+      hls.delete(plan.sessionId);
+      playback.close();
+      await access(
+        (api) =>
+          new Promise<void>((resolve, reject) => {
+            const url = new URL(api.getUri('/Videos/ActiveEncodings'));
+            url.search = new URLSearchParams({
+              deviceId: api.deviceInfo.id,
+              playSessionId: plan.sessionId,
+            }).toString();
+            const req = (url.protocol === 'https:' ? httpsRequest : httpRequest)(
+              url,
+              {
+                method: 'DELETE',
+                headers: { Authorization: api.authorizationHeader },
+                maxHeaderSize: 16384,
+              },
+              (res) => {
+                res.resume();
+                if (res.statusCode === 204) resolve();
+                else reject(new ConnectorError('unavailable'));
+              },
+            );
+            const timer = setTimeout(() => req.destroy(new Error('deadline')), 5000);
+            req.once('close', () => clearTimeout(timer));
+            req.once('error', () => reject(new ConnectorError('unavailable')));
+            req.end();
+          }),
+      );
     },
     async reportPlaybackStart(s: PlaybackSession) {
       await access(async (api) => {
@@ -367,6 +440,10 @@ function report(s: PlaybackSession) {
     PositionTicks: Math.round(s.positionMs * 10000),
     IsPaused: s.paused,
     CanSeek: true,
-    PlayMethod: 'DirectPlay' as const,
+    PlayMethod: (s.mode && s.mode !== 'direct'
+      ? s.videoTranscoded
+        ? 'Transcode'
+        : 'DirectStream'
+      : 'DirectPlay') as 'DirectPlay' | 'DirectStream' | 'Transcode',
   };
 }
