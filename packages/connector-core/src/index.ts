@@ -61,7 +61,11 @@ export interface MediaConnector {
   ): AsyncIterable<readonly MediaItem[]>;
   getItem(id: string): Promise<MediaItem>;
   search(query: string): Promise<MediaItem[]>;
-  getPlaybackInfo(itemId: string, clientProfile: ClientProfile): Promise<PlaybackInfo>;
+  getPlaybackInfo(
+    itemId: string,
+    clientProfile: ClientProfile,
+    policy?: { singleVersionOnly: boolean },
+  ): Promise<PlaybackInfo>;
   openPlaybackStream(plan: PlaybackInfo, request: PlaybackStreamRequest): Promise<PlaybackStream>;
   openPlaybackResource(
     plan: PlaybackInfo,

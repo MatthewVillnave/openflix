@@ -587,3 +587,38 @@ it('a genuine HLS header deadline remains an upstream timeout, not successful ca
   expect(upstream.state.playback.cleanup).toHaveLength(0);
   expect((await post(`/sessions/${grant.id}/stop`, {})).statusCode).toBe(204);
 }, 20000);
+
+it('requires admin and original login for grouped playback; regrouping revokes rather than retargets', async () => {
+  const groupId = db.works.binding(itemId)!.workId;
+  expect((await post('/sessions', { groupId, profile }, viewer)).statusCode).toBe(403);
+  const response = await post('/sessions', { groupId, profile });
+  expect(response.statusCode).toBe(201);
+  const grant = response.json<PlaybackView>();
+  expect((await app.inject({ url: grant.streamPath, headers: { cookie: other } })).statusCode).toBe(
+    410,
+  );
+  const run = db.catalog.begin('source', null);
+  db.catalog.stageLibrary(run, { id: libraryId, name: 'Fixture', mediaTypes: [] });
+  db.catalog.stagePage(run, libraryId, [
+    {
+      id: playbackItemId,
+      libraryId,
+      type: 'movie',
+      title: 'Changed',
+      providerIds: { Tmdb: '123' },
+    },
+  ]);
+  db.catalog.publish(run);
+  expect((await app.inject({ url: grant.streamPath, headers: { cookie: admin } })).statusCode).toBe(
+    410,
+  );
+});
+
+it('rejects forged group membership and mixed source/group request selectors', async () => {
+  const groupId = db.works.binding(itemId)!.workId;
+  expect(
+    (await post('/sessions', { groupId, sourceItemId: 'item_' + 'f'.repeat(64), profile }))
+      .statusCode,
+  ).toBe(404);
+  expect((await post('/sessions', { groupId, itemId, profile })).statusCode).toBe(400);
+});
