@@ -22,10 +22,19 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     init: true
-    depends_on: [hls-media]
+    depends_on:
+      hls-media:
+        condition: service_healthy
   hls-media:
     healthcheck:
-      disable: true
+      test:
+        - CMD
+        - node
+        - -e
+        - "for (const n of ['Direct Fixture.mp4','Remux Fixture.mkv','Audio Conversion Fixture.mkv','Video Conversion Fixture.mkv']) { if (!require('node:fs').statSync('/media/generated/'+n).size) process.exit(1); }"
+      interval: 2s
+      timeout: 3s
+      retries: 10
     build:
       context: .
       dockerfile: docker/Dockerfile
