@@ -13,7 +13,7 @@ The server loads `.env` from the repository root via Node's `--env-file-if-exist
 | `OPENFLIX_SESSION_TTL_SECONDS` | `86400`                 | Absolute session lifetime, 300–604800 seconds                                                                                                                |
 | `OPENFLIX_DEV_API_TARGET`      | `http://127.0.0.1:8787` | Vite process environment only; developer-controlled proxy destination, never a browser variable or production server setting.                                |
 
-`OPENFLIX_MASTER_KEY` is intentionally not consumed in Milestone 1 because no connector secret storage exists. Do not provide connector credentials yet. Milestone 2 must define and validate encryption-key configuration. No session signing secret is needed: opaque random tokens are verified against their hashes in the database. Never put secrets into `VITE_*` variables; Vite can embed those in browser bundles.
+`OPENFLIX_MASTER_KEY` enables encrypted connector credential storage; see [key requirements](#milestone-2-connector-key). No session signing secret is needed: opaque random tokens are verified against their hashes in the database. Never put secrets into `VITE_*` variables; Vite can embed those in browser bundles.
 
 ## Database lifecycle
 
