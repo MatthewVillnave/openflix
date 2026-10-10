@@ -121,4 +121,4 @@ Official Jellyfin 10.11.11 BaseItemDto/MediaSourceInfo fields used additionally:
 SDK 1.0.0 remains pinned. See [the plan](milestone-5-plan.md) for primary references.
 Disposable restricted-user setup uses the 10.11.11 OpenAPI operations
 `CreateUserByName` and `UpdateUserPolicy`; these operations are verifier-only.
-No provider lookup, scraper, household modification, or license change is included.
+The accepted implementation includes no provider lookup, scraper or household modification. The later release integration adopts [AGPL-3.0-only and source notices](licensing.md) separately from the audited implementation.

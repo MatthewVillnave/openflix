@@ -12,7 +12,7 @@ The owner reports Optimus's independent verdict: **PASS — approve Milestone 5 
 
 The movie failed on R1 and played on R2. Its exact historical R1 failure cause remains unconfirmed; this was not a remaining M4 acceptance blocker. The original R2 builder report's PARTIAL verdict remains historical and unchanged.
 
-Acceptance is bounded to the exercised operations against Jellyfin 10.11.11, not the entire SDK or universal production/device compatibility. Safari, real iPhone behavior, audible-output confirmation, sustained household performance and specific unreadable household conversion episodes remain unverified. Playback is administrator-only; authenticated users share imported metadata, with no per-user upstream identity mapping. Reporting may affect the connector account's watch state. Intentional cancellation can be mislabeled timeout/502 in M4; the audit established prompt revocation and scoped cleanup without an established leak. The follow-up status fix belongs only to M5 development.
+Acceptance is bounded to the exercised operations against Jellyfin 10.11.11, not the entire SDK or universal production/device compatibility. Safari, real iPhone behavior, audible-output confirmation, sustained household performance and specific unreadable household conversion episodes remain unverified. Playback is administrator-only; authenticated users share imported metadata, with no per-user upstream identity mapping. Reporting may affect the connector account's watch state. Intentional cancellation can be mislabeled timeout/502 in M4; the audit established prompt revocation and scoped cleanup without an established leak. The follow-up status fix belongs to M5, not the M4 tag.
 
 ## Playback scope
 
