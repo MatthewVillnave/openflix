@@ -136,7 +136,9 @@ it('attaches and destroys HLS.js when native HLS is unavailable', async () => {
   vi.spyOn(Hls, 'isSupported').mockReturnValue(true);
   const attach = vi.spyOn(Hls.prototype, 'attachMedia').mockImplementation(() => {});
   const load = vi.spyOn(Hls.prototype, 'loadSource').mockImplementation(() => {});
-  const destroy = vi.spyOn(Hls.prototype, 'destroy').mockImplementation(() => {});
+  const destroy = vi.spyOn(Hls.prototype, 'destroy').mockImplementation(function (this: Hls) {
+    this.trigger(Hls.Events.ERROR, { fatal: true } as never);
+  });
   vi.spyOn(globalThis, 'fetch').mockImplementation(
     async (url) =>
       new Response(
@@ -155,6 +157,9 @@ it('attaches and destroys HLS.js when native HLS is unavailable', async () => {
   await screen.findByLabelText('Video player');
   expect(attach).toHaveBeenCalledOnce();
   expect(load).toHaveBeenCalledWith(session.streamPath);
+  fireEvent.click(screen.getByRole('button', { name: 'Return to catalog' }));
+  await waitFor(() => expect(destroy).toHaveBeenCalledOnce());
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Prepare playback' })).toBeDefined();
   view.unmount();
-  expect(destroy).toHaveBeenCalledOnce();
 });

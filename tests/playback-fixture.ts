@@ -62,6 +62,7 @@ export function playbackFixtureState() {
       | 'redirect'
       | 'html'
       | 'slow'
+      | 'hold-headers'
       | 'bad-range'
       | 'wrong-range'
       | 'ignore-range'
@@ -69,6 +70,7 @@ export function playbackFixtureState() {
     bytes: Buffer.from(Array.from({ length: 4096 }, (_, i) => i % 256)),
     mime: 'video/mp4',
     cancelled: 0,
+    waitingHeaders: 0,
     streamRequests: [] as { method: string; range: string | undefined; source: string | null }[],
   };
 }
@@ -128,6 +130,14 @@ export function servePlayback(
         'content-type': state.streamMode === 'html' ? 'text/html' : 'application/vnd.apple.mpegurl',
       });
       res.end(url.pathname.endsWith('master.m3u8') ? state.manifest : state.mediaManifest);
+      return true;
+    }
+    if (state.streamMode === 'hold-headers') {
+      state.waitingHeaders++;
+      res.once('close', () => {
+        state.waitingHeaders--;
+        state.cancelled++;
+      });
       return true;
     }
     if (state.streamMode === 'slow') {

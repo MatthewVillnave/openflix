@@ -1,3 +1,5 @@
+import { WorkRepository } from './works.js';
+export { providerIdentity, workIdentity, versionIdentity } from './works.js';
 import { CatalogRepository } from './catalog.js';
 export { catalogId } from './catalog.js';
 import Database from 'better-sqlite3';
@@ -40,8 +42,11 @@ export function openDatabase(filename: string): OpenFlixDatabase {
 }
 export class OpenFlixDatabase {
   readonly catalog: CatalogRepository;
+  readonly works: WorkRepository;
   constructor(private readonly db: Database.Database) {
     this.catalog = new CatalogRepository(db);
+    this.works = new WorkRepository(db);
+    this.works.backfill();
   }
   listConnectors(): StoredConnector[] {
     return this.db
@@ -94,7 +99,12 @@ export class OpenFlixDatabase {
     this.db.prepare("UPDATE media_connectors SET state = 'unverified', last_error = NULL").run();
   }
   removeConnector(id: string): void {
-    this.db.prepare('DELETE FROM media_connectors WHERE id = ?').run(id);
+    this.db
+      .transaction(() => {
+        this.db.prepare('DELETE FROM media_connectors WHERE id = ?').run(id);
+        this.works.prune();
+      })
+      .immediate();
   }
   close(): void {
     if (this.db.open) this.db.close();

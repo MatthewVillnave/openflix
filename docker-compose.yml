@@ -25,6 +25,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: web
+      args:
+        OPENFLIX_SOURCE_URL: ${OPENFLIX_SOURCE_URL:-}
     ports:
       - '127.0.0.1:8080:8080'
     depends_on:

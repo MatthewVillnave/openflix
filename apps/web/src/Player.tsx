@@ -5,13 +5,15 @@ import { playbackFormats } from '@openflix/shared';
 const message = (status: number) =>
   status === 415
     ? 'This source cannot be played with the supported direct or HLS profiles.'
-    : status === 401 || status === 403
-      ? 'Your account is not authorized for playback.'
-      : status === 410
-        ? 'Playback expired. Return to the catalog and start again.'
-        : status === 429
-          ? 'Playback capacity is busy. Stop another player and retry.'
-          : 'Playback is unavailable. Check the media server and try again.';
+    : status === 409
+      ? 'Choose a source/version explicitly, or refresh the catalog if its metadata changed.'
+      : status === 401 || status === 403
+        ? 'Your account is not authorized for playback.'
+        : status === 410
+          ? 'Playback expired. Return to the catalog and start again.'
+          : status === 429
+            ? 'Playback capacity is busy. Stop another player and retry.'
+            : 'Playback is unavailable. Check the media server and try again.';
 async function mutation<T>(path: string, body: unknown, keepalive = false): Promise<T> {
   const response = await fetch(`/api/v1/playback${path}`, {
     method: 'POST',
@@ -26,7 +28,15 @@ async function mutation<T>(path: string, body: unknown, keepalive = false): Prom
 const nativeHls = (node: HTMLMediaElement) =>
   Boolean(node.canPlayType('application/vnd.apple.mpegurl')) &&
   (/Apple/.test(navigator.vendor) || !Hls.isSupported());
-export function Player({ item }: { item: CatalogItem }) {
+export function Player({
+  item,
+  groupId,
+  sourceItemId,
+}: {
+  item: CatalogItem;
+  groupId?: string;
+  sourceItemId?: string;
+}) {
   const [session, setSession] = useState<PlaybackView | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,7 +72,7 @@ export function Player({ item }: { item: CatalogItem }) {
     }
     try {
       const result = await mutation<PlaybackView>('/sessions', {
-        itemId: item.id,
+        ...(groupId ? { groupId, ...(sourceItemId ? { sourceItemId } : {}) } : { itemId: item.id }),
         profile: { formats },
       });
       // Only the known same-origin route shape can ever become a media-element source.
@@ -135,7 +145,7 @@ export function Player({ item }: { item: CatalogItem }) {
           backBufferLength: 30,
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal && mounted.current) {
+          if (data.fatal && mounted.current && activeSession.current === session.id) {
             setError('HLS playback failed. Return to the catalog and retry.');
             setSession(null);
           }
@@ -187,6 +197,7 @@ export function Player({ item }: { item: CatalogItem }) {
       void report().finally(() => setSession(null));
     },
     onError: () => {
+      if (!mounted.current || !session || activeSession.current !== session.id) return;
       setError('Media playback failed or authorization expired. Return to the catalog and retry.');
       setSession(null);
     },

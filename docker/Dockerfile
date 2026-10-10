@@ -13,7 +13,9 @@ USER node
 CMD ["pnpm", "dev"]
 
 FROM dependencies AS build
-RUN pnpm build
+# Public corresponding-source offer; never pass credentials as build arguments.
+ARG OPENFLIX_SOURCE_URL
+RUN OPENFLIX_SOURCE_URL="$OPENFLIX_SOURCE_URL" pnpm build
 RUN pnpm --filter @openflix/server deploy --prod /out
 # The output must work after the build workspace is removed.
 RUN mv /app /workspace-build && cd /out && node --input-type=module -e "await import('./dist/app.js')" && mv /workspace-build /app
@@ -23,6 +25,8 @@ ENV NODE_ENV=production OPENFLIX_HOST=0.0.0.0 OPENFLIX_PORT=8787 OPENFLIX_DATA_D
 WORKDIR /app
 RUN mkdir /config && chown node:node /config && chmod 0700 /config
 COPY --from=build --chown=node:node /out/ ./
+COPY LICENSE NOTICE THIRD-PARTY-NOTICES.md /app/legal/
+COPY third-party/ /app/legal/third-party/
 USER node
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s CMD node -e "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
@@ -43,6 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends chromium libnss
 RUN npm install --prefix /opt/browser --ignore-scripts playwright-core@1.62.1
 WORKDIR /app
 COPY docker/verify-browser.mjs docker/verify-browser.mjs
+COPY docker/verify-multiple-browser.mjs docker/verify-multiple-browser.mjs
 USER node
 CMD ["node", "docker/verify-browser.mjs"]
 
@@ -70,3 +75,11 @@ FROM jellyfin/jellyfin:10.11.11@sha256:aefb67e6a7ff1debdd154a78a7bbb780fd0c873d8
 USER root
 RUN mkdir -p /config /cache && chown -R 1000:1000 /config /cache && chmod 0700 /config /cache
 USER 1000:1000
+
+# Two-backend generated media, never included in deployment or review archives.
+FROM hls-media AS multiple-media
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+COPY docker/generate-multiple-media.py /fixture/
+RUN python3 /fixture/generate-multiple-media.py && chmod -R a=rX /media
+USER node

@@ -1,3 +1,5 @@
+import { LegalNotice } from './LegalNotice.js';
+import { UnifiedCatalog } from './UnifiedCatalog.js';
 import { Catalog } from './Catalog.js';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -66,7 +68,7 @@ export function App() {
           </span>{' '}
           OPENFLIX
         </a>
-        <span className="milestone">PLAYBACK / M4</span>
+        <span className="milestone">MULTIPLE SERVERS / M5</span>
       </header>
       <main>
         <section className="intro">
@@ -81,7 +83,7 @@ export function App() {
             Built to connect. Designed to stay yours.
           </p>
           <div className="scope">
-            <span className="dot" /> Milestone 4 · Playback
+            <span className="dot" /> Milestone 5 · Multiple servers
           </div>
         </section>
         <section className="panel" aria-label={user ? 'Your account' : 'Sign in'}>
@@ -92,6 +94,7 @@ export function App() {
               <p className="eyebrow">CONNECTED TO OPENFLIX</p>
               <h2>Welcome, {user.displayName}.</h2>
               <p>Your account is ready.</p>
+              <UnifiedCatalog admin={user.role === 'admin'} />
               <Catalog admin={user.role === 'admin'} />
               {user.role === 'admin' && (
                 <>
@@ -154,7 +157,7 @@ export function App() {
       </main>
       <footer>
         <span>Independent by design.</span>
-        <span>OpenFlix · Milestone 4</span>
+        <LegalNotice />
       </footer>
     </div>
   );
