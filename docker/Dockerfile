@@ -13,7 +13,9 @@ USER node
 CMD ["pnpm", "dev"]
 
 FROM dependencies AS build
-RUN pnpm build
+# Public corresponding-source offer; never pass credentials as build arguments.
+ARG OPENFLIX_SOURCE_URL
+RUN OPENFLIX_SOURCE_URL="$OPENFLIX_SOURCE_URL" pnpm build
 RUN pnpm --filter @openflix/server deploy --prod /out
 # The output must work after the build workspace is removed.
 RUN mv /app /workspace-build && cd /out && node --input-type=module -e "await import('./dist/app.js')" && mv /workspace-build /app
@@ -23,6 +25,8 @@ ENV NODE_ENV=production OPENFLIX_HOST=0.0.0.0 OPENFLIX_PORT=8787 OPENFLIX_DATA_D
 WORKDIR /app
 RUN mkdir /config && chown node:node /config && chmod 0700 /config
 COPY --from=build --chown=node:node /out/ ./
+COPY LICENSE NOTICE THIRD-PARTY-NOTICES.md /app/legal/
+COPY third-party/ /app/legal/third-party/
 USER node
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s CMD node -e "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

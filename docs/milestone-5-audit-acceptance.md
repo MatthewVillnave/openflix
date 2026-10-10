@@ -27,3 +27,11 @@ No genuine household/disposable duplicate existed. Household duplicate equivalen
 Browser reporting requests succeeded, but later household UserData showed zero position ticks. Persistent household watch progress and exact household upstream report payloads were not established. This is an evidence gap, not a diagnosed defect. No universal device, codec, edition or race-condition coverage is claimed.
 
 Playback remains administrator-only; authenticated users share imported catalog metadata; there is no per-user upstream identity mapping. Edition/duration assertions are not proof of identical timelines, and active streams never switch backends seamlessly. No federation or next milestone is included.
+
+## Follow-ups
+
+- [Intermittent HLS-attach assertion](https://github.com/MatthewVillnave/openflix/issues/2).
+- [Household watch-progress persistence evidence](https://github.com/MatthewVillnave/openflix/issues/3).
+- [Safari/iPhone, audible output and sustained playback](https://github.com/MatthewVillnave/openflix/issues/4).
+
+These are separate follow-ups, not changes included in the licensed release or authorization for new household tests.

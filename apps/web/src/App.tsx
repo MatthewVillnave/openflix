@@ -1,3 +1,4 @@
+import { LegalNotice } from './LegalNotice.js';
 import { UnifiedCatalog } from './UnifiedCatalog.js';
 import { Catalog } from './Catalog.js';
 import { useEffect, useState } from 'react';
@@ -156,7 +157,7 @@ export function App() {
       </main>
       <footer>
         <span>Independent by design.</span>
-        <span>OpenFlix · Milestone 4</span>
+        <LegalNotice />
       </footer>
     </div>
   );

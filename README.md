@@ -4,7 +4,7 @@ OpenFlix is a standalone, self-hosted media application. Jellyfin is a backend b
 
 ## Release and development status
 
-**Milestones 1–5 are independently accepted within documented limits.** This integration prepares the AGPL-3.0-only licensed `openflix-v0.5-m5` release. The accepted implementation snapshot and the licensed release have distinct identities; see [M5 acceptance](docs/milestone-5-audit-acceptance.md). This is early-development software, not universal production compatibility or a professional security certification.
+**Milestones 1–5 are independently accepted within documented limits.** The licensed release is [OpenFlix Milestone 5 — Multi-Server Streaming](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.5-m5), under AGPL-3.0-only. The accepted implementation snapshot and the licensed release have distinct identities; see [M5 acceptance](docs/milestone-5-audit-acceptance.md). This is early-development software, not universal production compatibility or a professional security certification.
 
 OpenFlix coordinates multiple Jellyfin servers in one installation. Open **Unified catalog** to browse grouped movies, series and episodes and select a source/version. Existing source/library browsing and audio playback remain available. Music, albums, artists, seasons and playlists retain [source-specific limits](docs/milestone-5-architecture.md). **Federation is not implemented.**
 
