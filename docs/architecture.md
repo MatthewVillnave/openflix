@@ -1,6 +1,6 @@
 # OpenFlix foundation architecture
 
-The accepted M4 release extends this foundation with [connectors](connector-security.md), [catalog synchronization](catalog.md) and [direct/HLS playback](status.md#playback-scope). See [current acceptance and historical records](status.md).
+The accepted M5 implementation extends this foundation with [connectors](connector-security.md), [catalog synchronization](catalog.md) and [direct/HLS playback](status.md#playback-scope). M5 adds [provider-based grouping and source selection](milestone-5-architecture.md) above stable source identities, with no federation. See [current acceptance and historical records](status.md).
 
 The foundation below is the audited M1 design. M2 adds administrator-only connector routes, the real Jellyfin SDK connector, a versioned encrypted credential store and one connector migration. See [M2 security](connector-security.md) and [architecture decisions](architecture-notes.md#milestone-2-decisions).
 

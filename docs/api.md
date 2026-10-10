@@ -41,3 +41,7 @@ Browse is a database read, never an upstream request. Sync failure preserves all
 ## Milestone 4 playback
 
 See [direct playback routes](playback.md#api) and [current HLS scope](status.md#playback-scope). The session profile also accepts `hls-h264-aac`; plans distinguish direct/remux/transcode. The HLS entry uses the session `streamPath`; rewritten HLS resources use authenticated GET/HEAD `/api/v1/playback/sessions/:id/resources/:resource` routes. Playback is admin-only even though catalog metadata remains shared. Only same-origin, authenticated media routes are returned. No schema migration or persistent watch history is added.
+
+## Milestone 5 unified browsing and playback
+
+See [M5 routes and selection policy](milestone-5-architecture.md#api-and-ui). Authenticated users may browse `/api/v1/catalog/works` and work details; administrators may prepare playback using `groupId` with optional validated `sourceItemId`. Legacy item/library routes remain. Group membership grants no additional playback authority. Grants stay pinned to one source; fallback is before playback only.
