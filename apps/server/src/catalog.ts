@@ -72,6 +72,77 @@ export async function registerCatalog(
         if (request.method !== 'GET' && user.role !== 'admin')
           return reply.code(403).send({ error: 'Administrator access required' });
       });
+      const pagination = {
+        offset: { type: 'string', pattern: '^[0-9]{1,7}$' },
+        limit: { type: 'string', pattern: '^[0-9]{1,3}$' },
+      };
+      const bounds = (q: { offset?: string; limit?: string }) => ({
+        offset: Number(q.offset ?? 0),
+        limit: Number(q.limit ?? 50),
+      });
+      routes.get<{
+        Querystring: {
+          offset?: string;
+          limit?: string;
+          type?: string;
+          connectorId?: string;
+          seriesWorkId?: string;
+          seasonNumber?: string;
+        };
+      }>(
+        '/works',
+        {
+          schema: {
+            querystring: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                ...pagination,
+                type: { type: 'string', enum: mediaTypes },
+                connectorId: { type: 'string', maxLength: 128 },
+                seriesWorkId: { type: 'string', pattern: '^work_[a-f0-9]{64}$' },
+                seasonNumber: { type: 'string', pattern: '^[0-9]{1,6}$' },
+              },
+            },
+          },
+        },
+        async (request, reply) => {
+          const { offset, limit } = bounds(request.query);
+          if (limit < 1 || limit > 100 || offset > 1000000)
+            return reply.code(400).send({ error: 'Invalid pagination' });
+          const { type, connectorId, seriesWorkId, seasonNumber } = request.query;
+          return db.works.browse({
+            offset,
+            limit,
+            ...(type ? { type } : {}),
+            ...(connectorId ? { connectorId } : {}),
+            ...(seriesWorkId ? { seriesWorkId } : {}),
+            ...(seasonNumber ? { seasonNumber: Number(seasonNumber) } : {}),
+          });
+        },
+      );
+      routes.get<{ Params: { id: string }; Querystring: { offset?: string; limit?: string } }>(
+        '/works/:id',
+        {
+          schema: {
+            params: {
+              type: 'object',
+              required: ['id'],
+              properties: { id: { type: 'string', pattern: '^work_[a-f0-9]{64}$' } },
+            },
+            querystring: { type: 'object', additionalProperties: false, properties: pagination },
+          },
+        },
+        async (request, reply) => {
+          const { offset, limit } = bounds(request.query);
+          if (limit < 1 || limit > 100 || offset > 1000000)
+            return reply.code(400).send({ error: 'Invalid pagination' });
+          const work = db.works.work(request.params.id);
+          return work
+            ? { work, sources: db.works.sources(work.id, offset, limit) }
+            : reply.code(404).send({ error: 'Work not found' });
+        },
+      );
       routes.get('/libraries', async () => ({ libraries: db.catalog.libraries() }));
       routes.get<{
         Params: { id: string };

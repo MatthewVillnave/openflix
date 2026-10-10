@@ -22,6 +22,7 @@ const reasons = [
   'invalid_range',
   'response_limit',
   'timeout',
+  'cancelled',
   'transport_failure',
   'invalid_manifest',
   'unsupported_directive',

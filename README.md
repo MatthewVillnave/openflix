@@ -4,20 +4,22 @@ OpenFlix is a standalone, self-hosted media application. Jellyfin is a backend b
 
 ## Release and development status
 
-**Milestones 1–4 are independently accepted within documented limits.** The current accepted release is [OpenFlix Milestone 4 — Audited Playback](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.4-m4), tagged `openflix-v0.4-m4` at `e975e3bd38cb3627b2fa3053bdb3e137c4450764`. This is early-development software, not a universal production-compatibility claim or professional third-party security certification.
+**Milestones 1–5 are independently accepted within documented limits.** This integration prepares the AGPL-3.0-only licensed `openflix-v0.5-m5` release. The accepted implementation snapshot and the licensed release have distinct identities; see [M5 acceptance](docs/milestone-5-audit-acceptance.md). This is early-development software, not universal production compatibility or a professional security certification.
 
-The released version provides administrator-managed Jellyfin connections with encrypted credentials, persistent normalized catalog browsing, atomic paginated synchronization, and administrator-only movie, episode and audio playback. Supported media uses direct streaming or Jellyfin-managed HLS remux/transcoding through authenticated OpenFlix routes. Actual household episode and movie playback was demonstrated in Chromium against Jellyfin 10.11.11.
+OpenFlix coordinates multiple Jellyfin servers in one installation. Open **Unified catalog** to browse grouped movies, series and episodes and select a source/version. Existing source/library browsing and audio playback remain available. Music, albums, artists, seasons and playlists retain [source-specific limits](docs/milestone-5-architecture.md). **Federation is not implemented.**
 
-**M5 is implemented separately and awaits independent acceptance.** Its [development branch](https://github.com/MatthewVillnave/openflix/tree/feat/milestone-5-multiple-servers) adds multi-backend aggregation; those capabilities are not included in this release. Conservative provider-based grouping may leave duplicates separate. Automatic substitution requires explicit equivalent-edition evidence; untagged/ambiguous versions require explicit source selection. Source switching happens before playback, not seamlessly midstream. Federation is not implemented.
+Grouping uses conservative provider evidence; missing or conflicting identifiers may leave duplicates separate. Automatic substitution requires matching explicit edition assertions and bounded duration evidence; these assertions do not prove identical timelines. Untagged/ambiguous versions require explicit source selection. Fallback occurs before playback, never seamlessly midstream. There is no persistent cross-server resume or full OpenFlix watch history.
+
+Supported movies, episodes and audio use authenticated direct streaming or Jellyfin-managed HLS remux/transcoding. Optimus independently accepted controlled two-server tests and a separate household-plus-disposable installation. Household observations were short decoding/control tests, not sustained capacity measurements. See [the exact evidence and limitations](docs/milestone-5-audit-acceptance.md).
 
 ## Important limitations
 
 - Playback is administrator-only; all authenticated users share imported catalog metadata. There is no per-user OpenFlix-to-Jellyfin identity mapping.
 - Codec, source, resolution and HLS support are bounded. See [current playback scope](docs/status.md#playback-scope) before choosing media or hardware.
-- M4 acceptance did not establish Safari, actual iPhone behavior, audible-output confirmation or sustained household performance.
+- Neither M4 nor M5 acceptance established Safari, actual iPhone behavior, audible-output confirmation or sustained household performance.
 - Playback reporting can affect the connector account's Jellyfin watch state. Use an appropriately authorized account/content scope.
 - Native Windows file-backed storage fails closed; use the documented Linux-container alternative.
-- Intentional cancellation can be reported as a timeout/502 in accepted M4. Prompt revocation and scoped cleanup were verified; the status improvement exists only in M5 development history.
+- M5 distinguishes intentional cancellation from real timeout and cleans up grants before connector-token revocation. These are [M5 improvements](docs/playback-cancellation.md), not retroactive changes to the M4 tag. Household persistent watch-progress storage remains unverified.
 
 The earlier R1 movie failed; the same movie played on R2. The exact historical cause remains unconfirmed, but that uncertainty was **not a remaining M4 acceptance blocker**. See [acceptance evidence and historical records](docs/status.md).
 
@@ -105,6 +107,8 @@ rmdir "$verification_tmp"
 `pnpm check` checks formatting, production builds, strict types and all tests. If interrupted tests leave files, inspect that specific temporary directory before removing it. Do not change shared-directory permissions or weaken storage checks. See [verification commands and prerequisites](docs/status.md#verification) for Docker, disposable Jellyfin, dependency audits and the Git-history-dependent upgrade check. Builder fixtures do not contact household Jellyfin.
 
 ## Documentation and structure
+
+Read [license and source-availability guidance](docs/licensing.md) before distributing or serving a build. First-party material is licensed under GNU AGPL version 3 only; third-party licenses remain intact.
 
 Start with the [current status/documentation index](docs/status.md), [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security](docs/security.md), [connector security](docs/connector-security.md), [catalog](docs/catalog.md) and [API](docs/api.md). Historical reports retain their original verdicts; later acceptance is recorded separately.
 

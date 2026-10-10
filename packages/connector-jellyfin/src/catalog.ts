@@ -21,6 +21,13 @@ export const itemSchema = z.object({
   SeasonId: optionalId,
   AlbumId: optionalId,
   IndexNumber: count,
+  IndexNumberEnd: count,
+  Tags: z.array(text).max(100).nullish(),
+  MediaSourceCount: z.number().int().min(0).max(100).nullish(),
+  MediaSources: z
+    .array(z.object({ Name: text.nullish() }))
+    .max(100)
+    .nullish(),
   ParentIndexNumber: count,
   Album: text.nullish(),
   ArtistItems: z.array(pair).max(100).nullish(),
@@ -47,7 +54,25 @@ const types: Record<string, MediaType> = {
 };
 export function normalizeItem(input: unknown, libraryId = ''): MediaItem {
   const v = itemSchema.parse(input);
+  const editions = [
+    ...new Set(
+      (v.Tags ?? [])
+        .filter((tag) => tag.startsWith('OpenFlixEdition:'))
+        .map((tag) => tag.slice('OpenFlixEdition:'.length).trim()),
+    ),
+  ];
+  const edition =
+    editions.length === 1 && editions[0] && editions[0].length <= 128 ? editions[0] : undefined;
   return {
+    ...(edition ? { edition } : {}),
+    ...(editions.length && !edition ? { editionAmbiguous: true as const } : {}),
+    ...(v.MediaSourceCount != null ? { versionCount: v.MediaSourceCount } : {}),
+    ...(v.MediaSources
+      ? { versionLabels: v.MediaSources.flatMap((source) => (source.Name ? [source.Name] : [])) }
+      : {}),
+    ...(v.Type === 'Episode' && v.IndexNumberEnd != null
+      ? { episodeEndNumber: v.IndexNumberEnd }
+      : {}),
     id: v.Id,
     libraryId,
     title: v.Name,

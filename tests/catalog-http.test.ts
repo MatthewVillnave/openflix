@@ -220,3 +220,19 @@ it('rejects overlapping mutations, and shutdown cancels staging before closing t
   expect((await get(`/sync/${connection}`)).json().state).toBe('failed');
   expect((await get('/libraries')).json().libraries).toEqual([]);
 });
+
+it('offers authenticated bounded unified browsing without upstream URLs or credential material', async () => {
+  await sync();
+  expect((await app.inject({ url: '/api/v1/catalog/works' })).statusCode).toBe(401);
+  const page = await get('/works?limit=2');
+  expect(page.statusCode).toBe(200);
+  expect(page.json().items).toHaveLength(2);
+  expect(page.json().total).toBe(4);
+  const detail = await get('/works/' + page.json().items[0].id);
+  expect(detail.statusCode).toBe(200);
+  expect(detail.json().sources.items[0].availability).toBe('last-indexed');
+  expect(detail.body).not.toContain(upstream.baseUrl);
+  expect(detail.body).not.toContain('credential');
+  expect((await get('/works?limit=101')).statusCode).toBe(400);
+  expect((await get('/works?offset=1000001')).statusCode).toBe(400);
+});

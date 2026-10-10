@@ -547,3 +547,210 @@ it.each([null, undefined])(
     expect(upstream.state.playback.reports).toEqual([]);
   },
 );
+
+async function pendingHlsSegment() {
+  const grant = await preparedHls();
+  const root = await app.inject({ url: grant.streamPath, headers: { cookie: admin } });
+  const child = root.body.split('\n').find((line) => line.startsWith('/api/'))!;
+  const playlist = await app.inject({ url: child, headers: { cookie: admin } });
+  const segment = playlist.body.split('\n').find((line) => line.startsWith('/api/'))!;
+  await app.listen({ host: '127.0.0.1', port: 0 });
+  const address = app.server.address();
+  if (!address || typeof address === 'string') throw new Error('Missing test listener');
+  upstream.state.playback.streamMode = 'hold-headers';
+  const pending = fetch(`http://127.0.0.1:${address.port}${segment}`, {
+    headers: { cookie: admin },
+  });
+  await expect.poll(() => upstream.state.playback.waitingHeaders).toBe(1);
+  return { grant, pending, segment };
+}
+it('stop promptly cancels a real pending HLS HTTP request with 410 and exactly scoped cleanup', async () => {
+  const { grant, pending, segment } = await pendingHlsSegment();
+  expect((await post(`/sessions/${grant.id}/stop`, {})).statusCode).toBe(204);
+  const response = await pending;
+  expect(response.status).toBe(410);
+  expect((await response.json()).code).toBe('expired');
+  await expect.poll(() => upstream.state.playback.cancelled).toBe(1);
+  await expect.poll(() => upstream.state.playback.cleanup.length).toBe(1);
+  const cleanup = new URLSearchParams(upstream.state.playback.cleanup[0]);
+  expect(cleanup.get('deviceId')).toBe('source');
+  expect(cleanup.get('playSessionId')).toBe(playSessionId);
+  expect((await app.inject({ url: segment, headers: { cookie: admin } })).statusCode).toBe(410);
+  expect(logs).not.toContain('"reason":"timeout"');
+});
+it('a genuine HLS header deadline remains an upstream timeout, not successful cancellation', async () => {
+  const { grant, pending } = await pendingHlsSegment();
+  const response = await pending;
+  expect(response.status).toBe(504);
+  expect((await response.json()).code).toBe('timeout');
+  expect(logs).toContain('"reason":"timeout"');
+  expect(upstream.state.playback.cleanup).toHaveLength(0);
+  expect((await post(`/sessions/${grant.id}/stop`, {})).statusCode).toBe(204);
+}, 20000);
+
+it('requires admin and original login for grouped playback; regrouping revokes rather than retargets', async () => {
+  const groupId = db.works.binding(itemId)!.workId;
+  expect((await post('/sessions', { groupId, profile }, viewer)).statusCode).toBe(403);
+  const response = await post('/sessions', { groupId, profile });
+  expect(response.statusCode).toBe(201);
+  const grant = response.json<PlaybackView>();
+  expect((await app.inject({ url: grant.streamPath, headers: { cookie: other } })).statusCode).toBe(
+    410,
+  );
+  const run = db.catalog.begin('source', null);
+  db.catalog.stageLibrary(run, { id: libraryId, name: 'Fixture', mediaTypes: [] });
+  db.catalog.stagePage(run, libraryId, [
+    {
+      id: playbackItemId,
+      libraryId,
+      type: 'movie',
+      title: 'Changed',
+      providerIds: { Tmdb: '123' },
+    },
+  ]);
+  db.catalog.publish(run);
+  expect((await app.inject({ url: grant.streamPath, headers: { cookie: admin } })).statusCode).toBe(
+    410,
+  );
+});
+
+it('rejects forged group membership and mixed source/group request selectors', async () => {
+  const groupId = db.works.binding(itemId)!.workId;
+  expect(
+    (await post('/sessions', { groupId, sourceItemId: 'item_' + 'f'.repeat(64), profile }))
+      .statusCode,
+  ).toBe(404);
+  expect((await post('/sessions', { groupId, itemId, profile })).statusCode).toBe(400);
+});
+
+it('isolates two backend credentials, rejects restricted playback, and scopes HLS cleanup to the chosen connector', async () => {
+  const second = await jellyfinFixture();
+  try {
+    second.state.serverId = '4'.repeat(32);
+    const authenticated = await authenticateJellyfin({
+      baseUrl: second.baseUrl,
+      deviceId: '55555555-5555-4555-8555-555555555555',
+      username: 'fixture-user',
+      password: upstreamPassword,
+    });
+    const vault = new EncryptedCredentialStore(db, local.config.masterKey!);
+    vault.create(
+      {
+        id: '55555555-5555-4555-8555-555555555555',
+        name: 'Second backend',
+        type: 'jellyfin',
+        baseUrl: second.baseUrl,
+        server: authenticated.server,
+        libraries: authenticated.libraries,
+        state: 'connected',
+        lastCheckedAt: null,
+        lastError: null,
+        createdAt: Date.now(),
+      },
+      authenticated.secret,
+    );
+    authenticated.secret.fill(0);
+    vault.destroy();
+    for (const id of ['source', '55555555-5555-4555-8555-555555555555']) {
+      const run = db.catalog.begin(id, null);
+      db.catalog.stageLibrary(run, { id: libraryId, name: 'Fixture', mediaTypes: [] });
+      db.catalog.stagePage(run, libraryId, [
+        {
+          id: playbackItemId,
+          libraryId,
+          type: 'movie',
+          title: 'Matched',
+          providerIds: { Tmdb: '123' },
+          edition: 'theatrical',
+          runtimeSeconds: 12,
+        },
+      ]);
+      db.catalog.publish(run);
+    }
+    const groupId = db.works.binding(itemId)!.workId;
+    const secondId = catalogId('item', '55555555-5555-4555-8555-555555555555', playbackItemId);
+    second.state.playback.forbidden = true;
+    expect((await post('/sessions', { groupId, sourceItemId: secondId, profile })).statusCode).toBe(
+      502,
+    );
+    expect(upstream.state.playback.reports).toHaveLength(0);
+    second.state.playback.forbidden = false;
+    second.state.playback.hls = true;
+    second.state.playback.sources = [
+      {
+        ...playbackSource(),
+        Container: 'mkv',
+        SupportsDirectPlay: false,
+        SupportsTranscoding: true,
+        TranscodingUrl: `/videos/${playbackItemId}/master.m3u8?DeviceId=55555555-5555-4555-8555-555555555555&MediaSourceId=${sourceId}&PlaySessionId=${playSessionId}&VideoCodec=h264&AudioCodec=aac&SegmentContainer=ts`,
+      },
+    ];
+    const response = await post('/sessions', {
+      groupId,
+      sourceItemId: secondId,
+      profile: { formats: ['hls-h264-aac'] },
+    });
+    expect(response.statusCode).toBe(201);
+    const grant = response.json<PlaybackView>();
+    expect(grant.itemId).toBe(secondId);
+    expect(
+      (await app.inject({ url: grant.streamPath, headers: { cookie: admin } })).statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await post('/sessions/' + grant.id + '/progress', {
+          event: 'start',
+          positionMs: 0,
+          paused: false,
+        })
+      ).statusCode,
+    ).toBe(204);
+    expect((await post('/sessions/' + grant.id + '/stop', {})).statusCode).toBe(204);
+    await expect.poll(() => second.state.playback.cleanup.length).toBe(1);
+    expect(upstream.state.playback.cleanup).toHaveLength(0);
+    expect(upstream.state.playback.reports).toHaveLength(0);
+    const cleanup = new URLSearchParams(second.state.playback.cleanup[0]);
+    expect(cleanup.get('deviceId')).toBe('55555555-5555-4555-8555-555555555555');
+    expect(cleanup.get('playSessionId')).toBe(playSessionId);
+    expect(
+      upstream.state.requests.every((r) => !r.authorization.includes(second.state.token)),
+    ).toBe(true);
+    expect(
+      second.state.requests.every((r) => !r.authorization.includes(upstream.state.token)),
+    ).toBe(true);
+    const another = await post('/sessions', {
+      groupId,
+      sourceItemId: secondId,
+      profile: { formats: ['hls-h264-aac'] },
+    });
+    expect(another.statusCode).toBe(201);
+    const retained = await post('/sessions', { groupId, sourceItemId: itemId, profile });
+    expect(retained.statusCode).toBe(201);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: '/api/v1/connectors/55555555-5555-4555-8555-555555555555',
+          headers: { origin, cookie: admin },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (await app.inject({ url: another.json().streamPath, headers: { cookie: admin } })).statusCode,
+    ).toBe(410);
+    expect(
+      (await app.inject({ url: retained.json().streamPath, headers: { cookie: admin } }))
+        .statusCode,
+    ).toBe(200);
+    expect(db.works.work(groupId)?.sourceCount).toBe(1);
+    await expect.poll(() => second.state.playback.cleanup.length).toBe(2);
+    expect(logs).not.toContain(second.state.token);
+    expect(response.body).not.toContain(second.state.token);
+    expect(
+      (await app.inject({ url: grant.streamPath, headers: { cookie: admin } })).statusCode,
+    ).toBe(410);
+  } finally {
+    db.removeConnector('55555555-5555-4555-8555-555555555555');
+    await second.close();
+  }
+});

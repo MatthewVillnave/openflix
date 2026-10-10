@@ -1,8 +1,9 @@
+import { selectSource, SourceSelectionError, type Selection } from './source-selection.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import type { FastifyInstance } from 'fastify';
 import type { OpenFlixDatabase } from '@openflix/database';
-import { isConnectorError, safePlaybackDiagnostic } from '@openflix/connector-core';
+import { ConnectorError, isConnectorError, safePlaybackDiagnostic } from '@openflix/connector-core';
 import type {
   ClientProfile,
   ManagedMediaConnector,
@@ -29,6 +30,7 @@ interface Grant {
   loginDigest: string;
   itemId: string;
   connectorId: string;
+  binding?: { workId: string; versionKey: string };
   expiresAt: number;
   idleAt: number;
   plan: PlaybackInfo;
@@ -50,6 +52,7 @@ export async function registerPlayback(
   store: EncryptedCredentialStore | undefined,
 ) {
   const grants = new Map<string, Grant>();
+  const removing = new Set<string>();
   const cleanup = new Set<Promise<unknown>>();
   let pending = 0,
     closing = false;
@@ -80,18 +83,23 @@ export async function registerPlayback(
     );
     cleanup.add(job);
     void job.finally(() => cleanup.delete(job));
+    return job;
   };
   const active = (g: Grant) => {
     const now = Date.now();
     const user = db.sessionUser(g.loginDigest, now);
     const item = db.catalog.item(g.itemId);
+    const binding = g.binding ? db.works.binding(g.itemId) : undefined;
     return (
       !closing &&
+      !removing.has(g.connectorId) &&
       now < g.expiresAt &&
       now < g.idleAt &&
       user?.id === g.userId &&
       user.role === 'admin' &&
       item?.connectorId === g.connectorId &&
+      (!g.binding ||
+        (binding?.workId === g.binding.workId && binding.versionKey === g.binding.versionKey)) &&
       db.getConnector(g.connectorId) !== undefined
     );
   };
@@ -126,15 +134,23 @@ export async function registerPlayback(
           return reply.code(403).send({ error: 'Cross-site playback denied', code: 'forbidden' });
       });
       routes.setErrorHandler((error, request, reply) => {
+        if (error instanceof SourceSelectionError)
+          return reply
+            .code(error.code === 'no_compatible_source' ? 503 : 409)
+            .send({ error: error.message, code: error.code });
         if (isConnectorError(error)) {
           const status =
-            error.code === 'unsupported'
-              ? 415
-              : error.code === 'not_found'
-                ? 404
-                : error.code === 'invalid_configuration'
-                  ? 400
-                  : 502;
+            error.code === 'cancelled'
+              ? 410
+              : error.code === 'timeout'
+                ? 504
+                : error.code === 'unsupported'
+                  ? 415
+                  : error.code === 'not_found'
+                    ? 404
+                    : error.code === 'invalid_configuration'
+                      ? 400
+                      : 502;
           request.log.info(
             {
               event: 'playback.failed',
@@ -155,7 +171,9 @@ export async function registerPlayback(
           .code(500)
           .send({ error: 'Playback initialization failed', code: 'initialization_failed' });
       });
-      routes.post<{ Body: { itemId: string; profile: ClientProfile } }>(
+      routes.post<{
+        Body: { itemId?: string; groupId?: string; sourceItemId?: string; profile: ClientProfile };
+      }>(
         '/sessions',
         {
           config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
@@ -164,9 +182,18 @@ export async function registerPlayback(
             body: {
               type: 'object',
               additionalProperties: false,
-              required: ['itemId', 'profile'],
+              required: ['profile'],
+              oneOf: [
+                {
+                  required: ['itemId'],
+                  not: { anyOf: [{ required: ['groupId'] }, { required: ['sourceItemId'] }] },
+                },
+                { required: ['groupId'], not: { required: ['itemId'] } },
+              ],
               properties: {
                 itemId: { type: 'string', pattern: '^item_[a-f0-9]{64}$' },
+                groupId: { type: 'string', pattern: '^work_[a-f0-9]{64}$' },
+                sourceItemId: { type: 'string', pattern: '^item_[a-f0-9]{64}$' },
                 profile: {
                   type: 'object',
                   additionalProperties: false,
@@ -197,34 +224,39 @@ export async function registerPlayback(
             [...grants.values()].filter((g) => g.userId === user.id).length >= 2
           )
             return reply.code(429).send({ error: 'Playback capacity reached', code: 'busy' });
-          const item = db.catalog.item(request.body.itemId);
-          if (!item)
-            return reply.code(404).send({ error: 'Catalog item not found', code: 'not_found' });
-          if (!['movie', 'episode', 'audio'].includes(item.type))
-            return reply
-              .code(415)
-              .send({ error: 'This catalog object is not playable', code: 'unsupported' });
-          const record = db.getConnector(item.connectorId);
-          if (!record)
-            return reply.code(404).send({ error: 'Source not found', code: 'not_found' });
           pending++;
+          let selected: Selection | undefined;
+          let retained = false;
           try {
-            const connector = createJellyfinConnector(
-              { baseUrl: record.baseUrl, credential: { id: record.id } },
-              store,
+            selected = await selectSource(
+              db,
+              request.body,
+              () => {
+                const current = auth.currentUser(request.cookies[config.cookieName]);
+                return !closing && current?.id === user.id && current.role === 'admin';
+              },
+              (record) => {
+                if (removing.has(record.id)) throw new ConnectorError('cancelled');
+                return createJellyfinConnector(
+                  { baseUrl: record.baseUrl, credential: { id: record.id } },
+                  store,
+                );
+              },
+              () =>
+                app.log.info(
+                  { event: 'playback.cleanup_unconfirmed' },
+                  'Upstream playback cleanup unconfirmed',
+                ),
             );
-            const plan = await connector.getPlaybackInfo(item.upstreamId, request.body.profile);
-            if ((item.type === 'audio') !== (plan.kind === 'audio'))
-              return reply
-                .code(502)
-                .send({ error: 'Invalid media source', code: 'invalid_response' });
+            const { item, connector, plan, binding } = selected;
             const now = Date.now();
             const g: Grant = {
               id: randomUUID(),
               userId: user.id,
               loginDigest: digest(request.cookies[config.cookieName]!),
               itemId: item.id,
-              connectorId: record.id,
+              connectorId: item.connectorId,
+              ...(binding ? { binding } : {}),
               expiresAt: now + 4 * 60 * 60 * 1000,
               idleAt: now + 5 * 60 * 1000,
               plan,
@@ -245,6 +277,7 @@ export async function registerPlayback(
             if ([...grants.values()].filter((v) => v.userId === user.id).length >= 2)
               return reply.code(429).send({ error: 'Playback capacity reached', code: 'busy' });
             grants.set(g.id, g);
+            retained = true;
             const result: PlaybackView = {
               id: g.id,
               itemId: item.id,
@@ -257,6 +290,16 @@ export async function registerPlayback(
             };
             return reply.code(201).send(result);
           } finally {
+            if (selected && !retained) {
+              try {
+                await selected.connector.closePlayback(selected.plan);
+              } catch {
+                app.log.info(
+                  { event: 'playback.cleanup_unconfirmed' },
+                  'Upstream playback cleanup unconfirmed',
+                );
+              }
+            }
             pending--;
           }
         },
@@ -356,6 +399,10 @@ export async function registerPlayback(
               cancel = upstream.cancel;
               if (abort.signal.aborted || !active(g)) {
                 release();
+                if (reply.raw.destroyed || reply.raw.writableEnded) {
+                  reply.hijack();
+                  return;
+                }
                 return reply.code(410).send({ error: 'Playback expired', code: 'expired' });
               }
               reply.code(upstream.status);
@@ -379,7 +426,21 @@ export async function registerPlayback(
               release();
               return reply.send();
             } catch (error) {
+              // Inspect cancellation before release(), which itself aborts the request.
+              const cancelled =
+                abort.signal.aborted ||
+                !active(g) ||
+                (isConnectorError(error) && error.code === 'cancelled');
               release();
+              if (reply.raw.destroyed || reply.raw.writableEnded || reply.raw.headersSent) {
+                reply.hijack();
+                if (!reply.raw.destroyed && !reply.raw.writableEnded) reply.raw.destroy();
+                return;
+              }
+              if (cancelled)
+                return reply
+                  .code(410)
+                  .send({ error: 'Playback expired or cancelled', code: 'expired' });
               throw error;
             }
           },
@@ -463,4 +524,12 @@ export async function registerPlayback(
     },
     { prefix: '/api/v1/playback' },
   );
+  return {
+    async prepareRemoval(connectorId: string) {
+      removing.add(connectorId);
+      const jobs = [...grants.values()].filter((g) => g.connectorId === connectorId).map(retire);
+      await Promise.allSettled(jobs);
+      return () => removing.delete(connectorId);
+    },
+  };
 }

@@ -337,3 +337,14 @@ it('classifies inaccessible-source metadata as unsupported without assuming file
   expect(fixture.state.playback.reports).toHaveLength(0);
   expect(fixture.state.playback.streamRequests).toHaveLength(0);
 });
+
+it('fails closed for ambiguous upstream versions under unified source selection', async () => {
+  fixture.state.playback.sources = [playbackSource(), { ...playbackSource(), Id: 'b'.repeat(32) }];
+  await expect(
+    connector.getPlaybackInfo(
+      playbackItemId,
+      { formats: ['mp4-h264-aac'] },
+      { singleVersionOnly: true },
+    ),
+  ).rejects.toMatchObject({ code: 'unsupported' });
+});

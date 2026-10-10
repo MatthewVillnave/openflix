@@ -60,7 +60,7 @@ export async function registerConnectors(
     }
   };
   await registerCatalog(app, db, auth, config, run, () => busy);
-  await registerPlayback(app, db, auth, config, vault);
+  const playback = await registerPlayback(app, db, auth, config, vault);
   await app.register(
     async (routes) => {
       routes.addHook('preHandler', async (request, reply) => {
@@ -216,21 +216,26 @@ export async function registerConnectors(
           run(async (store) => {
             const record = db.getConnector(request.params.id);
             if (!record) throw new ConnectorError('not_found');
-            let revocation: 'confirmed' | 'unconfirmed' = 'confirmed';
+            const finishRemoval = await playback.prepareRemoval(record.id);
             try {
-              await createJellyfinConnector(
-                { baseUrl: record.baseUrl, credential: { id: record.id } },
-                store,
-              ).disconnect();
-            } catch {
-              revocation = 'unconfirmed';
+              let revocation: 'confirmed' | 'unconfirmed' = 'confirmed';
+              try {
+                await createJellyfinConnector(
+                  { baseUrl: record.baseUrl, credential: { id: record.id } },
+                  store,
+                ).disconnect();
+              } catch {
+                revocation = 'unconfirmed';
+              }
+              db.removeConnector(record.id);
+              request.log.info(
+                { event: 'connector.removed', connector_id: record.id, revocation },
+                'Media server removed',
+              );
+              return { removed: true, revocation };
+            } finally {
+              finishRemoval();
             }
-            db.removeConnector(record.id);
-            request.log.info(
-              { event: 'connector.removed', connector_id: record.id, revocation },
-              'Media server removed',
-            );
-            return { removed: true, revocation };
           }),
       );
     },

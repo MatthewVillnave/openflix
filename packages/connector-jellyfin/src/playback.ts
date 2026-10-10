@@ -255,7 +255,11 @@ function hlsSource(source: z.infer<typeof sourceSchema>) {
 export function playbackOperations(access: Access) {
   const hls = new Map<string, HlsPlayback>();
   return {
-    async getPlaybackInfo(itemId: string, profile: ClientProfile): Promise<PlaybackInfo> {
+    async getPlaybackInfo(
+      itemId: string,
+      profile: ClientProfile,
+      policy?: { singleVersionOnly: boolean },
+    ): Promise<PlaybackInfo> {
       if (
         !/^[a-fA-F0-9-]{16,64}$/.test(itemId) ||
         !Array.isArray(profile.formats) ||
@@ -289,6 +293,8 @@ export function playbackOperations(access: Access) {
           ).data,
         );
         if (data.ErrorCode) throw new ConnectorError('unsupported');
+        if (policy?.singleVersionOnly && data.MediaSources.length !== 1)
+          throw new ConnectorError('unsupported');
         for (const source of data.MediaSources) {
           if (!hasRuntime(source)) continue;
           const selected = choose(source, profile);
@@ -366,6 +372,12 @@ export function playbackOperations(access: Access) {
             ).data,
           );
           if (fallback.ErrorCode) throw new ConnectorError('unsupported');
+          if (
+            policy?.singleVersionOnly &&
+            (fallback.MediaSources.length !== 1 ||
+              fallback.MediaSources[0]?.Id !== data.MediaSources[0]?.Id)
+          )
+            throw new ConnectorError('unsupported');
           for (const source of fallback.MediaSources) {
             const copy = hlsSource(source);
             if (!copy || !source.SupportsTranscoding || !source.TranscodingUrl) continue;
