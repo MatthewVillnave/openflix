@@ -1,0 +1,21 @@
+OpenFlix
+Copyright (C) 2026 Matthew Villnave and OpenFlix contributors, to the extent
+of their respective copyrightable first-party contributions.
+
+First-party OpenFlix material is licensed under the GNU Affero General Public
+License version 3 ONLY (SPDX: AGPL-3.0-only). You may redistribute and modify
+it under that license, including commercially. There are no custom exceptions,
+noncommercial restrictions, royalties, or exclusive commercial privileges.
+There is NO WARRANTY, to the extent permitted by law. See LICENSE.
+
+This project-level notice applies without altering checksum-sensitive migrations
+or historical reports. Third-party material retains its original licenses and
+attributions; see THIRD-PARTY-NOTICES.md and third-party/. No ownership claim is
+made over dependency code, generated upstream SDK code, user media or third-party
+media metadata. Those materials are not relicensed by this project notice.
+
+On 2026-10-09 the owner authorized this grant for first-party OpenFlix material
+within their authority, including that material in the preserved M5 implementation
+snapshot e08d799de9accf84b50ab4d9334b5dc4b6d712ce. Its frozen ZIP did not contain
+this notice or LICENSE; this notice does not change its bytes or imply that it did.
+Use the licensed release source package for a self-contained distribution.

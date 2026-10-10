@@ -15,5 +15,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "license": "AGPL-3.0-only"
 }
