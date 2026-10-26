@@ -89,8 +89,13 @@ export class CatalogRepository {
     ];
     const where = `FROM catalog_items i JOIN catalog_memberships m ON m.item_id=i.id
       WHERE m.library_id=? AND (? IS NULL OR i.type=?) AND (? IS NULL OR i.parent_id=?)`;
+    const order = options.parentId
+      ? `COALESCE(json_extract(i.metadata_json, '$.seasonNumber'), 2147483647),
+         COALESCE(json_extract(i.metadata_json, '$.episodeNumber'), 2147483647),
+         i.sort_title COLLATE NOCASE, i.id`
+      : 'i.sort_title COLLATE NOCASE, i.id';
     const rows = this.db
-      .prepare(`SELECT i.id ${where} ORDER BY i.sort_title COLLATE NOCASE, i.id LIMIT ? OFFSET ?`)
+      .prepare(`SELECT i.id ${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
       .all(...args, options.limit, options.offset) as { id: string }[];
     const { total } = this.db.prepare(`SELECT COUNT(*) AS total ${where}`).get(...args) as {
       total: number;

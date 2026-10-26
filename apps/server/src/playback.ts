@@ -39,6 +39,7 @@ interface Grant {
   paused: boolean;
   started: boolean;
   reporting: boolean;
+  reportDone?: Promise<void>;
   streams: Set<AbortController>;
   requestWindow: number;
   requestCount: number;
@@ -71,6 +72,7 @@ export async function registerPlayback(
     for (const abort of g.streams) abort.abort();
     const job = (async () => {
       try {
+        await g.reportDone;
         if (g.started) await g.connector.reportPlaybackStop(state(g));
       } finally {
         await g.connector.closePlayback(g.plan);
@@ -497,6 +499,10 @@ export async function registerPlayback(
               .code(409)
               .send({ error: 'Playback has not started', code: 'invalid_request' });
           g.reporting = true;
+          let finishReport!: () => void;
+          g.reportDone = new Promise<void>((resolve) => {
+            finishReport = resolve;
+          });
           try {
             g.positionMs = request.body.positionMs;
             g.paused = request.body.paused;
@@ -505,8 +511,7 @@ export async function registerPlayback(
               g.started = true;
             } else await g.connector.reportPlaybackProgress(state(g));
             if (!active(g) || !grants.has(g.id)) {
-              // Stop a report that completed after expiry/removal instead of resurrecting its state.
-              await g.connector.reportPlaybackStop(state(g));
+              // The retirement job waits for this report before sending the final stop.
               return reply.code(410).send({ error: 'Playback expired', code: 'expired' });
             }
             db.forUser(g.userId).saveResume(g.itemId, g.positionMs, g.plan.durationMs);
@@ -514,16 +519,25 @@ export async function registerPlayback(
             return reply.code(204).send();
           } finally {
             g.reporting = false;
+            finishReport();
           }
         },
       );
-      routes.post<{ Params: { id: string } }>(
+      routes.post<{ Params: { id: string }; Body: { positionMs?: number; paused?: boolean } }>(
         '/sessions/:id/stop',
         {
           schema: {
             params: schemaId,
             querystring: emptyQuery,
-            body: { type: 'object', additionalProperties: false, properties: {} },
+            body: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                positionMs: { type: 'number', minimum: 0, maximum: 86400000 },
+                paused: { type: 'boolean' },
+              },
+              dependencies: { positionMs: ['paused'], paused: ['positionMs'] },
+            },
           },
         },
         async (request, reply) => {
@@ -532,6 +546,17 @@ export async function registerPlayback(
             return reply
               .code(410)
               .send({ error: 'Playback session expired or unavailable', code: 'expired' });
+          if (request.body.positionMs !== undefined) {
+            if (request.body.positionMs > g.plan.durationMs)
+              return reply
+                .code(400)
+                .send({ error: 'Position exceeds duration', code: 'invalid_request' });
+            if (g.started || g.reporting) {
+              g.positionMs = request.body.positionMs;
+              g.paused = request.body.paused!;
+              db.forUser(g.userId).saveResume(g.itemId, g.positionMs, g.plan.durationMs);
+            }
+          }
           retire(g);
           return reply.code(204).send();
         },

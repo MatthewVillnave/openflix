@@ -180,6 +180,10 @@ function Shelf({
     void read<WorkPage>(`/works?type=${type}&offset=${offset}&limit=24`, controller.signal)
       .then((value) => {
         if (controller.signal.aborted) return;
+        if (offset > 0 && offset >= value.total) {
+          setOffset(value.total ? Math.floor((value.total - 1) / 24) * 24 : 0);
+          return;
+        }
         setPage(value);
         if (offset === 0) onFeature?.(value.items.slice(0, 8));
       })
@@ -399,10 +403,14 @@ function Home({
 function Detail({
   view,
   admin,
+  active,
+  revision,
   onNavigate,
 }: {
   view: Extract<View, { kind: 'detail' }>;
   admin: boolean;
+  active: boolean;
+  revision: number;
   onNavigate: Navigate;
 }) {
   const [detail, setDetail] = useState<{ work: CatalogWork; sources: WorkSourcePage } | null>(null);
@@ -420,8 +428,10 @@ function Detail({
   }, [item?.id]);
   useEffect(() => {
     const controller = new AbortController();
+    if (!active) return;
     setError('');
     setItem(null);
+    setDetail(null);
     setChildren(null);
     void (async () => {
       const value = view.work
@@ -440,7 +450,7 @@ function Detail({
       if (!controller.signal.aborted) setError(e.message);
     });
     return () => controller.abort();
-  }, [view.id, view.work, selected, sourceOffset, retry]);
+  }, [view.id, view.work, selected, sourceOffset, retry, active, revision]);
   useEffect(() => {
     const controller = new AbortController();
     setChildren(null);
@@ -790,7 +800,13 @@ export function Cinema({
             {frame.view.kind === 'home' ? (
               <Home onNavigate={navigate} active={index === i} revision={catalogRevision} />
             ) : frame.view.kind === 'detail' ? (
-              <Detail view={frame.view} admin={true} onNavigate={navigate} />
+              <Detail
+                view={frame.view}
+                admin={true}
+                active={index === i}
+                revision={catalogRevision}
+                onNavigate={navigate}
+              />
             ) : frame.view.kind === 'player' ? (
               index === i && (
                 <section className="player-view">

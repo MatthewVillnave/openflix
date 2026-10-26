@@ -371,3 +371,54 @@ it('cancels pending series recovery when the account view is removed', async () 
   await new Promise((r) => setTimeout(r, 500));
   expect(seriesAttempts).toBe(1);
 });
+
+it('recovers a shelf whose previous page no longer exists after the catalog shrinks', async () => {
+  const fetcher = setup();
+  const original = fetcher.getMockImplementation()!;
+  let shrunk = false;
+  fetcher.mockImplementation(async (path) => {
+    if (path.includes('/works?type=movie')) {
+      const offset = Number(new URL(path, 'http://fixture').searchParams.get('offset'));
+      const total = shrunk ? 1 : 25;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ items: offset >= total ? [] : [movie], total }),
+      };
+    }
+    return original(path);
+  });
+  mount();
+  fireEvent.click(await screen.findByRole('button', { name: 'More movies' }));
+  await waitFor(() =>
+    expect(fetcher.mock.calls.some(([p]) => p.includes('type=movie&offset=24'))).toBe(true),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  shrunk = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Home' }));
+  await waitFor(() =>
+    expect(
+      fetcher.mock.calls.filter(([p]) => p.includes('type=movie&offset=0')).length,
+    ).toBeGreaterThan(1),
+  );
+  expect(screen.queryByText(/No movies indexed yet/)).toBeNull();
+});
+
+it('revalidates a detail after returning from Settings when its source was removed', async () => {
+  const fetcher = setup();
+  const original = fetcher.getMockImplementation()!;
+  let removed = false;
+  fetcher.mockImplementation(async (path) => {
+    if (removed && path.includes('/works/work_movie'))
+      return { ok: false, status: 404, json: async () => ({}) };
+    return original(path);
+  });
+  mount();
+  fireEvent.click((await screen.findAllByRole('button', { name: /A quiet horizon/ }))[0]!);
+  await screen.findByLabelText('Title details');
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  removed = true;
+  await back();
+  await screen.findByRole('alert');
+  expect(screen.queryByLabelText('Title details')).toBeNull();
+});

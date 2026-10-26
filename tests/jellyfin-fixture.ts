@@ -25,6 +25,8 @@ export async function jellyfinFixture() {
     },
     authWait: undefined as Promise<void> | undefined,
     catalogWait: undefined as Promise<void> | undefined,
+    itemWait: undefined as Promise<void> | undefined,
+    itemAborts: 0,
     playback: playbackFixtureState(),
     collectionType: 'movies' as string | null,
     libraryName: 'Accessible movies',
@@ -36,6 +38,7 @@ export async function jellyfinFixture() {
     pageOverride: undefined as undefined | ((offset: number, limit: number) => unknown),
     version: '12.1.0',
     serverId,
+    serverIdResponses: [] as string[],
     name: 'Fixture Jellyfin',
     token: randomBytes(32).toString('hex'),
     redirectPath: '',
@@ -87,7 +90,7 @@ export async function jellyfinFixture() {
     }
     if (path === '/jellyfin/System/Info/Public') {
       json({
-        Id: state.serverId,
+        Id: state.serverIdResponses.shift() ?? state.serverId,
         ServerName: state.name,
         Version: state.version,
         ProductName: 'Jellyfin',
@@ -179,6 +182,11 @@ export async function jellyfinFixture() {
       return;
     }
     if (catalogUrl.pathname.startsWith('/jellyfin/Items/')) {
+      response.once('close', () => {
+        if (!response.writableEnded) state.itemAborts++;
+      });
+      await state.itemWait;
+      if (response.destroyed) return;
       if (catalogUrl.searchParams.get('userId') !== currentUserId) {
         json({}, 403);
         return;

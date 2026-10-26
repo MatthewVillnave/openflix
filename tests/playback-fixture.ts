@@ -65,6 +65,7 @@ export function playbackFixtureState() {
     cleanup: [] as string[],
     reports: [] as { path: string; body: Record<string, unknown> }[],
     reportFailure: false,
+    reportHold: undefined as Promise<void> | undefined,
     streamMode: 'normal' as
       | 'normal'
       | 'redirect'
@@ -131,8 +132,12 @@ export function servePlayback(
   }
   if (/\/Sessions\/Playing(?:\/Progress|\/Stopped)?$/.test(url.pathname)) {
     state.reports.push({ path: url.pathname, body: JSON.parse(body) });
-    res.writeHead(state.reportFailure ? 503 : 204);
-    res.end();
+    const finish = () => {
+      res.writeHead(state.reportFailure ? 503 : 204);
+      res.end();
+    };
+    if (state.reportHold && url.pathname.endsWith('/Progress')) void state.reportHold.then(finish);
+    else finish();
     return true;
   }
   if (url.pathname.endsWith('/Videos/ActiveEncodings') && req.method === 'DELETE') {

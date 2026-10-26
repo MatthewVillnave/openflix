@@ -12,7 +12,8 @@ export function catalogPermissions(
 ) {
   let active = 0;
   const waiting: Array<{ grant: () => void }> = [];
-  const acquire = (deadline: number): Promise<void> => {
+  const acquire = (deadline: number, signal: AbortSignal): Promise<void> => {
+    if (signal.aborted) return Promise.reject(new ConnectorError('cancelled'));
     if (Date.now() >= deadline) return Promise.reject(new ConnectorError('timeout'));
     if (active < 12) {
       active++;
@@ -23,6 +24,7 @@ export function catalogPermissions(
       const entry = {
         grant: () => {
           clearTimeout(timer);
+          signal.removeEventListener('abort', cancel);
           active++;
           resolve();
         },
@@ -31,18 +33,37 @@ export function catalogPermissions(
         () => {
           const index = waiting.indexOf(entry);
           if (index >= 0) waiting.splice(index, 1);
+          signal.removeEventListener('abort', cancel);
           reject(new ConnectorError('timeout'));
         },
         Math.max(0, deadline - Date.now()),
       );
+      const cancel = () => {
+        clearTimeout(timer);
+        const index = waiting.indexOf(entry);
+        if (index >= 0) waiting.splice(index, 1);
+        reject(new ConnectorError('cancelled'));
+      };
+      signal.addEventListener('abort', cancel, { once: true });
       waiting.push(entry);
+      if (signal.aborted) cancel();
     });
   };
   const release = () => {
     active--;
     waiting.shift()?.grant();
   };
-  return async (token: string | undefined, value: Record<string, unknown>) => {
+  return async (
+    token: string | undefined,
+    value: Record<string, unknown>,
+    clientSignal?: AbortSignal,
+  ) => {
+    const controller = new AbortController();
+    const signal = AbortSignal.any([
+      controller.signal,
+      AbortSignal.timeout(8000),
+      ...(clientSignal ? [clientSignal] : []),
+    ]);
     const user = auth.currentUser(token);
     if (!user) throw new ConnectorError('cancelled');
     const scoped = db.forUser(user.id),
@@ -61,7 +82,8 @@ export function catalogPermissions(
     if (ids.size > 256) throw new ConnectorError('unavailable');
     const tasks: Array<() => Promise<void>> = [];
     const valid = () => {
-      if (auth.currentUser(token)?.id !== user.id) throw new ConnectorError('cancelled');
+      if (signal.aborted || auth.currentUser(token)?.id !== user.id)
+        throw new ConnectorError('cancelled');
     };
     if (Array.isArray(value.libraries)) {
       const indexed = value.libraries as { connectorId: string; upstreamId: string }[];
@@ -69,7 +91,7 @@ export function catalogPermissions(
         tasks.push(async () => {
           if (!vault) throw new ConnectorError('credential_unavailable');
           const libraries = await create(
-            { baseUrl: record.baseUrl, credential: { id: record.id } },
+            { baseUrl: record.baseUrl, credential: { id: record.id }, signal },
             vault.forUser(user.id),
           ).getLibraries();
           if (
@@ -88,27 +110,54 @@ export function catalogPermissions(
         tasks.push(async () => {
           if (!vault) throw new ConnectorError('credential_unavailable');
           await create(
-            { baseUrl: record.baseUrl, credential: { id: record.id } },
+            { baseUrl: record.baseUrl, credential: { id: record.id }, signal },
             vault.forUser(user.id),
           ).connect();
           if (!scoped.getConnector(record.id)) throw new ConnectorError('not_found');
         });
-    for (const id of ids)
-      tasks.push(async () => {
-        const item = scoped.catalog.item(id),
-          record = item && scoped.getConnector(item.connectorId);
-        if (!item || !record) throw new ConnectorError('not_found');
-        if (!vault) throw new ConnectorError('credential_unavailable');
-        await create(
-          { baseUrl: record.baseUrl, credential: { id: record.id } },
-          vault.forUser(user.id),
-        ).getItem(item.upstreamId);
-        if (!scoped.catalog.item(id) || !scoped.getConnector(record.id))
-          throw new ConnectorError('not_found');
-      });
+    const groups = new Map<
+      string,
+      {
+        record: { id: string; baseUrl: string };
+        entries: Array<{ id: string; upstreamId: string }>;
+      }
+    >();
+    for (const id of ids) {
+      const item = scoped.catalog.item(id),
+        record = item && scoped.getConnector(item.connectorId);
+      if (!item || !record) throw new ConnectorError('not_found');
+      const group = groups.get(record.id) ?? { record, entries: [] };
+      group.entries.push({ id, upstreamId: item.upstreamId });
+      groups.set(record.id, group);
+    }
+    for (const { record, entries } of groups.values()) {
+      if (!vault) throw new ConnectorError('credential_unavailable');
+      const connector = create(
+        { baseUrl: record.baseUrl, credential: { id: record.id }, signal },
+        vault.forUser(user.id),
+      );
+      // Four bounded batches share the same global concurrency limit, while each
+      // batch pins identity once and still authorizes every individual item.
+      const size = connector.verifyItems ? Math.ceil(entries.length / 4) : 1;
+      for (let i = 0; i < entries.length; i += size) {
+        const batch = entries.slice(i, i + size);
+        tasks.push(async () => {
+          valid();
+          if (!scoped.getConnector(record.id) || batch.some(({ id }) => !scoped.catalog.item(id)))
+            throw new ConnectorError('not_found');
+          if (connector.verifyItems)
+            await connector.verifyItems(batch.map(({ upstreamId }) => upstreamId));
+          else await connector.getItem(batch[0]!.upstreamId);
+          valid();
+          if (!scoped.getConnector(record.id) || batch.some(({ id }) => !scoped.catalog.item(id)))
+            throw new ConnectorError('not_found');
+        });
+      }
+    }
     const deadline = Date.now() + 8000;
     let next = 0,
-      failed = false;
+      failed = false,
+      firstFailure: unknown;
     const results = await Promise.allSettled(
       Array.from({ length: Math.min(tasks.length, 4) }, async () => {
         try {
@@ -117,7 +166,7 @@ export function catalogPermissions(
             if (failed || Date.now() > deadline) throw new ConnectorError('cancelled');
             const task = tasks[next++];
             if (!task) return;
-            await acquire(deadline);
+            await acquire(deadline, signal);
             try {
               valid();
               if (failed || Date.now() >= deadline) throw new ConnectorError('cancelled');
@@ -128,13 +177,15 @@ export function catalogPermissions(
             valid();
           }
         } catch (error) {
+          if (!failed) firstFailure = error;
           failed = true;
+          controller.abort();
           throw error;
         }
       }),
     );
-    valid();
     const failure = results.find((r) => r.status === 'rejected');
-    if (failure?.status === 'rejected') throw failure.reason;
+    if (failure?.status === 'rejected') throw firstFailure ?? failure.reason;
+    valid();
   };
 }

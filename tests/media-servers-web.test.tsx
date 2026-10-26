@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MediaServers } from '../apps/web/src/MediaServers.js';
 import { App } from '../apps/web/src/App.js';
@@ -153,4 +153,85 @@ it('aborts an in-flight discovery when account/settings tree unmounts', async ()
   fireEvent.click(screen.getByRole('button', { name: 'Find Jellyfin servers' }));
   view.unmount();
   expect(signal?.aborted).toBe(true);
+});
+
+it('notifies the parent when a connection finishes after leaving Settings', async () => {
+  let complete!: (value: unknown) => void;
+  vi.spyOn(api, 'connectorRequest')
+    .mockResolvedValueOnce({
+      connectors: [],
+      credentialStorageConfigured: true,
+      canRegisterServers: true,
+      approvedServers: [],
+    })
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+  const changed = vi.fn();
+  const view = render(<MediaServers onChanged={changed} />);
+  await screen.findByRole('button', { name: 'Add Jellyfin server' });
+  fireEvent.change(screen.getByLabelText('Jellyfin URL'), {
+    target: { value: 'http://fixture:8096' },
+  });
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.submit(screen.getByRole('button', { name: 'Add Jellyfin server' }).closest('form')!);
+  view.unmount();
+  await act(async () => complete({ connector: record }));
+  expect(changed).toHaveBeenCalledTimes(1);
+});
+it('notifies the parent when disconnect finishes after leaving Settings', async () => {
+  let complete!: (value: unknown) => void;
+  vi.spyOn(api, 'connectorRequest')
+    .mockResolvedValueOnce({
+      connectors: [record],
+      credentialStorageConfigured: true,
+      canRegisterServers: true,
+      approvedServers: [],
+    })
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+  const changed = vi.fn();
+  const view = render(<MediaServers onChanged={changed} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Disconnect / remove' }));
+  view.unmount();
+  await act(async () => complete({ removed: true, revocation: 'confirmed' }));
+  expect(changed).toHaveBeenCalledTimes(1);
+});
+it('requires an explicit confirmation before forgetting an approved identity', async () => {
+  const call = vi
+    .spyOn(api, 'connectorRequest')
+    .mockResolvedValueOnce({
+      connectors: [],
+      credentialStorageConfigured: true,
+      canRegisterServers: true,
+      approvedServers: [
+        { baseUrl: record.baseUrl, serverId: '11111111111111111111111111111111', name: 'Fixture' },
+      ],
+    })
+    .mockResolvedValueOnce({ removed: true });
+  render(<MediaServers />);
+  fireEvent.click(await screen.findByText('Manage approved server identities'));
+  const button = screen.getByRole('button', {
+    name: 'Forget old server identity',
+  }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: /old server identity should be forgotten/i }),
+  );
+  fireEvent.click(button);
+  await screen.findByText(
+    'Old server identity forgotten. Verify the replacement before connecting.',
+  );
+  expect(call.mock.calls[1]).toEqual([
+    '/approved-server',
+    'DELETE',
+    { baseUrl: record.baseUrl, serverId: '11111111111111111111111111111111' },
+  ]);
 });

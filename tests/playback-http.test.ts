@@ -267,6 +267,33 @@ it('fails cleanly on incompatible media and rejects unsafe stream content/redire
     expect(response.body + logs).not.toContain('synthetic-private');
   }
 });
+it('saves final position and serializes stop behind a delayed in-flight report', async () => {
+  const s = await prepared();
+  expect(
+    (await post(`/sessions/${s.id}/progress`, { event: 'start', positionMs: 1000, paused: false }))
+      .statusCode,
+  ).toBe(204);
+  let release!: () => void;
+  upstream.state.playback.reportHold = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const pending = post(`/sessions/${s.id}/progress`, {
+    event: 'progress',
+    positionMs: 3000,
+    paused: false,
+  });
+  await expect.poll(() => upstream.state.playback.reports.length).toBe(2);
+  expect(
+    (await post(`/sessions/${s.id}/stop`, { positionMs: 7000, paused: false })).statusCode,
+  ).toBe(204);
+  expect(db.forUser('admin').resume(itemId)?.positionMs).toBe(7000);
+  expect(upstream.state.playback.reports).toHaveLength(2);
+  release();
+  expect((await pending).statusCode).toBe(410);
+  await expect.poll(() => upstream.state.playback.reports.length).toBe(3);
+  expect(upstream.state.playback.reports[2]!.body.PositionTicks).toBe(70000000);
+  expect(db.forUser('admin').resume(itemId)?.positionMs).toBe(7000);
+});
 it('reports real start, pause/seek/progress and stop without issuing another login', async () => {
   const s = await prepared();
   expect(

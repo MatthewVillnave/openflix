@@ -121,6 +121,41 @@ export async function registerConnectors(
           }
         },
       );
+      routes.delete<{ Body: { baseUrl: string; serverId: string } }>(
+        '/connectors/approved-server',
+        {
+          schema: {
+            body: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['baseUrl', 'serverId'],
+              properties: {
+                baseUrl: { type: 'string', minLength: 1, maxLength: 2048 },
+                serverId: { type: 'string', pattern: '^[a-fA-F0-9-]{16,64}$' },
+              },
+            },
+          },
+        },
+        async (request, reply) => {
+          if (auth.currentUser(request.cookies[config.cookieName])?.role !== 'admin')
+            return reply.code(403).send({ error: 'Administrator access required' });
+          return run(async () => {
+            const outcome = db.forgetApprovedServer(
+              validateJellyfinUrl(request.body.baseUrl),
+              request.body.serverId,
+            );
+            if (outcome === 'in_use')
+              return reply
+                .code(409)
+                .send({ error: 'All users must disconnect this server first.' });
+            if (outcome === 'not_found')
+              return reply
+                .code(404)
+                .send({ error: 'Approved server not found or identity changed.' });
+            return { removed: true };
+          });
+        },
+      );
       routes.get('/connectors', async (request, reply) => {
         const token = request.cookies[config.cookieName],
           user = auth.currentUser(token)!;
@@ -212,9 +247,11 @@ export async function registerConnectors(
                 try {
                   if (auth.currentUser(token)?.id !== user.id)
                     throw new ConnectorError('cancelled');
-                  store.create(record, result.secret, user.id);
-                  if (user.role === 'admin')
-                    db.approveServer(baseUrl, result.server.id, result.server.name);
+                  db.transaction(() => {
+                    store.create(record, result.secret, user.id);
+                    if (user.role === 'admin')
+                      db.approveServer(baseUrl, result.server.id, result.server.name);
+                  });
                 } catch (error) {
                   try {
                     await revokeJellyfinCredential(baseUrl, id, result.secret);

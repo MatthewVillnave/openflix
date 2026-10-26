@@ -79,3 +79,66 @@ it('bounds overload without leaking active slots into subsequent loads', async (
   await expect(verify('a', page)).resolves.toBeUndefined();
   expect(state.active).toBe(0);
 });
+it('verifies every item in a 50-item page under moderate latency with bounded pinned sessions', async () => {
+  const verified: string[] = [];
+  let sessions = 0;
+  const db = {
+    forUser: () => ({
+      catalog: { item: (id: string) => ({ connectorId: 'a', upstreamId: id }) },
+      getConnector: () => ({ id: 'a', baseUrl: 'https://fixture.invalid' }),
+    }),
+  };
+  const verify = catalogPermissions(
+    db as never,
+    { currentUser: () => ({ id: 'a' }) } as never,
+    { forUser: () => ({}) } as never,
+    (() => ({
+      verifyItems: async (ids: string[]) => {
+        sessions++;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        for (const id of ids) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          verified.push(id);
+        }
+      },
+    })) as never,
+  );
+  await verify('a', { items: Array.from({ length: 50 }, (_, id) => ({ id: String(id) })) });
+  expect(new Set(verified).size).toBe(50);
+  expect(sessions).toBe(4);
+}, 8000);
+
+it('removes disconnected requests from the shared queue and leaves capacity available', async () => {
+  const { verify } = setup();
+  state.delay = 75;
+  const first = Array.from({ length: 3 }, () => verify('a', page));
+  await vi.waitFor(() => expect(state.active).toBe(12));
+  const controller = new AbortController();
+  const queued = verify('b', page, controller.signal).catch((error) => error);
+  controller.abort();
+  expect(await queued).toMatchObject({ code: 'cancelled' });
+  await Promise.all(first);
+  expect(state.calls).not.toContain('b');
+  await expect(verify('a', page)).resolves.toBeUndefined();
+});
+it('rejects the whole page when any batch contains a denied item', async () => {
+  const db = {
+    forUser: () => ({
+      catalog: { item: (id: string) => ({ connectorId: 'a', upstreamId: id }) },
+      getConnector: () => ({ id: 'a', baseUrl: 'https://fixture.invalid' }),
+    }),
+  };
+  const verify = catalogPermissions(
+    db as never,
+    { currentUser: () => ({ id: 'a' }) } as never,
+    { forUser: () => ({}) } as never,
+    (() => ({
+      verifyItems: async (ids: string[]) => {
+        if (ids.includes('17')) throw new Error('denied');
+      },
+    })) as never,
+  );
+  await expect(
+    verify('a', { items: Array.from({ length: 50 }, (_, id) => ({ id: String(id) })) }),
+  ).rejects.toThrow('denied');
+});

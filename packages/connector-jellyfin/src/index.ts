@@ -93,7 +93,7 @@ function normalized(error: unknown): ConnectorError {
   }
   return new ConnectorError('invalid_response');
 }
-function apiFor(baseUrl: string, deviceId: string, token = ''): JellyfinApi {
+function apiFor(baseUrl: string, deviceId: string, token = '', signal?: AbortSignal): JellyfinApi {
   if (!/^[a-zA-Z0-9-]{1,128}$/.test(deviceId)) throw new ConnectorError('invalid_configuration');
   const transport = axios.create({
     adapter: 'http',
@@ -106,10 +106,10 @@ function apiFor(baseUrl: string, deviceId: string, token = ''): JellyfinApi {
   });
   // Absolute deadline also bounds slow/dripping responses, not just socket inactivity.
   transport.interceptors.request.use((config) => {
-    config.signal =
-      config.signal instanceof AbortSignal
-        ? AbortSignal.any([config.signal, AbortSignal.timeout(5000)])
-        : AbortSignal.timeout(5000);
+    const signals = [AbortSignal.timeout(5000)];
+    if (config.signal instanceof AbortSignal) signals.push(config.signal);
+    if (signal) signals.push(signal);
+    config.signal = AbortSignal.any(signals);
     return config;
   });
   return new Jellyfin({
@@ -178,6 +178,7 @@ function noSecretEcho(value: unknown, secrets: string[]): void {
 export interface JellyfinConnectorOptions {
   baseUrl: string;
   credential: CredentialRef;
+  signal?: AbortSignal;
 }
 /** Opaque bytes are server-only. The caller must encrypt them and clear the buffer. */
 export async function authenticateJellyfin(input: {
@@ -242,7 +243,7 @@ export function createJellyfinConnector(
     let api: Api | undefined;
     try {
       const credential = credentialSchema.parse(JSON.parse(Buffer.from(secret).toString('utf8')));
-      api = apiFor(baseUrl, options.credential.id);
+      api = apiFor(baseUrl, options.credential.id, '', options.signal);
       const server = await serverInfo(api);
       noSecretEcho(server, [credential.token]);
       if (server.id !== credential.serverId) throw new ConnectorError('identity_mismatch');
@@ -284,6 +285,7 @@ export function createJellyfinConnector(
       return withCredential(async (_api, credential) => {
         const info = await serverInfo(apiFor(baseUrl, options.credential.id));
         noSecretEcho(info, [credential.token]);
+        if (info.id !== credential.serverId) throw new ConnectorError('identity_mismatch');
         return info;
       });
     },
@@ -388,6 +390,20 @@ export function createJellyfinConnector(
         if (item.id !== id) throw new ConnectorError('invalid_response');
         noSecretEcho(item, [credential.token]);
         return item;
+      });
+    },
+    async verifyItems(ids) {
+      if (ids.length > 256 || ids.some((id) => !identifier.safeParse(id).success))
+        throw new ConnectorError('invalid_configuration');
+      await withCredential(async (api, credential) => {
+        for (const id of ids) {
+          options.signal?.throwIfAborted();
+          const item = normalizeItem(
+            (await catalogApi(api).getItem({ itemId: id, userId: credential.userId })).data,
+          );
+          if (item.id !== id) throw new ConnectorError('invalid_response');
+          noSecretEcho(item, [credential.token]);
+        }
       });
     },
     async getArtwork(id, kind, signal) {

@@ -183,11 +183,25 @@ function PlayerSession({
     const timer = setInterval(() => {
       void report();
     }, 15000);
+    let stopped = false;
     const stop = () => {
-      void mutation(`/sessions/${session.id}/stop`, {}, true).catch(() => {});
+      if (stopped) return;
+      stopped = true;
+      const finalState =
+        node && (started.current || reporting.current)
+          ? {
+              positionMs: Math.min(
+                session.durationMs,
+                Math.max(0, Math.round(node.currentTime * 1000)),
+              ),
+              paused: node.paused,
+            }
+          : {};
+      void mutation(`/sessions/${session.id}/stop`, finalState, true).catch(() => {});
     };
     window.addEventListener('pagehide', stop);
     return () => {
+      stop();
       if (activeSession.current === session.id) activeSession.current = null;
       clearInterval(timer);
       window.removeEventListener('pagehide', stop);
@@ -195,7 +209,6 @@ function PlayerSession({
       node?.pause();
       node?.removeAttribute('src');
       node?.load();
-      stop();
     };
     // This effect owns the session lifetime; report reads the captured session and live media/ref state.
   }, [session]);
@@ -234,7 +247,10 @@ function PlayerSession({
       });
     },
     onEnded: () => {
-      void report().finally(() => setSession(null));
+      const endedId = session?.id;
+      void report().finally(() => {
+        if (activeSession.current === endedId) setSession(null);
+      });
     },
     onError: () => {
       if (!mounted.current || !session || activeSession.current !== session.id) return;

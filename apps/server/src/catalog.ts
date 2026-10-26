@@ -79,8 +79,13 @@ export async function registerCatalog(
         const value = JSON.parse(payload) as Record<string, unknown>;
         if (!value.items && !value.work && !value.libraries) return payload;
         const token = request.cookies[config.cookieName];
+        const abort = new AbortController();
+        const cancel = () => {
+          if (!reply.raw.writableEnded) abort.abort();
+        };
+        reply.raw.once('close', cancel);
         try {
-          await verify(token, value);
+          await verify(token, value, abort.signal);
           return payload;
         } catch (error) {
           request.log.info(
@@ -95,6 +100,8 @@ export async function registerCatalog(
             error:
               'Catalog permissions could not be verified. Check your connection and synchronize again.',
           });
+        } finally {
+          reply.raw.removeListener('close', cancel);
         }
       });
       routes.addHook('preHandler', async (request, reply) => {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import Hls from 'hls.js';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { Player } from '../apps/web/src/Player.js';
 import type { CatalogItem } from '../packages/shared/dist/index.js';
@@ -156,7 +156,7 @@ it('attaches and destroys HLS.js when native HLS is unavailable', async () => {
   );
   const view = render(<Player item={item} />);
   await screen.findByLabelText('Video player');
-  expect(attach).toHaveBeenCalledOnce();
+  await waitFor(() => expect(attach).toHaveBeenCalledOnce());
   expect(load).toHaveBeenCalledWith(session.streamPath);
   view.unmount();
   await waitFor(() => expect(destroy).toHaveBeenCalledOnce());
@@ -232,4 +232,63 @@ it('attempts playback after metadata and explains a browser autoplay block witho
   fireEvent.loadedMetadata(await screen.findByLabelText('Video player'));
   await screen.findByText('Your browser requires a click. Press Play to begin.');
   expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/sessions'))).toHaveLength(1);
+});
+
+it('captures the latest position on exit while a previous progress report is in flight', async () => {
+  let finish!: (value: Response) => void;
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+    if (String(url).endsWith('/sessions'))
+      return new Response(JSON.stringify(session), { status: 201 });
+    if (String(url).endsWith('/progress'))
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    return new Response(null, { status: 204 });
+  });
+  const view = render(<Player item={item} />);
+  const media = (await screen.findByLabelText('Video player')) as HTMLVideoElement;
+  Object.defineProperty(media, 'currentTime', { value: 2, configurable: true });
+  fireEvent.playing(media);
+  await waitFor(() => expect(finish).toBeDefined());
+  Object.defineProperty(media, 'currentTime', { value: 7, configurable: true });
+  view.unmount();
+  const stop = fetch.mock.calls.find(([url]) => String(url).endsWith('/stop'));
+  expect(JSON.parse(stop![1]!.body as string)).toMatchObject({ positionMs: 7000 });
+  finish(new Response(null, { status: 204 }));
+});
+it('does not let an old ended report clear a newer retry session', async () => {
+  let finishOld!: (response: Response) => void;
+  let sessions = 0;
+  let reports = 0;
+  const next = {
+    ...session,
+    id: '22222222-2222-4222-8222-222222222222',
+    streamPath: '/api/v1/playback/sessions/22222222-2222-4222-8222-222222222222/stream',
+  };
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+    if (String(url).endsWith('/sessions'))
+      return new Response(JSON.stringify(++sessions === 1 ? session : next), { status: 201 });
+    if (String(url).endsWith('/progress') && ++reports === 2)
+      return new Promise<Response>((resolve) => {
+        finishOld = resolve;
+      });
+    return new Response(null, { status: 204 });
+  });
+  render(<Player item={item} />);
+  const first = await screen.findByLabelText('Video player');
+  fireEvent.playing(first);
+  await waitFor(() => expect(reports).toBe(1));
+  fireEvent.ended(first);
+  await waitFor(() => expect(finishOld).toBeDefined());
+  fireEvent.error(first);
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry playback' }));
+  await waitFor(() =>
+    expect((screen.getByLabelText('Video player') as HTMLVideoElement).getAttribute('src')).toBe(
+      next.streamPath,
+    ),
+  );
+  await act(async () => finishOld(new Response(null, { status: 204 })));
+  expect((screen.getByLabelText('Video player') as HTMLVideoElement).getAttribute('src')).toBe(
+    next.streamPath,
+  );
 });

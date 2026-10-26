@@ -29,6 +29,7 @@ export function MediaServers({ onChanged }: { onChanged?: () => void }) {
   const [password, setPassword] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [forget, setForget] = useState('');
   const [discovery, setDiscovery] = useState<DiscoveryResponse | null>(null);
   const search = useRef<AbortController | null>(null);
   useEffect(() => () => search.current?.abort(), []);
@@ -83,9 +84,20 @@ export function MediaServers({ onChanged }: { onChanged?: () => void }) {
     setPassword('');
     try {
       const result = await connectorRequest<ConnectorResponse>('', 'POST', body);
+      onChanged?.();
       if (!alive.current) return;
       setConnectors((current) => [...current, result.connector]);
-      onChanged?.();
+      if (canRegister) {
+        const server = {
+          baseUrl: result.connector.baseUrl,
+          serverId: result.connector.server.id,
+          name: result.connector.server.name,
+        };
+        setApproved((current) => [
+          ...current.filter((item) => item.baseUrl !== server.baseUrl),
+          server,
+        ]);
+      }
       setName('');
       setBaseUrl('');
       setConfirmed(false);
@@ -104,9 +116,9 @@ export function MediaServers({ onChanged }: { onChanged?: () => void }) {
     try {
       if (remove) {
         const result = await connectorRequest<RemoveConnectorResponse>(`/${id}`, 'DELETE');
+        onChanged?.();
         if (!alive.current) return;
         setConnectors((current) => current.filter((item) => item.id !== id));
-        onChanged?.();
         setMessage(
           result.revocation === 'confirmed'
             ? 'Connection removed and its Jellyfin session ended.'
@@ -183,6 +195,62 @@ export function MediaServers({ onChanged }: { onChanged?: () => void }) {
                 </button>
               ))}
             </div>
+          )}
+          {canRegister && approved.length > 0 && (
+            <details>
+              <summary>Manage approved server identities</summary>
+              <p>
+                To replace a server at the same address, all users must disconnect it first.
+                Forgetting the old identity lets an administrator verify and approve the
+                replacement.
+              </p>
+              {approved.map((server) => (
+                <div key={server.baseUrl}>
+                  <p>
+                    {server.name} · {server.baseUrl}
+                  </p>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={forget === server.baseUrl}
+                      onChange={(event) => setForget(event.target.checked ? server.baseUrl : '')}
+                    />{' '}
+                    I confirm this old server identity should be forgotten.
+                  </label>
+                  <button
+                    type="button"
+                    disabled={busy || forget !== server.baseUrl}
+                    onClick={async () => {
+                      setBusy(true);
+                      setMessage('');
+                      try {
+                        await connectorRequest('/approved-server', 'DELETE', {
+                          baseUrl: server.baseUrl,
+                          serverId: server.serverId,
+                        });
+                        if (!alive.current) return;
+                        setApproved((current) =>
+                          current.filter((item) => item.baseUrl !== server.baseUrl),
+                        );
+                        setForget('');
+                        setMessage(
+                          'Old server identity forgotten. Verify the replacement before connecting.',
+                        );
+                      } catch {
+                        if (alive.current)
+                          setMessage(
+                            'Could not forget this identity. All users must disconnect this server first.',
+                          );
+                      } finally {
+                        if (alive.current) setBusy(false);
+                      }
+                    }}
+                  >
+                    Forget old server identity
+                  </button>
+                </div>
+              ))}
+            </details>
           )}
           <form onSubmit={add}>
             <h4>Add Server · Jellyfin</h4>

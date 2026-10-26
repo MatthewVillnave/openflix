@@ -56,6 +56,9 @@ export class OpenFlixDatabase {
     if (!userId) throw new Error('User scope required');
     return new OpenFlixDatabase(this.db, userId);
   }
+  transaction<T>(action: () => T): T {
+    return this.db.transaction(action).immediate();
+  }
   approvedServers(): Array<{ baseUrl: string; serverId: string; name: string }> {
     return this.db
       .prepare(
@@ -71,6 +74,22 @@ export class OpenFlixDatabase {
         'INSERT INTO approved_media_servers VALUES (?,?,?) ON CONFLICT(base_url) DO UPDATE SET name=excluded.name',
       )
       .run(baseUrl, serverId, name);
+  }
+  forgetApprovedServer(baseUrl: string, serverId: string): 'removed' | 'in_use' | 'not_found' {
+    return this.db
+      .transaction(() => {
+        const approval = this.db
+          .prepare('SELECT server_id AS id FROM approved_media_servers WHERE base_url=?')
+          .get(baseUrl) as { id: string } | undefined;
+        if (!approval || approval.id !== serverId) return 'not_found';
+        if (this.db.prepare('SELECT 1 FROM media_connectors WHERE base_url=? LIMIT 1').get(baseUrl))
+          return 'in_use';
+        this.db
+          .prepare('DELETE FROM approved_media_servers WHERE base_url=? AND server_id=?')
+          .run(baseUrl, serverId);
+        return 'removed';
+      })
+      .immediate();
   }
   resume(itemId: string): { positionMs: number; durationMs: number } | undefined {
     if (!this.ownerUserId || !this.catalog.item(itemId)) return;

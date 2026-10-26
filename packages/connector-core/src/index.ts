@@ -98,6 +98,8 @@ export class ConnectorNotImplementedError extends Error {
 
 export type { ConnectorServerInfo, ConnectorErrorCode } from '@openflix/shared';
 export interface ManagedMediaConnector extends MediaConnector {
+  /** Verify every item under one pinned session; never infer access from cached metadata. */
+  verifyItems?(ids: readonly string[]): Promise<void>;
   getServerInfo(): Promise<ConnectorServerInfo>;
   disconnect(): Promise<void>;
 }
