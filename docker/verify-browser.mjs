@@ -158,10 +158,33 @@ try {
     assert.ok(!publicBody.includes('credentialEnvelope'));
     await page.getByText(realHls ? 'Generated' : 'Fixture movies', { exact: true }).waitFor();
     assert.equal(await page.getByLabel('Jellyfin password', { exact: true }).inputValue(), '');
+    // Automatic initial sync and connection tests share the connector mutation lock.
+    // Wait for the initial sync to finish before testing the saved credential.
+    step = 'initial library synchronization';
+    const connectorId = JSON.parse(publicBody).connector.id;
+    let syncState = 'never';
+    const syncDeadline = Date.now() + 60000;
+    while (!['successful', 'failed'].includes(syncState) && Date.now() < syncDeadline) {
+      syncState = await page.evaluate(async (id) => {
+        const response = await fetch('/api/v1/catalog/sync/' + encodeURIComponent(id));
+        if (!response.ok) throw new Error(`Sync status HTTP ${response.status}`);
+        return (await response.json()).state;
+      }, connectorId);
+      if (!['successful', 'failed'].includes(syncState))
+        await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    assert.equal(syncState, 'successful', 'Initial library synchronization did not succeed');
     await page.reload();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('heading', { name: 'Browser fixture', exact: true }).waitFor();
+    step = 'saved-credential connection test';
+    const testedResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/v1/connectors/' + connectorId + '/test') &&
+        response.request().method() === 'POST',
+    );
     await page.getByRole('button', { name: 'Reconnect / test', exact: true }).click();
+    assert.equal((await testedResponse).status(), 200, 'Saved-credential connection test failed');
     await page
       .getByText('Connection verified using its saved credential.', { exact: true })
       .waitFor();
