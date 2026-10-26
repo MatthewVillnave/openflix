@@ -124,19 +124,21 @@ try {
   await page.getByLabel('Username', { exact: true }).fill(username);
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('heading', { name: `Welcome, ${username}.` }).waitFor();
-  await page.getByRole('button', { name: 'Unified catalog', exact: true }).click();
-  const scope = page.getByRole('region', { name: 'Unified catalog', exact: true });
+  await page.getByRole('button', { name: 'Browse', exact: true }).click();
+  await page.getByRole('button', { name: 'Movies', exact: true }).click();
+  const scope = page;
   const results = [];
   for (const test of cases) {
     step = 'select ' + test.mode;
-    await scope.getByRole('button', { name: test.title, exact: true }).click();
-    if (test.sourceItemId) await scope.getByLabel('Source/version').selectOption(test.sourceItemId);
-    await scope.getByRole('button', { name: 'Open player', exact: true }).click();
+    await scope.locator('.poster-card').filter({ hasText: test.title }).first().click();
+    if (test.sourceItemId) {
+      await scope.getByText('Versions & sources', { exact: true }).click();
+      await scope.getByLabel('Source/version').selectOption(test.sourceItemId);
+    }
     const planned = page.waitForResponse(
       (r) => r.url().endsWith('/playback/sessions') && r.request().method() === 'POST',
     );
-    await scope.getByRole('button', { name: 'Prepare playback', exact: true }).click();
+    await scope.getByRole('button', { name: 'Watch', exact: true }).click();
     const response = await planned;
     assert.equal(response.status(), 201);
     const safe = await response.json();
@@ -148,12 +150,12 @@ try {
       const m = document.querySelector('video');
       return m && m.readyState >= 1 && m.videoWidth > 0 && m.duration > 10;
     });
-    await scope.getByRole('button', { name: 'Play media', exact: true }).click();
+    await scope.locator('video').evaluate((m) => m.play());
     await page.waitForFunction(() => {
       const m = document.querySelector('video');
       return m.currentTime > 0.7 && !m.paused && !m.error;
     });
-    await scope.getByRole('button', { name: 'Pause media', exact: true }).click();
+    await scope.locator('video').evaluate((m) => m.pause());
     const at = await scope.locator('video').evaluate((m) => m.currentTime);
     await new Promise((r) => setTimeout(r, 250));
     assert.ok(Math.abs((await scope.locator('video').evaluate((m) => m.currentTime)) - at) < 0.1);
@@ -165,16 +167,14 @@ try {
       const m = document.querySelector('video');
       return !m.seeking && m.currentTime >= 6.9 && m.readyState >= 2;
     });
-    await scope.getByRole('button', { name: 'Play media', exact: true }).click();
+    await scope.locator('video').evaluate((m) => m.play());
     await page.waitForFunction(() => document.querySelector('video').currentTime > 7.5);
     const stopped = page.waitForResponse(
       (r) => r.url().endsWith('/stop') && r.request().method() === 'POST',
     );
-    await scope
-      .getByRole('button', { name: 'Close player / choose another source', exact: true })
-      .click();
+    await scope.getByRole('button', { name: /Back/ }).click();
     assert.equal((await stopped).status(), 204);
-    await scope.getByRole('button', { name: 'Back to unified catalog', exact: true }).click();
+    await scope.getByRole('button', { name: /Back/ }).click();
     results.push({
       mode: safe.mode,
       decoded: true,

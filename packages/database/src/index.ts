@@ -13,10 +13,11 @@ export interface StoredUser extends User {
 }
 export interface StoredConnector extends ConnectorSummary {
   credentialEnvelope: string | null;
+  ownerUserId: string | null;
 }
 const connectorColumns = `id, type, name, base_url AS baseUrl, server_json AS serverJson,
   libraries_json AS librariesJson, state, last_error AS lastError,
-  last_checked_at AS lastCheckedAt, created_at AS createdAt, credential_envelope AS credentialEnvelope`;
+  last_checked_at AS lastCheckedAt, created_at AS createdAt, credential_envelope AS credentialEnvelope, owner_user_id AS ownerUserId`;
 function connectorRow(row: unknown): StoredConnector | undefined {
   if (!row) return undefined;
   const { serverJson, librariesJson, ...record } = row as Omit<
@@ -43,25 +44,91 @@ export function openDatabase(filename: string): OpenFlixDatabase {
 export class OpenFlixDatabase {
   readonly catalog: CatalogRepository;
   readonly works: WorkRepository;
-  constructor(private readonly db: Database.Database) {
-    this.catalog = new CatalogRepository(db);
-    this.works = new WorkRepository(db);
-    this.works.backfill();
+  constructor(
+    private readonly db: Database.Database,
+    private readonly ownerUserId?: string,
+  ) {
+    this.catalog = new CatalogRepository(db, ownerUserId);
+    this.works = new WorkRepository(db, ownerUserId);
+    if (ownerUserId === undefined) this.works.backfill();
+  }
+  forUser(userId: string): OpenFlixDatabase {
+    if (!userId) throw new Error('User scope required');
+    return new OpenFlixDatabase(this.db, userId);
+  }
+  approvedServers(): Array<{ baseUrl: string; serverId: string; name: string }> {
+    return this.db
+      .prepare(
+        'SELECT base_url AS baseUrl,server_id AS serverId,name FROM approved_media_servers ORDER BY name,base_url',
+      )
+      .all() as Array<{ baseUrl: string; serverId: string; name: string }>;
+  }
+  approveServer(baseUrl: string, serverId: string, name: string): void {
+    const old = this.approvedServers().find((s) => s.baseUrl === baseUrl);
+    if (old && old.serverId !== serverId) throw new Error('Server identity changed');
+    this.db
+      .prepare(
+        'INSERT INTO approved_media_servers VALUES (?,?,?) ON CONFLICT(base_url) DO UPDATE SET name=excluded.name',
+      )
+      .run(baseUrl, serverId, name);
+  }
+  resume(itemId: string): { positionMs: number; durationMs: number } | undefined {
+    if (!this.ownerUserId || !this.catalog.item(itemId)) return;
+    return this.db
+      .prepare(
+        'SELECT position_ms AS positionMs,duration_ms AS durationMs FROM personal_resume WHERE user_id=? AND item_id=?',
+      )
+      .get(this.ownerUserId, itemId) as { positionMs: number; durationMs: number } | undefined;
+  }
+  saveResume(itemId: string, positionMs: number, durationMs: number): void {
+    if (
+      !this.ownerUserId ||
+      !this.catalog.item(itemId) ||
+      !Number.isFinite(positionMs) ||
+      !Number.isFinite(durationMs) ||
+      positionMs < 0 ||
+      durationMs < 1 ||
+      positionMs > durationMs
+    )
+      return;
+    this.db
+      .prepare(
+        'INSERT INTO personal_resume VALUES (?,?,?,?,?) ON CONFLICT(user_id,item_id) DO UPDATE SET position_ms=excluded.position_ms,duration_ms=excluded.duration_ms,updated_at=excluded.updated_at',
+      )
+      .run(
+        this.ownerUserId,
+        itemId,
+        Math.round(positionMs >= durationMs - 1000 ? 0 : positionMs),
+        Math.round(durationMs),
+        Date.now(),
+      );
   }
   listConnectors(): StoredConnector[] {
     return this.db
-      .prepare(`SELECT ${connectorColumns} FROM media_connectors ORDER BY created_at, id`)
-      .all()
+      .prepare(
+        `SELECT ${connectorColumns} FROM media_connectors WHERE (? IS NULL OR owner_user_id=?) ORDER BY created_at, id`,
+      )
+      .all(this.ownerUserId ?? null, this.ownerUserId ?? null)
       .map((row) => connectorRow(row)!);
   }
   getConnector(id: string): StoredConnector | undefined {
     return connectorRow(
-      this.db.prepare(`SELECT ${connectorColumns} FROM media_connectors WHERE id = ?`).get(id),
+      this.db
+        .prepare(
+          `SELECT ${connectorColumns} FROM media_connectors WHERE id = ? AND (? IS NULL OR owner_user_id=?)`,
+        )
+        .get(id, this.ownerUserId ?? null, this.ownerUserId ?? null),
     );
   }
-  insertConnector(record: ConnectorSummary, envelope: string): void {
+  insertConnector(
+    record: ConnectorSummary,
+    envelope: string,
+    ownerUserId: string | null = null,
+  ): void {
     this.db
-      .prepare(`INSERT INTO media_connectors VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .prepare(
+        `INSERT INTO media_connectors (id,type,name,base_url,server_json,libraries_json,state,last_error,last_checked_at,created_at,credential_envelope,owner_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
       .run(
         record.id,
         record.type,
@@ -74,6 +141,7 @@ export class OpenFlixDatabase {
         record.lastCheckedAt,
         record.createdAt,
         envelope,
+        ownerUserId,
       );
   }
   setConnectorCredential(id: string, envelope: string | null): void {
@@ -111,6 +179,19 @@ export class OpenFlixDatabase {
   }
   healthy(): boolean {
     return (this.db.prepare('SELECT 1 AS ok').get() as { ok: number }).ok === 1;
+  }
+  hasUsers(): boolean {
+    return Boolean(this.db.prepare('SELECT 1 FROM users LIMIT 1').get());
+  }
+  createFirstOwner(user: StoredUser, now: number): boolean {
+    return (
+      this.db
+        .prepare(
+          'INSERT INTO users (id, username, display_name, role, password_hash, created_at) SELECT ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM users)',
+        )
+        .run(user.id, user.username, user.displayName, user.role, user.passwordHash, now)
+        .changes === 1
+    );
   }
   createUser(user: StoredUser, now: number): void {
     this.db

@@ -75,6 +75,9 @@ const queryNames = new Set([
   'allowaudiostreamcopy',
   'enableautostreamcopy',
   'subtitleStreamIndex'.toLowerCase(),
+  'subtitlemethod',
+  'subtitlecodec',
+  'enablesubtitlesinmanifest',
   'enableadaptivebitratestreaming',
   'enabletrickplay',
   'starttimeticks',
@@ -90,6 +93,7 @@ const queryNames = new Set([
   'h264-level',
   'h264-videobitdepth',
   'h264-videorangetype',
+  'h264-rangetype',
   'h264-width',
   'h264-height',
   'h264-maxframerate',
@@ -113,12 +117,24 @@ export class HlsPlayback {
     this.root = this.add(this.normalize(raw, new URL(api.getUri('/')), true), 0, [], 'playlist');
   }
   private normalize(raw: string, parent: URL, generated = false): URL {
-    if (raw.length > 8192 || /[\s\\\u0000-\u001f]/.test(raw) || raw.startsWith('//')) return bad();
+    const reject = (
+      referenceRule: NonNullable<PlaybackDiagnostic['referenceRule']>,
+      queryOption?: PlaybackDiagnostic['queryOption'],
+    ): never => {
+      throw new ConnectorError('invalid_response', {
+        stage: 'resource_reference',
+        reason: 'unsafe_reference',
+        referenceRule,
+        ...(queryOption ? { queryOption } : {}),
+      });
+    };
+    if (raw.length > 8192 || /[\s\\\u0000-\u001f]/.test(raw) || raw.startsWith('//'))
+      return reject('syntax');
     const rawPath = raw.split(/[?#]/)[0]!;
     if (rawPath.includes('%') || rawPath.split('/').some((p) => p === '.' || p === '..'))
-      return bad();
+      return reject('syntax');
     const absolute = /^[a-z][a-z0-9+.-]*:/i.test(raw);
-    if (absolute && !generated) return bad();
+    if (absolute && !generated) return reject('syntax');
     const base = new URL(this.api.getUri('/'));
     const prefix = base.pathname.replace(/\/$/, '');
     let url: URL;
@@ -126,7 +142,7 @@ export class HlsPlayback {
       if (raw.startsWith('/') && /^\/videos\//i.test(raw)) url = new URL(prefix + raw, base.origin);
       else url = new URL(raw, parent);
     } catch {
-      return bad();
+      return reject('syntax');
     }
     if (
       url.origin !== base.origin ||
@@ -135,7 +151,7 @@ export class HlsPlayback {
       url.password ||
       url.hash
     )
-      return bad();
+      return reject('origin');
     // Jellyfin StreamInfo appends a Guid in dashed form; DTO IDs use the N form.
     const pattern = new RegExp(
       '^' +
@@ -149,7 +165,7 @@ export class HlsPlayback {
       match[1]!.replaceAll('-', '').toLowerCase() !==
         this.plan.itemId.replaceAll('-', '').toLowerCase()
     )
-      return bad();
+      return reject('path_or_item');
     url.pathname = url.pathname.replace(
       match[1]!,
       this.plan.itemId.replaceAll('-', '').toLowerCase(),
@@ -158,22 +174,34 @@ export class HlsPlayback {
       seen = new Set<string>();
     for (const [name, value] of url.searchParams) {
       const lower = name.toLowerCase();
-      if (seen.has(lower)) return bad();
+      if (seen.has(lower)) return reject('duplicate_query');
       seen.add(lower);
       if (lower === 'apikey' || lower === 'api_key') {
-        if (value !== this.token) return bad();
+        if (value !== this.token) return reject('credential_mismatch');
         continue;
       }
-      const sourceOption = /^([a-z0-9_]{1,32})-(profile|level|videobitdepth|audiochannels)$/.exec(
-        lower,
-      );
+      const sourceOption =
+        /^([a-z0-9_]{1,32})-(profile|level|videobitdepth|audiochannels|rangetype)$/.exec(lower);
       const knownSourceOption = sourceOption && this.sourceCodecs.includes(sourceOption[1]!);
-      if (
-        (!queryNames.has(lower) && !knownSourceOption) ||
-        value.length > 1024 ||
-        !/^[A-Za-z0-9.,_-]*$/.test(value)
-      )
-        return bad();
+      if (!queryNames.has(lower) && !knownSourceOption) {
+        const known = [
+          'deviceprofileid',
+          'livestreamid',
+          'enablesubtitlesinmanifest',
+          'estimatecontentlength',
+          'transcodeseekinfo',
+          'subtitlemethod',
+          'subtitlecodec',
+        ] as const;
+        const option =
+          known.find((name) => name === lower) ??
+          (this.sourceCodecs.some((codec) => lower.startsWith(codec + '-'))
+            ? 'selected_input_codec_option'
+            : 'other');
+        return reject('unknown_query_name', option);
+      }
+      if (value.length > 1024) return reject('query_value_length');
+      if (!/^[A-Za-z0-9.,_-]*$/.test(value)) return reject('query_value_shape');
       // StreamInfo carries input-codec options as well as H264/AAC output options.
       // Only recognized properties of the selected input codecs may be discarded.
       if (knownSourceOption && !['h264', 'aac'].includes(sourceOption[1]!)) continue;
@@ -184,15 +212,15 @@ export class HlsPlayback {
       ['playsessionid', this.plan.sessionId],
       ['deviceid', this.api.deviceInfo.id],
     ]) {
-      if (clean.has(name) && clean.get(name) !== expected) return bad();
-      if (generated && !clean.has(name)) return bad();
+      if (clean.has(name) && clean.get(name) !== expected) return reject('binding_mismatch');
+      if (generated && !clean.has(name)) return reject('missing_binding');
       clean.set(name, expected);
     }
     for (const [name, index] of [
       ['audiostreamindex', this.audioIndex],
       ['videostreamindex', this.videoIndex],
     ] as const) {
-      if (clean.has(name) && clean.get(name) !== String(index)) return bad();
+      if (clean.has(name) && clean.get(name) !== String(index)) return reject('stream_index');
       clean.set(name, String(index));
     }
     if (
@@ -201,7 +229,7 @@ export class HlsPlayback {
         clean.get('audiocodec') !== 'aac' ||
         clean.get('segmentcontainer') !== 'ts')
     )
-      return bad();
+      return reject('output_profile');
     for (const [name, max] of [
       ['videobitrate', 6000000],
       ['audiobitrate', 192000],
@@ -215,40 +243,85 @@ export class HlsPlayback {
       ['cpucorelimit', 2],
     ] as const) {
       const value = clean.get(name);
-      if (value !== null && (!/^\d+(?:\.\d+)?$/.test(value) || Number(value) <= 0)) return bad();
+      if (value !== null && (!/^\d+(?:\.\d+)?$/.test(value) || Number(value) <= 0))
+        return reject('numeric_bound');
       clean.set(name, String(value === null ? max : Math.min(max, Number(value))));
     }
     if (
       clean.has('width') &&
       (!/^\d+$/.test(clean.get('width')!) || Number(clean.get('width')) > 1920)
     )
-      return bad();
+      return reject('numeric_bound');
     if (
       clean.has('height') &&
       (!/^\d+$/.test(clean.get('height')!) || Number(clean.get('height')) > 1080)
     )
-      return bad();
-    if (clean.has('subtitleStreamIndex'.toLowerCase()) && clean.get('subtitlestreamindex') !== '-1')
-      return bad();
+      return reject('numeric_bound');
+    // StreamInfo emits SubtitleMethod for a nullable index of -1 too. It is
+    // metadata, not permission to enable subtitles. Accept only bounded delivery
+    // metadata, then discard it and force our requested disabled-subtitle policy.
+    const subtitleIssues: NonNullable<PlaybackDiagnostic['subtitleIssues']>[number][] = [];
+    const subtitleMethod = clean.get('subtitlemethod');
     if (
-      clean.has('static') ||
-      clean.get('alwaysburninsubtitlewhentranscoding')?.toLowerCase() === 'true'
+      subtitleMethod !== null &&
+      !['encode', 'embed', 'external', 'hls', 'drop'].includes(subtitleMethod.toLowerCase())
     )
-      return bad();
+      subtitleIssues.push('method');
+    const subtitleCodec = clean.get('subtitlecodec');
+    if (subtitleCodec !== null) {
+      const codecs = subtitleCodec.toLowerCase().split(',');
+      const supported = new Set([
+        'ass',
+        'ssa',
+        'subrip',
+        'srt',
+        'webvtt',
+        'vtt',
+        'mov_text',
+        'pgssub',
+        'hdmv_pgs_subtitle',
+        'dvdsub',
+        'dvd_subtitle',
+        'dvbsub',
+        'dvb_subtitle',
+        'text',
+        'ttml',
+      ]);
+      if (codecs.length > 16 || codecs.some((codec) => !supported.has(codec)))
+        subtitleIssues.push('codec');
+    }
+    if (
+      clean.has('enablesubtitlesinmanifest') &&
+      clean.get('enablesubtitlesinmanifest')?.toLowerCase() !== 'false'
+    )
+      subtitleIssues.push('manifest');
+    if (clean.has('subtitleStreamIndex'.toLowerCase()) && clean.get('subtitlestreamindex') !== '-1')
+      subtitleIssues.push('index');
+    if (clean.has('static')) subtitleIssues.push('static');
+    if (clean.get('alwaysburninsubtitlewhentranscoding')?.toLowerCase() === 'true')
+      subtitleIssues.push('burn_in');
+    if (subtitleIssues.length)
+      throw new ConnectorError('invalid_response', {
+        stage: 'resource_reference',
+        reason: 'unsafe_reference',
+        referenceRule: 'subtitle_policy',
+        subtitleIssues,
+      });
     for (const name of ['h264-audiochannels', 'aac-audiochannels'])
       if (clean.has(name)) {
         const value = clean.get(name)!;
-        if (!/^\d{1,2}$/.test(value) || Number(value) < 1 || Number(value) > 64) return bad();
-        if (this.audioCopy && Number(value) > 2) return bad();
+        if (!/^\d{1,2}$/.test(value) || Number(value) < 1 || Number(value) > 64)
+          return reject('numeric_bound');
+        if (this.audioCopy && Number(value) > 2) return reject('output_profile');
         clean.set(name, String(Math.min(2, Number(value))));
       }
     if (this.audioCopy && clean.has('aac-profile') && clean.get('aac-profile') !== 'lc')
-      return bad();
+      return reject('output_profile');
     if (!this.audioCopy) clean.set('aac-profile', 'lc');
     if (clean.has('h264-level')) {
       const value = clean.get('h264-level')!;
-      if (!/^\d+(?:\.\d+)?$/.test(value) || Number(value) <= 0) return bad();
-      if (this.videoCopy && Number(value) > 41) return bad();
+      if (!/^\d+(?:\.\d+)?$/.test(value) || Number(value) <= 0) return reject('numeric_bound');
+      if (this.videoCopy && Number(value) > 41) return reject('output_profile');
       clean.set('h264-level', String(Math.min(41, Number(value))));
     }
     if (
@@ -256,13 +329,21 @@ export class HlsPlayback {
       clean.has('h264-profile') &&
       !['baseline', 'constrainedbaseline', 'main', 'high'].includes(clean.get('h264-profile')!)
     )
-      return bad();
+      return reject('output_profile');
     if (!this.videoCopy) {
       clean.set('h264-profile', 'high');
       clean.set('h264-level', '41');
       clean.set('h264-videobitdepth', '8');
     }
+    for (const name of ['h264-rangetype', 'h264-videorangetype']) {
+      if (clean.has(name) && clean.get(name) !== 'SDR') return reject('output_profile');
+    }
+    // HDR input is never copied: negotiate bounded SDR output with Jellyfin.
+    if (!this.videoCopy) clean.set('h264-rangetype', 'SDR');
     clean.set('subtitlestreamindex', '-1');
+    clean.set('subtitlemethod', 'Drop');
+    clean.set('enablesubtitlesinmanifest', 'false');
+    clean.delete('subtitlecodec');
     clean.set('allowvideostreamcopy', String(this.videoCopy));
     clean.set('allowaudiostreamcopy', String(this.audioCopy));
     clean.set('enableautostreamcopy', 'true');
@@ -287,7 +368,12 @@ export class HlsPlayback {
       : url.pathname.endsWith('/-1.mp4')
         ? 'init'
         : 'segment';
-    if (expected && kind !== expected) return bad();
+    if (expected && kind !== expected)
+      throw new ConnectorError('invalid_response', {
+        stage: 'resource_reference',
+        reason: 'unsafe_reference',
+        referenceRule: 'resource_kind',
+      });
     const existing = this.byUrl.get(url.href);
     if (existing) return existing;
     if (

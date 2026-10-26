@@ -44,9 +44,15 @@ it('prepares only a catalog identity and bounded capabilities, then reports actu
       }),
   );
   const view = render(<Player item={item} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Prepare playback' }));
   const media = (await screen.findByLabelText('Video player')) as HTMLVideoElement;
   expect(media.getAttribute('src')).toBe(session.streamPath);
+  expect(media.controls).toBe(true);
+  expect(screen.getByRole('region', { name: `Media player: ${item.title}` })).toBeDefined();
+  expect(screen.queryByText(/Playback mode:|Playback uses your linked/)).toBeNull();
+  expect(screen.queryByRole('heading', { name: item.title })).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: /Play media|Pause media|Return to catalog/ }),
+  ).toBeNull();
   expect(view.container.querySelector('script')).toBeNull();
   expect(JSON.parse(fetch.mock.calls[0]![1]!.body as string)).toEqual({
     itemId: item.id,
@@ -64,7 +70,7 @@ it('prepares only a catalog identity and bounded capabilities, then reports actu
       ),
     ).toBe(true),
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Return to catalog' }));
+  view.unmount();
   await waitFor(() =>
     expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/stop'))).toBe(true),
   );
@@ -72,7 +78,6 @@ it('prepares only a catalog identity and bounded capabilities, then reports actu
 it('shows unsupported media clearly without loading a stream', async () => {
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 415 }));
   render(<Player item={item} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Prepare playback' }));
   expect((await screen.findByRole('alert')).textContent).toContain(
     'supported direct or HLS profiles',
   );
@@ -86,7 +91,6 @@ it('never loads a privileged or arbitrary server-provided URL', async () => {
     ),
   );
   render(<Player item={item} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Prepare playback' }));
   expect((await screen.findByRole('alert')).textContent).toContain('Invalid playback response');
   expect(screen.queryByLabelText('Video player')).toBeNull();
 });
@@ -101,7 +105,6 @@ it('renders native audio controls and stops the session when navigating away', a
         ),
     );
   const view = render(<Player item={{ ...item, type: 'audio' }} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Prepare playback' }));
   expect(((await screen.findByLabelText('Audio player')) as HTMLAudioElement).controls).toBe(true);
   view.unmount();
   await waitFor(() =>
@@ -124,7 +127,6 @@ it('uses native HLS on capable browsers with same-origin URL and inline playback
       ),
   );
   render(<Player item={item} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Prepare playback' }));
   const media = await screen.findByLabelText('Video player');
   await waitFor(() => expect(media.getAttribute('src')).toBe(session.streamPath));
   expect(media.hasAttribute('playsinline')).toBe(true);
@@ -153,13 +155,81 @@ it('attaches and destroys HLS.js when native HLS is unavailable', async () => {
       ),
   );
   const view = render(<Player item={item} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Prepare playback' }));
   await screen.findByLabelText('Video player');
   expect(attach).toHaveBeenCalledOnce();
   expect(load).toHaveBeenCalledWith(session.streamPath);
-  fireEvent.click(screen.getByRole('button', { name: 'Return to catalog' }));
+  view.unmount();
   await waitFor(() => expect(destroy).toHaveBeenCalledOnce());
   expect(screen.queryByRole('alert')).toBeNull();
-  expect(screen.getByRole('button', { name: 'Prepare playback' })).toBeDefined();
+});
+it('applies personal resume once per authorized session without resetting later seeks', async () => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(
+    async (url) =>
+      new Response(
+        String(url).endsWith('/sessions')
+          ? JSON.stringify({ ...session, resumePositionMs: 4000 })
+          : null,
+        { status: String(url).endsWith('/sessions') ? 201 : 204 },
+      ),
+  );
+  render(<Player item={item} />);
+  const media = (await screen.findByLabelText('Video player')) as HTMLVideoElement;
+  fireEvent.loadedMetadata(media);
+  expect(media.currentTime).toBe(4);
+  media.currentTime = 7;
+  fireEvent.loadedMetadata(media);
+  expect(media.currentTime).toBe(7);
+});
+
+it('automatically prepares once under StrictMode and rejects rapid duplicate retries', async () => {
+  let complete!: (response: Response) => void;
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+  );
+  render(
+    <React.StrictMode>
+      <Player item={item} />
+    </React.StrictMode>,
+  );
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+  expect(screen.queryByRole('button', { name: 'Prepare playback' })).toBeNull();
+  complete(new Response('{}', { status: 415 }));
+  const retry = await screen.findByRole('button', { name: 'Retry playback' });
+  fireEvent.click(retry);
+  fireEvent.click(retry);
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+it('stops a late session after leaving the player without displaying or playing it', async () => {
+  let complete!: (response: Response) => void;
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation((url) =>
+    String(url).endsWith('/sessions')
+      ? new Promise((resolve) => {
+          complete = resolve;
+        })
+      : Promise.resolve(new Response(null, { status: 204 })),
+  );
+  const view = render(<Player item={item} />);
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
   view.unmount();
+  complete(new Response(JSON.stringify(session), { status: 201 }));
+  await waitFor(() =>
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/stop'))).toBe(true),
+  );
+  expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+});
+it('attempts playback after metadata and explains a browser autoplay block without a new session', async () => {
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(new Error('NotAllowedError'));
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(
+    async (url) =>
+      new Response(String(url).endsWith('/sessions') ? JSON.stringify(session) : null, {
+        status: String(url).endsWith('/sessions') ? 201 : 204,
+      }),
+  );
+  render(<Player item={item} />);
+  fireEvent.loadedMetadata(await screen.findByLabelText('Video player'));
+  await screen.findByText('Your browser requires a click. Press Play to begin.');
+  expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/sessions'))).toHaveLength(1);
 });

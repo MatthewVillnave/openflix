@@ -1,3 +1,5 @@
+import { discoverJellyfin } from './discovery.js';
+import { registerArtwork } from './artwork.js';
 import { registerPlayback } from './playback.js';
 import { registerCatalog } from './catalog.js';
 import { randomUUID } from 'node:crypto';
@@ -37,7 +39,7 @@ export async function registerConnectors(
   db: OpenFlixDatabase,
   auth: AuthService,
   config: Config,
-): Promise<void> {
+) {
   const vault = config.masterKey ? new EncryptedCredentialStore(db, config.masterKey) : undefined;
   app.addHook('onClose', async () => vault?.destroy());
   // Fail closed locally before networking if existing credentials cannot be authenticated.
@@ -59,15 +61,14 @@ export async function registerConnectors(
       busy = false;
     }
   };
-  await registerCatalog(app, db, auth, config, run, () => busy);
+  const catalog = await registerCatalog(app, db, auth, config, run, () => busy, vault);
+  const artwork = await registerArtwork(app, db, auth, config, vault);
   const playback = await registerPlayback(app, db, auth, config, vault);
   await app.register(
     async (routes) => {
       routes.addHook('preHandler', async (request, reply) => {
         const user = auth.currentUser(request.cookies[config.cookieName]);
         if (!user) return reply.code(401).send({ error: 'Authentication required' });
-        if (user.role !== 'admin')
-          return reply.code(403).send({ error: 'Administrator access required' });
       });
       routes.setErrorHandler((error, request, reply) => {
         if (isConnectorError(error)) {
@@ -91,10 +92,65 @@ export async function registerConnectors(
         request.log.error({ event: 'connector.error' }, 'Connector operation failed');
         return reply.code(500).send({ error: 'Internal server error' });
       });
-      routes.get('/connectors', async () => ({
-        connectors: db.listConnectors().map(summary),
-        credentialStorageConfigured: Boolean(vault),
-      }));
+      let discovery: AbortController | undefined;
+      routes.addHook('preClose', async () => discovery?.abort());
+      routes.post(
+        '/connectors/discover',
+        {
+          config: { rateLimit: { max: 2, timeWindow: '1 minute' } },
+          schema: { body: { type: 'object', additionalProperties: false, properties: {} } },
+        },
+        async (request, reply) => {
+          if (auth.currentUser(request.cookies[config.cookieName])?.role !== 'admin')
+            return reply.code(403).send({ error: 'Administrator access required' });
+          if (discovery) return reply.code(409).send({ error: 'Discovery is already running' });
+          const token = request.cookies[config.cookieName];
+          const userId = auth.currentUser(token)?.id;
+          const controller = new AbortController();
+          discovery = controller;
+          const cancel = () => controller.abort();
+          reply.raw.once('close', cancel);
+          try {
+            const result = await discoverJellyfin(controller.signal);
+            if (auth.currentUser(token)?.id !== userId)
+              return reply.code(401).send({ error: 'Authentication required' });
+            return reply.header('Cache-Control', 'no-store').send(result);
+          } finally {
+            reply.raw.removeListener('close', cancel);
+            discovery = undefined;
+          }
+        },
+      );
+      routes.get('/connectors', async (request, reply) => {
+        const token = request.cookies[config.cookieName],
+          user = auth.currentUser(token)!;
+        const scoped = db.forUser(user.id);
+        const connectors = [];
+        const deadline = Date.now() + 8000;
+        for (const record of scoped.listConnectors()) {
+          const projected = summary(record);
+          try {
+            if (!vault || Date.now() > deadline) throw new ConnectorError('credential_unavailable');
+            projected.libraries = await createJellyfinConnector(
+              { baseUrl: record.baseUrl, credential: { id: record.id } },
+              vault.forUser(user.id),
+            ).getLibraries();
+          } catch {
+            projected.libraries = [];
+            projected.state = 'error';
+            projected.lastError = 'unavailable';
+          }
+          if (auth.currentUser(token)?.id !== user.id)
+            return reply.code(401).send({ error: 'Authentication required' });
+          if (scoped.getConnector(record.id)) connectors.push(projected);
+        }
+        return {
+          connectors,
+          approvedServers: db.approvedServers(),
+          canRegisterServers: user.role === 'admin',
+          credentialStorageConfigured: Boolean(vault),
+        };
+      });
       routes.post<{ Body: { name: string; baseUrl: string; username: string; password: string } }>(
         '/connectors',
         {
@@ -114,13 +170,25 @@ export async function registerConnectors(
           },
         },
         async (request, reply) => {
+          const token = request.cookies[config.cookieName];
+          const user = auth.currentUser(token)!;
           try {
             return await run(async (store) => {
-              if (db.listConnectors().length >= 10 || !request.body.name.trim())
+              if (db.forUser(user.id).listConnectors().length >= 10 || !request.body.name.trim())
                 throw new ConnectorError('invalid_configuration');
               const id = randomUUID();
               const baseUrl = validateJellyfinUrl(request.body.baseUrl);
+              const approved = db.approvedServers().find((server) => server.baseUrl === baseUrl);
+              if (
+                (!approved && user.role !== 'admin') ||
+                db
+                  .forUser(user.id)
+                  .listConnectors()
+                  .some((c) => c.baseUrl === baseUrl)
+              )
+                throw new ConnectorError('invalid_configuration');
               const result = await authenticateJellyfin({
+                ...(approved ? { expectedServerId: approved.serverId } : {}),
                 baseUrl,
                 deviceId: id,
                 username: request.body.username,
@@ -142,7 +210,11 @@ export async function registerConnectors(
                   createdAt: now,
                 };
                 try {
-                  store.create(record, result.secret);
+                  if (auth.currentUser(token)?.id !== user.id)
+                    throw new ConnectorError('cancelled');
+                  store.create(record, result.secret, user.id);
+                  if (user.role === 'admin')
+                    db.approveServer(baseUrl, result.server.id, result.server.name);
                 } catch (error) {
                   try {
                     await revokeJellyfinCredential(baseUrl, id, result.secret);
@@ -176,11 +248,12 @@ export async function registerConnectors(
         { schema: { params } },
         async (request) =>
           run(async (store) => {
-            const record = db.getConnector(request.params.id);
+            const user = auth.currentUser(request.cookies[config.cookieName])!;
+            const record = db.forUser(user.id).getConnector(request.params.id);
             if (!record) throw new ConnectorError('not_found');
             const connector = createJellyfinConnector(
               { baseUrl: record.baseUrl, credential: { id: record.id } },
-              store,
+              store.forUser(user.id),
             );
             try {
               await connector.connect();
@@ -194,6 +267,8 @@ export async function registerConnectors(
                 lastError: null,
                 lastCheckedAt: Date.now(),
               };
+              if (auth.currentUser(request.cookies[config.cookieName])?.id !== user.id)
+                throw new ConnectorError('cancelled');
               db.updateConnector(updated);
               return { connector: updated };
             } catch (error) {
@@ -212,9 +287,16 @@ export async function registerConnectors(
       routes.delete<{ Params: { id: string } }>(
         '/connectors/:id',
         { schema: { params } },
-        async (request) =>
-          run(async (store) => {
-            const record = db.getConnector(request.params.id);
+        async (request) => {
+          const token = request.cookies[config.cookieName];
+          const owner = auth.currentUser(token)!;
+          if (!db.forUser(owner.id).getConnector(request.params.id))
+            throw new ConnectorError('not_found');
+          await catalog.cancelConnector(request.params.id);
+          if (auth.currentUser(token)?.id !== owner.id) throw new ConnectorError('cancelled');
+          return run(async (store) => {
+            const user = auth.currentUser(request.cookies[config.cookieName])!;
+            const record = db.forUser(user.id).getConnector(request.params.id);
             if (!record) throw new ConnectorError('not_found');
             const finishRemoval = await playback.prepareRemoval(record.id);
             try {
@@ -222,7 +304,7 @@ export async function registerConnectors(
               try {
                 await createJellyfinConnector(
                   { baseUrl: record.baseUrl, credential: { id: record.id } },
-                  store,
+                  store.forUser(user.id),
                 ).disconnect();
               } catch {
                 revocation = 'unconfirmed';
@@ -236,9 +318,17 @@ export async function registerConnectors(
             } finally {
               finishRemoval();
             }
-          }),
+          });
+        },
       );
     },
     { prefix: API_PREFIX },
   );
+  return {
+    async endLogin(token: string | undefined) {
+      catalog.endLogin(token);
+      artwork.endLogin(token);
+      await playback.endLogin(token);
+    },
+  };
 }

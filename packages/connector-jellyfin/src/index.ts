@@ -1,3 +1,6 @@
+import { getImageApi } from '@jellyfin/sdk/lib/utils/api/image-api.js';
+import { validateArtwork } from './artwork.js';
+import type { ImageApi } from '@jellyfin/sdk/lib/generated-client/api/image-api.js';
 import { playbackOperations } from './playback.js';
 import type { LibraryApi } from '@jellyfin/sdk/lib/generated-client/api/library-api.js';
 import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api.js';
@@ -180,6 +183,7 @@ export interface JellyfinConnectorOptions {
 export async function authenticateJellyfin(input: {
   baseUrl: string;
   deviceId: string;
+  expectedServerId?: string;
   username: string;
   password: string;
 }): Promise<{ server: ConnectorServerInfo; libraries: Library[]; secret: Uint8Array }> {
@@ -194,6 +198,8 @@ export async function authenticateJellyfin(input: {
   let token = '';
   try {
     const server = await serverInfo(api);
+    if (input.expectedServerId && server.id !== input.expectedServerId)
+      throw new ConnectorError('identity_mismatch');
     const response = await getAuthenticationApi(api).authenticateUserByName({
       authenticateUserByName: { Username: input.username, Pw: input.password },
     });
@@ -331,6 +337,8 @@ export function createJellyfinConnector(
                   sortBy: ['SortName'],
                   sortOrder: ['Ascending'],
                   fields: [
+                    'Overview',
+                    'Genres',
                     'ParentId',
                     'SortName',
                     'ProviderIds',
@@ -380,6 +388,32 @@ export function createJellyfinConnector(
         if (item.id !== id) throw new ConnectorError('invalid_response');
         noSecretEcho(item, [credential.token]);
         return item;
+      });
+    },
+    async getArtwork(id, kind, signal) {
+      if (!identifier.safeParse(id).success || !['poster', 'backdrop'].includes(kind))
+        throw new ConnectorError('invalid_configuration');
+      return withCredential(async (api) => {
+        const response = await (
+          getImageApi(api) as unknown as Pick<ImageApi, 'getItemImage'>
+        ).getItemImage(
+          {
+            itemId: id,
+            imageType: kind === 'poster' ? 'Primary' : 'Backdrop',
+            imageIndex: 0,
+            format: 'Jpg',
+            quality: 85,
+            maxWidth: kind === 'poster' ? 480 : 1920,
+            maxHeight: kind === 'poster' ? 720 : 1080,
+          },
+          {
+            responseType: 'arraybuffer',
+            signal,
+            maxContentLength: 2 * 1024 * 1024,
+            headers: { Accept: 'image/jpeg' },
+          },
+        );
+        return validateArtwork(response.data, response.headers['content-type']);
       });
     },
     async search(): Promise<MediaItem[]> {

@@ -1,6 +1,6 @@
-# Milestone 1 security assumptions
+# Security assumptions and historical baseline
 
-Accepted Milestone 4 adds [admin-only direct/HLS playback transport and lifecycle](status.md#playback-scope). Milestone 3 extends this foundation with [normalized catalog and synchronization](catalog.md); [M2 independent acceptance](milestone-2-audit-acceptance.md) and historical milestone reports retain their original scope.
+The current branch uses personal Jellyfin connections and owner-scoped catalog and playback authorization. The historical Milestone 4 acceptance covered an earlier admin-only playback implementation; its scope does not certify the current branch. See [playback scope](playback-scope.md) and [connector security](connector-security.md).
 
 > This file records the audited Milestone 1 baseline. For the current accepted release, [connector security](connector-security.md) supersedes statements below about absent outbound connector calls/credential persistence. The R2 storage boundary remains unchanged.
 
@@ -13,7 +13,7 @@ In the M1 baseline described here, the application never accesses the user's liv
 ## Authentication
 
 - Passwords use Argon2id v19 with 64 MiB, 3 iterations, parallelism 1, generated random salts and a 32-byte hash. This exceeds the current [OWASP minimum](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html). Password input is 12+ characters and at most 1024 UTF-8 bytes when provisioned; login accepts existing passwords within the byte limit.
-- Passwords enter account provisioning through a hidden, confirmed terminal prompt, not command-line arguments, committed files or environment defaults. There is no public registration, default user, default production password or bypass flag.
+- The first administrator can be created through a one-time browser setup while no accounts exist; protect access to a new installation until this completes. Additional operator-provisioned accounts use a hidden, confirmed terminal prompt. There is no general public registration, default user, default production password or bypass flag.
 - Unknown users still undergo password verification against a randomly generated dummy hash. Invalid credentials return the same error. This reduces obvious timing disclosure without claiming perfect constant-time account lookup.
 - Sessions use 256 random bits encoded as base64url. Only a SHA-256 digest is stored. These are high-entropy tokens, not passwords, so fast hashing is appropriate. Database read access alone does not reveal usable session tokens; write access still compromises identity.
 - Sessions are absolute-lived, revocable and rotated at login. The browser receives only a safe user projection, never a password hash or a bearer token in JSON.

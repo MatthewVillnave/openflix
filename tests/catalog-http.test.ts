@@ -94,7 +94,7 @@ afterEach(async () => {
   await upstream.close();
   fixture.cleanup();
 });
-const get = (path: string, session = viewer) =>
+const get = (path: string, session = cookie) =>
   app.inject({ url: '/api/v1/catalog' + path, headers: { cookie: session } });
 const start = (session = cookie, payload = {}) =>
   app.inject({
@@ -123,7 +123,7 @@ it('requires authentication for catalog and administrator plus Origin for sync',
     '/libraries/missing/items',
   ])
     expect((await get(path, '')).statusCode).toBe(401);
-  expect((await start(viewer)).statusCode).toBe(403);
+  expect((await start(viewer)).statusCode).toBe(404);
   expect(
     (
       await app.inject({
@@ -163,7 +163,8 @@ it('browses normalized TV hierarchy with paging/filtering, no secrets and no bro
   expect(serialized).not.toContain('ciphertext');
   const before = upstream.state.requests.length;
   await get(`/items/${episode.id}`);
-  expect(upstream.state.requests).toHaveLength(before);
+  expect(upstream.state.requests.length).toBeGreaterThan(before);
+  expect(upstream.state.requests.at(-1)!.path).toContain('/Items/');
 });
 it('persists across restart and repeats sync without password re-entry, then connector removal cascades', async () => {
   await sync();
@@ -208,8 +209,9 @@ it('rejects overlapping mutations, and shutdown cancels staging before closing t
   expect(
     (
       await app.inject({
-        method: 'DELETE',
-        url: `/api/v1/connectors/${connection}`,
+        method: 'POST',
+        url: `/api/v1/connectors/${connection}/test`,
+        payload: {},
         headers: { origin, cookie },
       })
     ).statusCode,

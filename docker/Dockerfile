@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24.19.0-bookworm-slim AS dependencies
+FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 RUN npm install --global pnpm@11.19.0
 WORKDIR /app
@@ -15,12 +15,13 @@ CMD ["pnpm", "dev"]
 FROM dependencies AS build
 # Public corresponding-source offer; never pass credentials as build arguments.
 ARG OPENFLIX_SOURCE_URL
-RUN OPENFLIX_SOURCE_URL="$OPENFLIX_SOURCE_URL" pnpm build
+RUN OPENFLIX_SOURCE_URL="$OPENFLIX_SOURCE_URL" OPENFLIX_BUNDLED_SOURCE=1 pnpm build
+RUN python3 scripts/create-source-candidate.py
 RUN pnpm --filter @openflix/server deploy --prod /out
 # The output must work after the build workspace is removed.
 RUN mv /app /workspace-build && cd /out && node --input-type=module -e "await import('./dist/app.js')" && mv /workspace-build /app
 
-FROM node:24.19.0-bookworm-slim AS server
+FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS server
 ENV NODE_ENV=production OPENFLIX_HOST=0.0.0.0 OPENFLIX_PORT=8787 OPENFLIX_DATA_DIR=/config
 WORKDIR /app
 RUN mkdir /config && chown node:node /config && chmod 0700 /config
@@ -32,9 +33,10 @@ EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s CMD node -e "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "dist/main.js"]
 
-FROM nginx:1.30.5-alpine AS web
+FROM nginx:1.30.5-alpine@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94 AS web
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+COPY --from=build /openflix-source-candidate.tar.gz /usr/share/nginx/html/legal/openflix-source.tar.gz
 USER nginx
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s CMD wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1

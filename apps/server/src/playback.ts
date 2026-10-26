@@ -88,19 +88,19 @@ export async function registerPlayback(
   const active = (g: Grant) => {
     const now = Date.now();
     const user = db.sessionUser(g.loginDigest, now);
-    const item = db.catalog.item(g.itemId);
-    const binding = g.binding ? db.works.binding(g.itemId) : undefined;
+    const scoped = db.forUser(g.userId);
+    const item = scoped.catalog.item(g.itemId);
+    const binding = g.binding ? scoped.works.binding(g.itemId) : undefined;
     return (
       !closing &&
       !removing.has(g.connectorId) &&
       now < g.expiresAt &&
       now < g.idleAt &&
       user?.id === g.userId &&
-      user.role === 'admin' &&
       item?.connectorId === g.connectorId &&
       (!g.binding ||
         (binding?.workId === g.binding.workId && binding.versionKey === g.binding.versionKey)) &&
-      db.getConnector(g.connectorId) !== undefined
+      scoped.getConnector(g.connectorId) !== undefined
     );
   };
   const sweep = setInterval(() => {
@@ -126,10 +126,6 @@ export async function registerPlayback(
         const user = auth.currentUser(request.cookies[config.cookieName]);
         if (!user)
           return reply.code(401).send({ error: 'Authentication required', code: 'unauthorized' });
-        if (user.role !== 'admin')
-          return reply
-            .code(403)
-            .send({ error: 'Playback is restricted to administrators', code: 'forbidden' });
         if (request.headers['sec-fetch-site'] === 'cross-site')
           return reply.code(403).send({ error: 'Cross-site playback denied', code: 'forbidden' });
       });
@@ -229,23 +225,34 @@ export async function registerPlayback(
           let retained = false;
           try {
             selected = await selectSource(
-              db,
+              db.forUser(user.id),
               request.body,
               () => {
                 const current = auth.currentUser(request.cookies[config.cookieName]);
-                return !closing && current?.id === user.id && current.role === 'admin';
+                return !closing && current?.id === user.id;
               },
               (record) => {
                 if (removing.has(record.id)) throw new ConnectorError('cancelled');
                 return createJellyfinConnector(
                   { baseUrl: record.baseUrl, credential: { id: record.id } },
-                  store,
+                  store.forUser(user.id),
                 );
               },
               () =>
                 app.log.info(
                   { event: 'playback.cleanup_unconfirmed' },
                   'Upstream playback cleanup unconfirmed',
+                ),
+              (error) =>
+                app.log.info(
+                  {
+                    event: 'playback.candidate_failed',
+                    code: isConnectorError(error) ? error.code : 'invalid_response',
+                    diagnostic: isConnectorError(error)
+                      ? safePlaybackDiagnostic(error.diagnostic)
+                      : undefined,
+                  },
+                  'Automatic playback candidate unavailable',
                 ),
             );
             const { item, connector, plan, binding } = selected;
@@ -278,7 +285,14 @@ export async function registerPlayback(
               return reply.code(429).send({ error: 'Playback capacity reached', code: 'busy' });
             grants.set(g.id, g);
             retained = true;
+            const resume = db.forUser(user.id).resume(item.id);
             const result: PlaybackView = {
+              ...(resume &&
+              resume.durationMs === plan.durationMs &&
+              resume.positionMs > 0 &&
+              resume.positionMs < plan.durationMs
+                ? { resumePositionMs: resume.positionMs }
+                : {}),
               id: g.id,
               itemId: item.id,
               kind: plan.kind,
@@ -495,6 +509,7 @@ export async function registerPlayback(
               await g.connector.reportPlaybackStop(state(g));
               return reply.code(410).send({ error: 'Playback expired', code: 'expired' });
             }
+            db.forUser(g.userId).saveResume(g.itemId, g.positionMs, g.plan.durationMs);
             g.idleAt = Date.now() + 5 * 60 * 1000;
             return reply.code(204).send();
           } finally {
@@ -525,6 +540,12 @@ export async function registerPlayback(
     { prefix: '/api/v1/playback' },
   );
   return {
+    async endLogin(token: string | undefined) {
+      if (!token) return;
+      await Promise.allSettled(
+        [...grants.values()].filter((g) => g.loginDigest === digest(token)).map(retire),
+      );
+    },
     async prepareRemoval(connectorId: string) {
       removing.add(connectorId);
       const jobs = [...grants.values()].filter((g) => g.connectorId === connectorId).map(retire);

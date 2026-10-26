@@ -27,6 +27,12 @@ async function request(path: string, body?: unknown) {
 export async function currentUser(): Promise<CurrentUserResponse> {
   return (await request('/me')).json();
 }
+export async function setupStatus(): Promise<{ setupRequired: boolean }> {
+  return (await request('/auth/setup')).json();
+}
+export async function createOwner(body: LoginRequest): Promise<void> {
+  await request('/auth/setup', body);
+}
 export async function login(body: LoginRequest): Promise<CurrentUserResponse> {
   return (await request('/auth/login', body)).json();
 }
@@ -34,8 +40,14 @@ export async function logout(): Promise<void> {
   await request('/auth/logout', {});
 }
 
-export async function connectorRequest<T>(path = '', method = 'GET', body?: unknown): Promise<T> {
+export async function connectorRequest<T>(
+  path = '',
+  method = 'GET',
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   const response = await fetch(`/api/v1/connectors${path}`, {
+    ...(signal ? { signal } : {}),
     method,
     credentials: 'same-origin',
     ...(body === undefined

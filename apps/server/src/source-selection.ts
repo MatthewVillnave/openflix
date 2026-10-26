@@ -25,6 +25,7 @@ export async function selectSource(
   permitted: () => boolean,
   create: (record: StoredConnector) => ManagedMediaConnector,
   cleanupFailed: () => void,
+  candidateFailed: (error: unknown) => void = () => {},
 ): Promise<Selection> {
   const check = () => {
     if (!permitted()) throw new ConnectorError('cancelled');
@@ -71,6 +72,8 @@ export async function selectSource(
       const connector = create(record);
       let candidate: Selection | undefined;
       try {
+        await connector.getItem(item.upstreamId);
+        check();
         const plan = await connector.getPlaybackInfo(
           item.upstreamId,
           request.profile,
@@ -97,6 +100,7 @@ export async function selectSource(
       } catch (error) {
         check();
         if (!group || request.sourceItemId || error instanceof SourceSelectionError) throw error;
+        candidateFailed(error);
         // Each connector request already has a 5s deadline; at most four sequential candidates.
       } finally {
         if (candidate) await dispose(candidate);

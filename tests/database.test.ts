@@ -25,7 +25,7 @@ describe('database migrations and storage', () => {
       expect(statSync(fixture.config.databasePath).mode & 0o777).toBe(0o600);
       db.close();
       const raw = new Database(fixture.config.databasePath);
-      expect(raw.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 4 });
+      expect(raw.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 5 });
       raw.close();
     } finally {
       fixture.cleanup();
@@ -41,6 +41,7 @@ describe('database migrations and storage', () => {
           migrations[1]!,
           migrations[2]!,
           migrations[3]!,
+          migrations[4]!,
         ]),
       ).toThrow('differs');
       expect(() => migrate(db, [])).toThrow('downgrade');
@@ -50,6 +51,7 @@ describe('database migrations and storage', () => {
           migrations[1]!,
           migrations[2]!,
           migrations[3]!,
+          migrations[4]!,
         ]),
       ).toThrow('ordered');
     } finally {
@@ -63,13 +65,13 @@ describe('database migrations and storage', () => {
       expect(() =>
         migrate(db, [
           ...migrations,
-          { version: 5, name: 'broken', sql: 'CREATE TABLE rollback_probe(id TEXT); INVALID SQL;' },
+          { version: 6, name: 'broken', sql: 'CREATE TABLE rollback_probe(id TEXT); INVALID SQL;' },
         ]),
       ).toThrow();
       expect(
         db.prepare("SELECT name FROM sqlite_master WHERE name = 'rollback_probe'").get(),
       ).toBeUndefined();
-      expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 4 });
+      expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 5 });
     } finally {
       db.close();
     }

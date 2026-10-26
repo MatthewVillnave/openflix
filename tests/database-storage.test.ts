@@ -126,7 +126,7 @@ describe('private SQLite storage boundary', () => {
             value: 'wal-sensitive-probe',
           });
           expect(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({
-            n: 4,
+            n: 5,
           });
         } finally {
           reader.close();

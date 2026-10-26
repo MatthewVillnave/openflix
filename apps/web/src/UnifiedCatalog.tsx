@@ -174,9 +174,9 @@ export function UnifiedCatalog({ admin }: { admin: boolean }) {
                 More sources
               </button>
               {admin && ['movie', 'episode', 'audio'].includes(detail.work.type) && !playing && (
-                <button onClick={() => void prepare()}>Open player</button>
+                <button onClick={() => void prepare()}>Watch</button>
               )}
-              {!admin && <p>Playback is restricted to administrators.</p>}
+              {!admin && <p>Playback requires your linked server permission.</p>}
               {playing && (
                 <>
                   <Player

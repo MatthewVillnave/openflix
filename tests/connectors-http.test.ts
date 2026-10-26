@@ -143,7 +143,7 @@ describe('administrator media server lifecycle', () => {
             }
           : {}),
       });
-      expect(response.statusCode).toBe(403);
+      expect(response.statusCode).toBe(method === 'GET' ? 200 : method === 'POST' ? 400 : 404);
     }
     expect(
       (
@@ -252,7 +252,7 @@ it('migrates the audited R2 identity schema without changing accounts or session
     expect(db.listConnectors()).toEqual([]);
     db.close();
     const check = new Database(fixture.config.databasePath);
-    expect(check.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 4 });
+    expect(check.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 5 });
     check.close();
   } finally {
     fixture.cleanup();

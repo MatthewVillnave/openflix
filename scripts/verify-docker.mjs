@@ -207,7 +207,7 @@ try {
   prodTouched = true;
   await prod('up', '-d', '--wait', '--wait-timeout', '120', 'server', 'web', 'jellyfin-fixture');
   const original = await snapshot();
-  assert.equal(original.migrations.length, 4);
+  assert.equal(original.migrations.length, 5);
   assert.equal(original.users.length, 0);
   assert.equal(original.sessions.length, 0);
   assert.equal(original.mode, 0o600);
@@ -299,10 +299,10 @@ try {
     ),
   );
   assert.equal(browser.passed, true);
-  assert.equal(browser.playback.length, 3);
+  assert.equal(browser.playback.length, 2);
   assert.ok(browser.playback.every((p) => p.decoded && p.progressed && p.paused && p.sought));
   mark(
-    'Chromium decodes generated movie, episode and audio through OpenFlix; pause, seek, mobile layout and logout denial',
+    'Chromium decodes generated movie and episode through OpenFlix; pause, seek, mobile layout and logout denial',
   );
 
   mark(`Trusted HTTPS browser login/reload/logout and HttpOnly cookie (${browser.browser})`);
@@ -367,7 +367,7 @@ try {
     for (const suffix of ['', '-wal', '-shm']) assert.equal(statSync(restored + suffix).mode & 0o7777, 0o600);
     const reader = new Database(restored);
     assert.equal(reader.prepare('SELECT value FROM preservation').get().value, 'sensitive-wal-probe');
-    assert.equal(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get().n, 4);
+    assert.equal(reader.prepare('SELECT count(*) AS n FROM schema_migrations').get().n, 5);
     reader.close(); db.close(); raw.close();
     rmSync('/config/restore-probe', {recursive:true}); rmSync('/config/source-probe.sqlite');`);
   mark(
@@ -438,7 +438,7 @@ try {
     tv = catalogLibraries.find((l) => l.name === 'Tv shows');
   assert.equal(movies.type, 'movie');
   assert.equal(tv.type, 'television');
-  assert.equal(tv.upstreamType, null);
+  assert.equal(tv.upstreamType, 'tvshows');
   const originalCatalog = await catalogRead(`/libraries/${movies.id}/items?limit=100`);
   assert.equal(originalCatalog.total, 206);
   assert.equal(

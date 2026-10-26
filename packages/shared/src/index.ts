@@ -32,6 +32,8 @@ export interface MediaItem {
   type: MediaType;
   title: string;
   sortTitle?: string;
+  overview?: string;
+  genres?: string[];
   upstreamType?: string;
   /** Known structural container; contributes no semantic library family. */
   structural?: true;
@@ -141,6 +143,7 @@ export const playbackFormats = {
 } as const;
 export type PlaybackFormat = keyof typeof playbackFormats;
 export interface PlaybackView {
+  resumePositionMs?: number;
   id: string;
   itemId: string;
   kind: 'video' | 'audio';
@@ -152,6 +155,9 @@ export interface PlaybackView {
 }
 
 export interface CatalogWork {
+  overview?: string;
+  year?: number;
+  runtimeSeconds?: number;
   id: string;
   type: MediaType;
   title: string;

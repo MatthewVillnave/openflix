@@ -140,11 +140,12 @@ try {
   await page.getByRole('heading', { name: `Welcome, ${username}.` }).waitFor();
   if (jellyfin) {
     step = 'Jellyfin administrator UI';
-    await page.getByRole('button', { name: 'Settings · Media Servers', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByLabel('Display name', { exact: true }).fill('Browser fixture');
     await page.getByLabel('Jellyfin URL', { exact: true }).fill(jellyfin.baseUrl);
     await page.getByLabel('Jellyfin username', { exact: true }).fill(jellyfin.username);
     await page.getByLabel('Jellyfin password', { exact: true }).fill(jellyfin.password);
+    await page.getByRole('checkbox').check();
     const addedResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith('/api/v1/connectors') && response.request().method() === 'POST',
@@ -158,18 +159,19 @@ try {
     await page.getByText(realHls ? 'Generated' : 'Fixture movies', { exact: true }).waitFor();
     assert.equal(await page.getByLabel('Jellyfin password', { exact: true }).inputValue(), '');
     await page.reload();
-    await page.getByRole('button', { name: 'Settings · Media Servers', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('heading', { name: 'Browser fixture', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Reconnect / test', exact: true }).click();
     await page
       .getByText('Connection verified using its saved credential.', { exact: true })
       .waitFor();
+    await page.getByRole('button', { name: 'Home', exact: true }).click();
     const exercisePlayer = async (kind, keepPlaying = false, expectedMode) => {
       step = `actual ${kind} decode, pause and seek`;
       const planned = page.waitForResponse(
         (r) => r.url().endsWith('/playback/sessions') && r.request().method() === 'POST',
       );
-      await page.getByRole('button', { name: 'Prepare playback', exact: true }).click();
+      await page.getByRole('button', { name: 'Watch', exact: true }).click();
       const response = await planned;
       step = `planning ${expectedMode ?? kind}: HTTP ${response.status()}`;
       assert.equal(response.status(), 201);
@@ -202,7 +204,7 @@ try {
         { timeout: 30000 },
       );
       step = `progress ${expectedMode ?? kind}`;
-      await page.getByRole('button', { name: 'Play media', exact: true }).click();
+      await page.locator(selector).evaluate((media) => media.play());
       await page.waitForFunction(
         (s) => {
           const m = document.querySelector(s);
@@ -211,7 +213,7 @@ try {
         selector,
         { timeout: 30000 },
       );
-      await page.getByRole('button', { name: 'Pause media', exact: true }).click();
+      await page.locator(selector).evaluate((media) => media.pause());
       const paused = await page
         .locator(selector)
         .evaluate((m) => ({ paused: m.paused, time: m.currentTime }));
@@ -232,7 +234,7 @@ try {
         selector,
         { timeout: 30000 },
       );
-      await page.getByRole('button', { name: 'Play media', exact: true }).click();
+      await page.locator(selector).evaluate((media) => media.play());
       await page.waitForFunction(
         (s) => {
           const m = document.querySelector(s);
@@ -252,17 +254,12 @@ try {
         paused: true,
         sought: true,
       });
-      if (!keepPlaying)
-        await page.getByRole('button', { name: 'Return to catalog', exact: true }).click();
+      if (!keepPlaying) await page.getByRole('button', { name: '← Back', exact: true }).click();
       return safe;
     };
     let lastPlayback;
     if (realHls) {
-      step = 'real Jellyfin generated catalog synchronization';
-      await page.getByRole('button', { name: 'Sync Browser fixture', exact: true }).click();
-      await page
-        .getByRole('button', { name: 'Generated · Browser fixture (movie)', exact: true })
-        .click();
+      step = 'real Jellyfin automatic catalog and playback';
       const fixtures = expectedModes ?? [
         ['Direct Fixture', 'direct'],
         ['Remux Fixture', 'remux'],
@@ -271,40 +268,31 @@ try {
         ['Video Conversion Fixture', 'transcode'],
       ];
       for (const [title, mode] of fixtures) {
-        await page.getByRole('button', { name: title, exact: true }).click();
-        lastPlayback = await exercisePlayer('movie', title === fixtures.at(-1)[0], mode);
+        await page.getByRole('button', { name: 'Home', exact: true }).click();
+        await page.locator('.poster-card').filter({ hasText: title }).first().click();
+        const final = title === fixtures.at(-1)[0];
+        lastPlayback = await exercisePlayer('movie', final, mode);
+        if (!final) await page.getByRole('button', { name: '← Back', exact: true }).click();
       }
       assert.ok(mediaRequests.some((url) => url.includes('/resources/')));
     } else {
-      step = 'catalog synchronization and TV hierarchy';
-      await page.getByRole('button', { name: 'Sync Browser fixture', exact: true }).click();
+      step = 'automatic catalog and TV hierarchy';
       await page
-        .getByRole('button', { name: 'Tv shows · Browser fixture (television)', exact: true })
+        .getByRole('button', { name: /Fixture series/ })
+        .first()
         .click();
       await page
-        .getByRole('button', { name: 'Browse children of Fixture series', exact: true })
+        .getByRole('button', { name: /Season 1/ })
+        .first()
         .click();
       await page
-        .getByRole('button', { name: 'Browse children of Fixture season', exact: true })
+        .getByRole('button', { name: /Episode 1/ })
+        .first()
         .click();
-      await page.getByRole('button', { name: 'Fixture episode', exact: true }).click();
-      await page
-        .getByRole('article', { name: 'Item details' })
-        .getByText('Episode 1', { exact: true })
-        .waitFor();
       await exercisePlayer('episode');
-      await page
-        .getByRole('button', { name: 'Fixture movies · Browser fixture (movie)', exact: true })
-        .click();
-      await page.getByRole('button', { name: 'Next page', exact: true }).click();
-      await page.getByRole('button', { name: 'Fixture movie 051', exact: true }).waitFor();
-      await page.getByRole('button', { name: 'Fixture movie 051', exact: true }).click();
-      await exercisePlayer('movie');
-      await page
-        .getByRole('button', { name: 'Fixture music · Browser fixture (music)', exact: true })
-        .click();
-      await page.getByRole('button', { name: 'Fixture track', exact: true }).click();
-      lastPlayback = await exercisePlayer('audio', true);
+      await page.getByRole('button', { name: 'Home', exact: true }).click();
+      await page.getByRole('region', { name: 'Movies' }).locator('.poster-card').first().click();
+      lastPlayback = await exercisePlayer('movie', true);
     }
     assert.equal(
       await page.evaluate(
@@ -337,7 +325,7 @@ try {
       ),
     );
     if (!realHls) {
-      await page.getByRole('button', { name: 'Settings · Media Servers', exact: true }).click();
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
       step = 'connector removal after catalog import';
       await page.getByRole('button', { name: 'Disconnect / remove', exact: true }).click();
       await page
@@ -360,7 +348,13 @@ try {
   console.log(
     JSON.stringify({ passed: true, browser: browser.version(), playback: playbackResults }),
   );
-} catch {
+} catch (error) {
+  const message = String(error.message)
+    .split(password)
+    .join('[redacted]')
+    .split(jellyfin?.password ?? '__unused__')
+    .join('[redacted]')
+    .slice(0, 1400);
   const media = await diagnosticPage
     ?.evaluate(() => {
       const m = document.querySelector('video,audio');
@@ -377,7 +371,7 @@ try {
     })
     .catch(() => null);
   console.error(
-    JSON.stringify({ failureStep: step, statuses: responseStatuses.slice(-20), media }),
+    JSON.stringify({ failureStep: step, message, statuses: responseStatuses.slice(-20), media }),
   );
   process.exitCode = 1;
 } finally {

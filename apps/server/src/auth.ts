@@ -30,6 +30,26 @@ export async function provisionUser(
 export class AuthBusyError extends Error {}
 export class AuthService {
   private activeVerifications = 0;
+  async createFirstOwner(username: string, password: string): Promise<boolean> {
+    if (this.db.hasUsers()) return false;
+    if (this.activeVerifications >= 4) throw new AuthBusyError();
+    this.activeVerifications++;
+    try {
+      const passwordHash = await hashPassword(password);
+      return this.db.createFirstOwner(
+        {
+          id: randomUUID(),
+          username: username.toLowerCase(),
+          displayName: username,
+          role: 'admin',
+          passwordHash,
+        },
+        Date.now(),
+      );
+    } finally {
+      this.activeVerifications--;
+    }
+  }
   private constructor(
     private readonly db: OpenFlixDatabase,
     private readonly ttlSeconds: number,

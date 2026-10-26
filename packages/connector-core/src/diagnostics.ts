@@ -34,6 +34,53 @@ const reasons = [
   'manifest_output_limit',
   'credential_reflection',
 ] as const;
+const referenceRules = [
+  'syntax',
+  'origin',
+  'path_or_item',
+  'duplicate_query',
+  'credential_mismatch',
+  'query_option',
+  'unknown_query_name',
+  'query_value_length',
+  'query_value_shape',
+  'binding_mismatch',
+  'missing_binding',
+  'stream_index',
+  'output_profile',
+  'numeric_bound',
+  'subtitle_policy',
+  'resource_kind',
+] as const;
+const queryOptions = [
+  'deviceprofileid',
+  'livestreamid',
+  'enablesubtitlesinmanifest',
+  'estimatecontentlength',
+  'transcodeseekinfo',
+  'subtitlemethod',
+  'subtitlecodec',
+  'selected_input_codec_option',
+  'other',
+] as const;
+const sourceConstraints = [
+  'non_file_or_remote',
+  'live_or_open_resource',
+  'runtime',
+  'stream_layout',
+  'dimensions',
+  'interlaced',
+  'dynamic_range',
+  'hdr_input',
+  'dolby_vision_input',
+  'unknown_range',
+  'frame_rate',
+  'video_codec',
+  'audio_codec',
+  'audio_shape',
+  'video_shape',
+] as const;
+const subtitleIssues = ['method', 'codec', 'manifest', 'index', 'burn_in', 'static'] as const;
 const kinds = ['playback_info', 'direct', 'master', 'media', 'segment', 'init'] as const;
 const mimeTypes = [
   'application/vnd.apple.mpegurl',
@@ -67,6 +114,10 @@ export interface PlaybackDiagnostic {
   upstreamStatus?: number;
   upstreamContentType?: (typeof mimeTypes)[number];
   manifestTag?: (typeof tags)[number];
+  referenceRule?: (typeof referenceRules)[number];
+  queryOption?: (typeof queryOptions)[number];
+  sourceConstraints?: readonly (typeof sourceConstraints)[number][];
+  subtitleIssues?: readonly (typeof subtitleIssues)[number][];
 }
 export function safePlaybackContentType(
   value: string | undefined,
@@ -97,6 +148,26 @@ export function safePlaybackDiagnostic(value: unknown): PlaybackDiagnostic | und
             PlaybackDiagnostic['upstreamContentType']
           >,
         }
+      : {}),
+    ...(Array.isArray(v.sourceConstraints)
+      ? {
+          sourceConstraints: Object.freeze(
+            sourceConstraints.filter((issue) => (v.sourceConstraints as unknown[]).includes(issue)),
+          ),
+        }
+      : {}),
+    ...(Array.isArray(v.subtitleIssues)
+      ? {
+          subtitleIssues: Object.freeze(
+            subtitleIssues.filter((issue) => (v.subtitleIssues as unknown[]).includes(issue)),
+          ),
+        }
+      : {}),
+    ...(queryOptions.includes(v.queryOption as never)
+      ? { queryOption: v.queryOption as NonNullable<PlaybackDiagnostic['queryOption']> }
+      : {}),
+    ...(referenceRules.includes(v.referenceRule as never)
+      ? { referenceRule: v.referenceRule as NonNullable<PlaybackDiagnostic['referenceRule']> }
       : {}),
     ...(tags.includes(v.manifestTag as never)
       ? { manifestTag: v.manifestTag as NonNullable<PlaybackDiagnostic['manifestTag']> }

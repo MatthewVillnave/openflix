@@ -78,6 +78,45 @@ export async function buildApp(config: Config, logger = createLogger(config)) {
       secure: config.secureCookies,
       sameSite: 'strict' as const,
     };
+    app.get(`${API_PREFIX}/auth/setup`, async () => ({ setupRequired: !db.hasUsers() }));
+    app.post<{ Body: { username: string; password: string } }>(
+      `${API_PREFIX}/auth/setup`,
+      {
+        config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['username', 'password'],
+            properties: {
+              username: {
+                type: 'string',
+                minLength: 3,
+                maxLength: 64,
+                pattern: '^[a-zA-Z0-9_.-]+$',
+              },
+              password: { type: 'string', minLength: 12, maxLength: 1024 },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        if (Buffer.byteLength(request.body.password, 'utf8') > 1024)
+          return reply.code(400).send({ error: 'Invalid request' });
+        try {
+          if (!(await auth.createFirstOwner(request.body.username, request.body.password)))
+            return reply.code(409).send({ error: 'Setup already completed' });
+          return reply.code(201).send({ created: true });
+        } catch (error) {
+          if (error instanceof AuthBusyError)
+            return reply
+              .code(503)
+              .header('Retry-After', '1')
+              .send({ error: 'Authentication busy' });
+          throw error;
+        }
+      },
+    );
     app.post<{ Body: { username: string; password: string } }>(
       `${API_PREFIX}/auth/login`,
       {
@@ -112,6 +151,7 @@ export async function buildApp(config: Config, logger = createLogger(config)) {
             request.log.info({ event: 'auth.login_failed' }, 'Login failed');
             return reply.code(401).send({ error: 'Invalid username or password' });
           }
+          await connections.endLogin(request.cookies[config.cookieName]);
           reply.setCookie(config.cookieName, result.token, {
             ...cookieOptions,
             maxAge: config.sessionTtlSeconds,
@@ -130,6 +170,7 @@ export async function buildApp(config: Config, logger = createLogger(config)) {
     );
     app.post(`${API_PREFIX}/auth/logout`, async (request, reply) => {
       auth.logout(request.cookies[config.cookieName]);
+      await connections.endLogin(request.cookies[config.cookieName]);
       reply.clearCookie(config.cookieName, cookieOptions);
       return reply.code(204).send();
     });
@@ -138,7 +179,7 @@ export async function buildApp(config: Config, logger = createLogger(config)) {
       if (!user) return reply.code(401).send({ error: 'Authentication required' });
       return { user } satisfies CurrentUserResponse;
     });
-    await registerConnectors(app, db, auth, config);
+    const connections = await registerConnectors(app, db, auth, config);
     await app.ready();
     return app;
   } catch (error) {

@@ -54,16 +54,16 @@ try {
       const headers={cookie:config.cookieName+'='+token};
       assert.equal((await app.inject({url:'/api/v1/me',headers})).statusCode,200);
       const response=await app.inject({url:'/api/v1/catalog/items/'+catalogId('item','upgrade-source','movie'),headers});
-      assert.equal(response.statusCode,200);assert.equal(response.json().item.title,'Preserved movie');
-      const current=openDatabase(config.databasePath);assert.equal(current.getConnector('upgrade-source').credentialEnvelope,envelope);
+      assert.equal(response.statusCode,404);
+      const current=openDatabase(config.databasePath);assert.equal(current.catalog.item(catalogId('item','upgrade-source','movie')).title,'Preserved movie');assert.equal(current.getConnector('upgrade-source').credentialEnvelope,envelope);
       const reopened=new EncryptedCredentialStore(current,config.masterKey);assert.deepEqual(Buffer.from(await reopened.read({id:'upgrade-source'})),secret);reopened.destroy();current.close();
       const check=new Database(config.databasePath);const updated=check.prepare('SELECT * FROM schema_migrations ORDER BY version').all();
-      assert.deepEqual(updated.slice(0,3),ledger);assert.equal(updated.length,4);
+      assert.deepEqual(updated.slice(0,3),ledger);assert.equal(updated.length,5);
       assert.equal(check.prepare('SELECT COUNT(*) AS n FROM catalog_work_members').get().n,1);
       const unified=await app.inject({url:'/api/v1/catalog/works',headers});
-      assert.equal(unified.statusCode,200);assert.equal(unified.json().items[0].title,'Preserved movie');assert.equal(check.pragma('integrity_check',{simple:true}),'ok');check.close();
+      assert.equal(unified.statusCode,200);assert.deepEqual(unified.json().items,[]);assert.equal(check.pragma('integrity_check',{simple:true}),'ok');check.close();
     } finally {await app.close();secret.fill(0);}
-    console.log('PASS audited M4 database -> M5 startup: users, login, encrypted secret, catalog IDs, migration ledger and integrity');
+    console.log('PASS audited M4 database -> personal-identity startup (legacy quarantined): users, login, encrypted secret, catalog IDs, migration ledger and integrity');
   `;
   writeFileSync(join(directory, 'verify.mjs'), script);
   const output = execFileSync(

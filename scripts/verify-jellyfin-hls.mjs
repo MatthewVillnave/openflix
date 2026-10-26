@@ -117,6 +117,35 @@ try {
     undefined,
     true,
   );
+  // Owned synthetic artwork and text only, inside this disposable Jellyfin database.
+  const artwork = (
+    await compose(
+      'exec',
+      '-T',
+      'hls-media',
+      'sh',
+      '-c',
+      "ffmpeg -v error -f lavfi -i 'color=c=0x163c36:s=320x180' -frames:v 1 -c:v mjpeg -threads 1 -f image2pipe - | base64 -w0",
+    )
+  ).trim();
+  for (const item of generated.Items) {
+    const detail = await api(`/Users/${auth.User.Id}/Items/${item.Id}`, undefined, true);
+    await api(
+      `/Items/${item.Id}`,
+      { ...detail, Overview: 'Generated OpenFlix integration fixture.', Genres: ['Synthetic'] },
+      true,
+    );
+    for (const kind of ['Primary', 'Backdrop']) {
+      const image = await fetch(`${jellyfin}/Items/${item.Id}/Images/${kind}`, {
+        method: 'POST',
+        headers: { 'X-Emby-Token': token, 'content-type': 'image/jpeg' },
+        body: artwork,
+        signal: AbortSignal.timeout(15000),
+      });
+      assert.ok(image.ok, `Synthetic ${kind} upload status ${image.status}`);
+    }
+  }
+  mark('Synthetic artwork and detail text installed in disposable Jellyfin only');
   const subtitleItem = generated.Items.find((item) => item.Name === 'Subtitle Fixture');
   assert.ok(subtitleItem, 'Missing generated subtitle item');
   const metadata = await api(
@@ -242,8 +271,10 @@ try {
       profile: { formats: ['hls-h264-aac'] },
     }),
   });
-  assert.equal(denied.status, 403);
-  mark('Ordinary user denied; browser verified logout and new-login grant rejection');
+  assert.equal(denied.status, 404);
+  mark(
+    "Unconnected user cannot access another user's playback; browser verified logout and new-login grant rejection",
+  );
   const loginAdmin = async () => {
     const r = await fetch(web + '/api/v1/auth/login', {
       method: 'POST',

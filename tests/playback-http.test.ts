@@ -20,6 +20,13 @@ let admin: string, other: string, viewer: string, logs: string;
 const itemId = catalogId('item', 'source', playbackItemId);
 const profile = { formats: ['mp4-h264-aac', 'webm-vp8-opus', 'mp3', 'wav'] };
 const seed = (type: MediaType = 'movie') => {
+  upstream.state.catalog = [
+    {
+      Id: playbackItemId,
+      Name: 'Fixture item',
+      Type: type === 'audio' ? 'Audio' : type === 'episode' ? 'Episode' : 'Movie',
+    },
+  ];
   const run = db.catalog.begin('source', null);
   db.catalog.stageLibrary(run, { id: libraryId, name: 'Fixture', mediaTypes: [], type: 'unknown' });
   db.catalog.stagePage(run, libraryId, [
@@ -41,6 +48,18 @@ beforeEach(async () => {
     password: upstreamPassword,
   });
   db = openDatabase(local.config.databasePath);
+  const cookie = (id: string, role: 'admin' | 'user') => {
+    db.createUser(
+      { id, username: id, displayName: id, role, passwordHash: 'fixture-no-login' },
+      Date.now(),
+    );
+    const token = randomBytes(32).toString('base64url');
+    db.createSession(tokenDigest(token), id, Date.now(), Date.now() + 86400000);
+    return `${local.config.cookieName}=${token}`;
+  };
+  admin = cookie('admin', 'admin');
+  other = cookie('other-admin', 'admin');
+  viewer = cookie('viewer', 'user');
   const vault = new EncryptedCredentialStore(db, local.config.masterKey!);
   vault.create(
     {
@@ -56,21 +75,10 @@ beforeEach(async () => {
       createdAt: Date.now(),
     },
     auth.secret,
+    'admin',
   );
   vault.destroy();
   auth.secret.fill(0);
-  const cookie = (id: string, role: 'admin' | 'user') => {
-    db.createUser(
-      { id, username: id, displayName: id, role, passwordHash: 'fixture-no-login' },
-      Date.now(),
-    );
-    const token = randomBytes(32).toString('base64url');
-    db.createSession(tokenDigest(token), id, Date.now(), Date.now() + 86400000);
-    return `${local.config.cookieName}=${token}`;
-  };
-  admin = cookie('admin', 'admin');
-  other = cookie('other-admin', 'admin');
-  viewer = cookie('viewer', 'user');
   seed();
   logs = '';
   app = await buildApp(
@@ -161,7 +169,7 @@ it('rejects missing items, removed connectors and unavailable upstream', async (
 });
 it('denies unauthenticated, ordinary-user and cross-origin initiation', async () => {
   expect((await start('')).statusCode).toBe(401);
-  expect((await start(viewer)).statusCode).toBe(403);
+  expect((await start(viewer)).statusCode).toBe(404);
   expect((await post('/sessions', { itemId, profile }, admin, false)).statusCode).toBe(403);
 });
 it('requires the original login on every GET/HEAD/report/stop; IDs never bypass authentication', async () => {
@@ -170,7 +178,7 @@ it('requires the original login on every GET/HEAD/report/stop; IDs never bypass 
     expect((await app.inject({ method, url: s.streamPath })).statusCode).toBe(401);
     expect(
       (await app.inject({ method, url: s.streamPath, headers: { cookie: viewer } })).statusCode,
-    ).toBe(403);
+    ).toBe(410);
     expect(
       (await app.inject({ method, url: s.streamPath, headers: { cookie: other } })).statusCode,
     ).toBe(410);
@@ -440,7 +448,7 @@ it('authorizes every HLS manifest/segment with role and original login binding',
   const segment = media.body.split('\n').find((s) => s.startsWith('/api/'))!;
   for (const url of [g.streamPath, child, segment]) {
     expect((await app.inject({ url })).statusCode).toBe(401);
-    expect((await app.inject({ url, headers: { cookie: viewer } })).statusCode).toBe(403);
+    expect((await app.inject({ url, headers: { cookie: viewer } })).statusCode).toBe(410);
     expect((await app.inject({ url, headers: { cookie: other } })).statusCode).toBe(410);
   }
   expect((await app.inject({ url: segment, headers: { cookie: admin } })).statusCode).toBe(200);
@@ -590,7 +598,7 @@ it('a genuine HLS header deadline remains an upstream timeout, not successful ca
 
 it('requires admin and original login for grouped playback; regrouping revokes rather than retargets', async () => {
   const groupId = db.works.binding(itemId)!.workId;
-  expect((await post('/sessions', { groupId, profile }, viewer)).statusCode).toBe(403);
+  expect((await post('/sessions', { groupId, profile }, viewer)).statusCode).toBe(404);
   const response = await post('/sessions', { groupId, profile });
   expect(response.statusCode).toBe(201);
   const grant = response.json<PlaybackView>();
@@ -633,6 +641,7 @@ it('isolates two backend credentials, rejects restricted playback, and scopes HL
       username: 'fixture-user',
       password: upstreamPassword,
     });
+    second.state.catalog = [{ Id: playbackItemId, Name: 'Matched', Type: 'Movie' }];
     const vault = new EncryptedCredentialStore(db, local.config.masterKey!);
     vault.create(
       {
@@ -648,6 +657,7 @@ it('isolates two backend credentials, rejects restricted playback, and scopes HL
         createdAt: Date.now(),
       },
       authenticated.secret,
+      'admin',
     );
     authenticated.secret.fill(0);
     vault.destroy();

@@ -1,0 +1,9 @@
+# OpenFlix account creation — proposed policy, not enabled
+
+An empty installation offers one-time first-owner setup. The first account is an administrator, created by an atomic database operation that rejects subsequent attempts; its password is hashed and setup does not create a Jellyfin connection. Set up a new instance before making its address accessible to untrusted users, because the first person able to complete setup becomes its administrator. Initialized installations display normal login. The interactive `pnpm user:create <username>` operator command remains available for additional accounts and creates ordinary users by default; `--admin` is explicit.
+
+For additional people, a possible future design is invite-only registration. An authenticated OpenFlix administrator issues a short-lived, single-use invitation for an ordinary account. The recipient chooses their own username and password. The server consumes the invitation atomically, hashes the password, and never accepts a role from the recipient. The user then independently links their Jellyfin identity. Existing owner-scoped connector/catalog permissions remain mandatory.
+
+Before implementing/enabling this flow, choose invite-only versus operator-created accounts. Unrestricted public signup is not recommended and is not enabled by this visual update. No invitation secrets, accounts, privileges or registration configuration have been created or changed.
+
+Implementation would require hashed invitation storage, expiry/revocation, administrator authorization, request-origin protection, bounded rate limits/password hashing concurrency, generic error responses, duplicate/replayed-invite tests, and proof that new users cannot access another user's connectors/catalog. Do not show a functioning Create account button until its approved backend exists.

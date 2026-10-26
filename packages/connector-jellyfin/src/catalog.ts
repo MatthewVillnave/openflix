@@ -11,6 +11,8 @@ export const itemSchema = z.object({
   Name: text.min(1),
   Type: z.string().max(64).nullish(),
   SortName: text.nullish(),
+  Overview: z.string().max(5120).nullish(),
+  Genres: z.array(z.string().max(64)).max(32).nullish(),
   ProductionYear: z.number().int().min(0).max(9999).nullish(),
   PremiereDate: z.iso.datetime({ offset: true }).nullish(),
   DateCreated: z.iso.datetime({ offset: true }).nullish(),
@@ -76,6 +78,8 @@ export function normalizeItem(input: unknown, libraryId = ''): MediaItem {
     id: v.Id,
     libraryId,
     title: v.Name,
+    ...(v.Overview ? { overview: v.Overview } : {}),
+    ...(v.Genres ? { genres: v.Genres } : {}),
     type: v.Type && Object.hasOwn(types, v.Type) ? types[v.Type]! : 'unknown',
     ...(v.Type ? { upstreamType: v.Type } : {}),
     // Only an explicitly known neutral type qualifies; unknown semantics stay conservative.

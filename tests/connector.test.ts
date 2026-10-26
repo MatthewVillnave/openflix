@@ -21,6 +21,7 @@ it('preserves the normalized async connector contract at compile time', () => {
     | 'getLibraries'
     | 'scanCatalog'
     | 'getItem'
+    | 'getArtwork'
     | 'search'
     | 'getPlaybackInfo'
     | 'openPlaybackStream'

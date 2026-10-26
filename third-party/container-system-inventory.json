@@ -1,0 +1,1105 @@
+{
+  "scope": "Installed package metadata from the pinned Linux x86-64 base images; source packages and build recipes have not all been collected.",
+  "nodeImage": "node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df",
+  "nginxImage": "nginx:1.30.5-alpine@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94",
+  "debian": [
+    {
+      "binary": "adduser",
+      "version": "3.134",
+      "sourcePackage": "adduser",
+      "sourceVersion": "3.134"
+    },
+    {
+      "binary": "apt",
+      "version": "2.6.1",
+      "sourcePackage": "apt",
+      "sourceVersion": "2.6.1"
+    },
+    {
+      "binary": "base-files",
+      "version": "12.4+deb12u15",
+      "sourcePackage": "base-files",
+      "sourceVersion": "12.4+deb12u15"
+    },
+    {
+      "binary": "base-passwd",
+      "version": "3.6.1",
+      "sourcePackage": "base-passwd",
+      "sourceVersion": "3.6.1"
+    },
+    {
+      "binary": "bash",
+      "version": "5.2.15-2+b13",
+      "sourcePackage": "bash",
+      "sourceVersion": "5.2.15-2"
+    },
+    {
+      "binary": "bsdutils",
+      "version": "1:2.38.1-5+deb12u3",
+      "sourcePackage": "util-linux",
+      "sourceVersion": "2.38.1-5+deb12u3"
+    },
+    {
+      "binary": "coreutils",
+      "version": "9.1-1",
+      "sourcePackage": "coreutils",
+      "sourceVersion": "9.1-1"
+    },
+    {
+      "binary": "dash",
+      "version": "0.5.12-2",
+      "sourcePackage": "dash",
+      "sourceVersion": "0.5.12-2"
+    },
+    {
+      "binary": "debconf",
+      "version": "1.5.82",
+      "sourcePackage": "debconf",
+      "sourceVersion": "1.5.82"
+    },
+    {
+      "binary": "debian-archive-keyring",
+      "version": "2023.3+deb12u2",
+      "sourcePackage": "debian-archive-keyring",
+      "sourceVersion": "2023.3+deb12u2"
+    },
+    {
+      "binary": "debianutils",
+      "version": "5.7-0.5~deb12u1",
+      "sourcePackage": "debianutils",
+      "sourceVersion": "5.7-0.5~deb12u1"
+    },
+    {
+      "binary": "diffutils",
+      "version": "1:3.8-4",
+      "sourcePackage": "diffutils",
+      "sourceVersion": "1:3.8-4"
+    },
+    {
+      "binary": "dpkg",
+      "version": "1.21.23",
+      "sourcePackage": "dpkg",
+      "sourceVersion": "1.21.23"
+    },
+    {
+      "binary": "e2fsprogs",
+      "version": "1.47.0-2+b2",
+      "sourcePackage": "e2fsprogs",
+      "sourceVersion": "1.47.0-2"
+    },
+    {
+      "binary": "findutils",
+      "version": "4.9.0-4",
+      "sourcePackage": "findutils",
+      "sourceVersion": "4.9.0-4"
+    },
+    {
+      "binary": "gcc-12-base:amd64",
+      "version": "12.2.0-14+deb12u1",
+      "sourcePackage": "gcc-12",
+      "sourceVersion": "12.2.0-14+deb12u1"
+    },
+    {
+      "binary": "gpgv",
+      "version": "2.2.40-1.1+deb12u2",
+      "sourcePackage": "gnupg2",
+      "sourceVersion": "2.2.40-1.1+deb12u2"
+    },
+    {
+      "binary": "grep",
+      "version": "3.8-5",
+      "sourcePackage": "grep",
+      "sourceVersion": "3.8-5"
+    },
+    {
+      "binary": "gzip",
+      "version": "1.12-1",
+      "sourcePackage": "gzip",
+      "sourceVersion": "1.12-1"
+    },
+    {
+      "binary": "hostname",
+      "version": "3.23+nmu1",
+      "sourcePackage": "hostname",
+      "sourceVersion": "3.23+nmu1"
+    },
+    {
+      "binary": "init-system-helpers",
+      "version": "1.65.2+deb12u1",
+      "sourcePackage": "init-system-helpers",
+      "sourceVersion": "1.65.2+deb12u1"
+    },
+    {
+      "binary": "libacl1:amd64",
+      "version": "2.3.1-3",
+      "sourcePackage": "acl",
+      "sourceVersion": "2.3.1-3"
+    },
+    {
+      "binary": "libapt-pkg6.0:amd64",
+      "version": "2.6.1",
+      "sourcePackage": "apt",
+      "sourceVersion": "2.6.1"
+    },
+    {
+      "binary": "libattr1:amd64",
+      "version": "1:2.5.1-4",
+      "sourcePackage": "attr",
+      "sourceVersion": "1:2.5.1-4"
+    },
+    {
+      "binary": "libaudit-common",
+      "version": "1:3.0.9-1",
+      "sourcePackage": "audit",
+      "sourceVersion": "1:3.0.9-1"
+    },
+    {
+      "binary": "libaudit1:amd64",
+      "version": "1:3.0.9-1",
+      "sourcePackage": "audit",
+      "sourceVersion": "1:3.0.9-1"
+    },
+    {
+      "binary": "libblkid1:amd64",
+      "version": "2.38.1-5+deb12u3",
+      "sourcePackage": "util-linux",
+      "sourceVersion": "2.38.1-5+deb12u3"
+    },
+    {
+      "binary": "libbz2-1.0:amd64",
+      "version": "1.0.8-5+b1",
+      "sourcePackage": "bzip2",
+      "sourceVersion": "1.0.8-5"
+    },
+    {
+      "binary": "libc-bin",
+      "version": "2.36-9+deb12u14",
+      "sourcePackage": "glibc",
+      "sourceVersion": "2.36-9+deb12u14"
+    },
+    {
+      "binary": "libc6:amd64",
+      "version": "2.36-9+deb12u14",
+      "sourcePackage": "glibc",
+      "sourceVersion": "2.36-9+deb12u14"
+    },
+    {
+      "binary": "libcap-ng0:amd64",
+      "version": "0.8.3-1+b3",
+      "sourcePackage": "libcap-ng",
+      "sourceVersion": "0.8.3-1"
+    },
+    {
+      "binary": "libcap2:amd64",
+      "version": "1:2.66-4+deb12u3+b1",
+      "sourcePackage": "libcap2",
+      "sourceVersion": "1:2.66-4+deb12u3"
+    },
+    {
+      "binary": "libcom-err2:amd64",
+      "version": "1.47.0-2+b2",
+      "sourcePackage": "e2fsprogs",
+      "sourceVersion": "1.47.0-2"
+    },
+    {
+      "binary": "libcrypt1:amd64",
+      "version": "1:4.4.33-2",
+      "sourcePackage": "libxcrypt",
+      "sourceVersion": "1:4.4.33-2"
+    },
+    {
+      "binary": "libdb5.3:amd64",
+      "version": "5.3.28+dfsg2-1",
+      "sourcePackage": "db5.3",
+      "sourceVersion": "5.3.28+dfsg2-1"
+    },
+    {
+      "binary": "libdebconfclient0:amd64",
+      "version": "0.270",
+      "sourcePackage": "cdebconf",
+      "sourceVersion": "0.270"
+    },
+    {
+      "binary": "libext2fs2:amd64",
+      "version": "1.47.0-2+b2",
+      "sourcePackage": "e2fsprogs",
+      "sourceVersion": "1.47.0-2"
+    },
+    {
+      "binary": "libffi8:amd64",
+      "version": "3.4.4-1",
+      "sourcePackage": "libffi",
+      "sourceVersion": "3.4.4-1"
+    },
+    {
+      "binary": "libgcc-s1:amd64",
+      "version": "12.2.0-14+deb12u1",
+      "sourcePackage": "gcc-12",
+      "sourceVersion": "12.2.0-14+deb12u1"
+    },
+    {
+      "binary": "libgcrypt20:amd64",
+      "version": "1.10.1-3+deb12u1",
+      "sourcePackage": "libgcrypt20",
+      "sourceVersion": "1.10.1-3+deb12u1"
+    },
+    {
+      "binary": "libgmp10:amd64",
+      "version": "2:6.2.1+dfsg1-1.1",
+      "sourcePackage": "gmp",
+      "sourceVersion": "2:6.2.1+dfsg1-1.1"
+    },
+    {
+      "binary": "libgnutls30:amd64",
+      "version": "3.7.9-2+deb12u7",
+      "sourcePackage": "gnutls28",
+      "sourceVersion": "3.7.9-2+deb12u7"
+    },
+    {
+      "binary": "libgpg-error0:amd64",
+      "version": "1.46-1",
+      "sourcePackage": "libgpg-error",
+      "sourceVersion": "1.46-1"
+    },
+    {
+      "binary": "libhogweed6:amd64",
+      "version": "3.8.1-2",
+      "sourcePackage": "nettle",
+      "sourceVersion": "3.8.1-2"
+    },
+    {
+      "binary": "libidn2-0:amd64",
+      "version": "2.3.3-1+b1",
+      "sourcePackage": "libidn2",
+      "sourceVersion": "2.3.3-1"
+    },
+    {
+      "binary": "liblz4-1:amd64",
+      "version": "1.9.4-1",
+      "sourcePackage": "lz4",
+      "sourceVersion": "1.9.4-1"
+    },
+    {
+      "binary": "liblzma5:amd64",
+      "version": "5.4.1-1+deb12u1",
+      "sourcePackage": "xz-utils",
+      "sourceVersion": "5.4.1-1+deb12u1"
+    },
+    {
+      "binary": "libmd0:amd64",
+      "version": "1.0.4-2",
+      "sourcePackage": "libmd",
+      "sourceVersion": "1.0.4-2"
+    },
+    {
+      "binary": "libmount1:amd64",
+      "version": "2.38.1-5+deb12u3",
+      "sourcePackage": "util-linux",
+      "sourceVersion": "2.38.1-5+deb12u3"
+    },
+    {
+      "binary": "libnettle8:amd64",
+      "version": "3.8.1-2",
+      "sourcePackage": "nettle",
+      "sourceVersion": "3.8.1-2"
+    },
+    {
+      "binary": "libp11-kit0:amd64",
+      "version": "0.24.1-2",
+      "sourcePackage": "p11-kit",
+      "sourceVersion": "0.24.1-2"
+    },
+    {
+      "binary": "libpam-modules:amd64",
+      "version": "1.5.2-6+deb12u2",
+      "sourcePackage": "pam",
+      "sourceVersion": "1.5.2-6+deb12u2"
+    },
+    {
+      "binary": "libpam-modules-bin",
+      "version": "1.5.2-6+deb12u2",
+      "sourcePackage": "pam",
+      "sourceVersion": "1.5.2-6+deb12u2"
+    },
+    {
+      "binary": "libpam-runtime",
+      "version": "1.5.2-6+deb12u2",
+      "sourcePackage": "pam",
+      "sourceVersion": "1.5.2-6+deb12u2"
+    },
+    {
+      "binary": "libpam0g:amd64",
+      "version": "1.5.2-6+deb12u2",
+      "sourcePackage": "pam",
+      "sourceVersion": "1.5.2-6+deb12u2"
+    },
+    {
+      "binary": "libpcre2-8-0:amd64",
+      "version": "10.42-1",
+      "sourcePackage": "pcre2",
+      "sourceVersion": "10.42-1"
+    },
+    {
+      "binary": "libseccomp2:amd64",
+      "version": "2.5.4-1+deb12u1",
+      "sourcePackage": "libseccomp",
+      "sourceVersion": "2.5.4-1+deb12u1"
+    },
+    {
+      "binary": "libselinux1:amd64",
+      "version": "3.4-1+b6",
+      "sourcePackage": "libselinux",
+      "sourceVersion": "3.4-1"
+    },
+    {
+      "binary": "libsemanage-common",
+      "version": "3.4-1",
+      "sourcePackage": "libsemanage",
+      "sourceVersion": "3.4-1"
+    },
+    {
+      "binary": "libsemanage2:amd64",
+      "version": "3.4-1+b5",
+      "sourcePackage": "libsemanage",
+      "sourceVersion": "3.4-1"
+    },
+    {
+      "binary": "libsepol2:amd64",
+      "version": "3.4-2.1",
+      "sourcePackage": "libsepol",
+      "sourceVersion": "3.4-2.1"
+    },
+    {
+      "binary": "libsmartcols1:amd64",
+      "version": "2.38.1-5+deb12u3",
+      "sourcePackage": "util-linux",
+      "sourceVersion": "2.38.1-5+deb12u3"
+    },
+    {
+      "binary": "libss2:amd64",
+      "version": "1.47.0-2+b2",
+      "sourcePackage": "e2fsprogs",
+      "sourceVersion": "1.47.0-2"
+    },
+    {
+      "binary": "libstdc++6:amd64",
+      "version": "12.2.0-14+deb12u1",
+      "sourcePackage": "gcc-12",
+      "sourceVersion": "12.2.0-14+deb12u1"
+    },
+    {
+      "binary": "libsystemd0:amd64",
+      "version": "252.39-1~deb12u2",
+      "sourcePackage": "systemd",
+      "sourceVersion": "252.39-1~deb12u2"
+    },
+    {
+      "binary": "libtasn1-6:amd64",
+      "version": "4.19.0-2+deb12u1",
+      "sourcePackage": "libtasn1-6",
+      "sourceVersion": "4.19.0-2+deb12u1"
+    },
+    {
+      "binary": "libtinfo6:amd64",
+      "version": "6.4-4",
+      "sourcePackage": "ncurses",
+      "sourceVersion": "6.4-4"
+    },
+    {
+      "binary": "libudev1:amd64",
+      "version": "252.39-1~deb12u2",
+      "sourcePackage": "systemd",
+      "sourceVersion": "252.39-1~deb12u2"
+    },
+    {
+      "binary": "libunistring2:amd64",
+      "version": "1.0-2",
+      "sourcePackage": "libunistring",
+      "sourceVersion": "1.0-2"
+    },
+    {
+      "binary": "libuuid1:amd64",
+      "version": "2.38.1-5+deb12u3",
+      "sourcePackage": "util-linux",
+      "sourceVersion": "2.38.1-5+deb12u3"
+    },
+    {
+      "binary": "libxxhash0:amd64",
+      "version": "0.8.1-1",
+      "sourcePackage": "xxhash",
+      "sourceVersion": "0.8.1-1"
+    },
+    {
+      "binary": "libzstd1:amd64",
+      "version": "1.5.4+dfsg2-5",
+      "sourcePackage": "libzstd",
+      "sourceVersion": "1.5.4+dfsg2-5"
+    },
+    {
+      "binary": "login",
+      "version": "1:4.13+dfsg1-1+deb12u2",
+      "sourcePackage": "shadow",
+      "sourceVersion": "1:4.13+dfsg1-1+deb12u2"
+    },
+    {
+      "binary": "logsave",
+      "version": "1.47.0-2+b2",
+      "sourcePackage": "e2fsprogs",
+      "sourceVersion": "1.47.0-2"
+    },
+    {
+      "binary": "mawk",
+      "version": "1.3.4.20200120-3.1",
+      "sourcePackage": "mawk",
+      "sourceVersion": "1.3.4.20200120-3.1"
+    },
+    {
+      "binary": "mount",
+      "version": "2.38.1-5+deb12u3",
+      "sourcePackage": "util-linux",
+      "sourceVersion": "2.38.1-5+deb12u3"
+    },
+    {
+      "binary": "ncurses-base",
+      "version": "6.4-4",
+      "sourcePackage": "ncurses",
+      "sourceVersion": "6.4-4"
+    },
+    {
+      "binary": "ncurses-bin",
+      "version": "6.4-4",
+      "sourcePackage": "ncurses",
+      "sourceVersion": "6.4-4"
+    },
+    {
+      "binary": "passwd",
+      "version": "1:4.13+dfsg1-1+deb12u2",
+      "sourcePackage": "shadow",
+      "sourceVersion": "1:4.13+dfsg1-1+deb12u2"
+    },
+    {
+      "binary": "perl-base",
+      "version": "5.36.0-7+deb12u3",
+      "sourcePackage": "perl",
+      "sourceVersion": "5.36.0-7+deb12u3"
+    },
+    {
+      "binary": "sed",
+      "version": "4.9-1+deb12u1",
+      "sourcePackage": "sed",
+      "sourceVersion": "4.9-1+deb12u1"
+    },
+    {
+      "binary": "sysvinit-utils",
+      "version": "3.06-4",
+      "sourcePackage": "sysvinit",
+      "sourceVersion": "3.06-4"
+    },
+    {
+      "binary": "tar",
+      "version": "1.34+dfsg-1.2+deb12u1",
+      "sourcePackage": "tar",
+      "sourceVersion": "1.34+dfsg-1.2+deb12u1"
+    },
+    {
+      "binary": "tzdata",
+      "version": "2026b-0+deb12u1",
+      "sourcePackage": "tzdata",
+      "sourceVersion": "2026b-0+deb12u1"
+    },
+    {
+      "binary": "usr-is-merged",
+      "version": "37~deb12u1",
+      "sourcePackage": "usrmerge",
+      "sourceVersion": "37~deb12u1"
+    },
+    {
+      "binary": "util-linux",
+      "version": "2.38.1-5+deb12u3",
+      "sourcePackage": "util-linux",
+      "sourceVersion": "2.38.1-5+deb12u3"
+    },
+    {
+      "binary": "util-linux-extra",
+      "version": "2.38.1-5+deb12u3",
+      "sourcePackage": "util-linux",
+      "sourceVersion": "2.38.1-5+deb12u3"
+    },
+    {
+      "binary": "zlib1g:amd64",
+      "version": "1:1.2.13.dfsg-1",
+      "sourcePackage": "zlib",
+      "sourceVersion": "1:1.2.13.dfsg-1"
+    }
+  ],
+  "alpine": [
+    {
+      "binary": "alpine-baselayout",
+      "version": "3.7.2-r1",
+      "sourcePackage": "alpine-baselayout",
+      "license": "GPL-2.0-only",
+      "recipeRevision": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+      "upstream": "https://gitlab.alpinelinux.org/alpine/aports/-/tree/master/main/alpine-baselayout"
+    },
+    {
+      "binary": "alpine-baselayout-data",
+      "version": "3.7.2-r1",
+      "sourcePackage": "alpine-baselayout",
+      "license": "GPL-2.0-only",
+      "recipeRevision": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+      "upstream": "https://gitlab.alpinelinux.org/alpine/aports/-/tree/master/main/alpine-baselayout"
+    },
+    {
+      "binary": "alpine-keys",
+      "version": "2.6-r0",
+      "sourcePackage": "alpine-keys",
+      "license": "MIT",
+      "recipeRevision": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+      "upstream": "https://alpinelinux.org"
+    },
+    {
+      "binary": "alpine-release",
+      "version": "3.24.2-r0",
+      "sourcePackage": "alpine-base",
+      "license": "MIT",
+      "recipeRevision": "d9d560d5de74ff9a7a73f3c903d6f126a0bf3142",
+      "upstream": "https://alpinelinux.org"
+    },
+    {
+      "binary": "aom-libs",
+      "version": "3.14.1-r0",
+      "sourcePackage": "aom",
+      "license": "BSD-2-Clause AND custom",
+      "recipeRevision": "ca6a710df98ad5e2b596cf06b44cd82a5ceefc4e",
+      "upstream": "https://aomedia.org/"
+    },
+    {
+      "binary": "apk-tools",
+      "version": "3.0.8-r0",
+      "sourcePackage": "apk-tools",
+      "license": "GPL-2.0-only",
+      "recipeRevision": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+      "upstream": "https://gitlab.alpinelinux.org/alpine/apk-tools"
+    },
+    {
+      "binary": "brotli-libs",
+      "version": "1.2.0-r1",
+      "sourcePackage": "brotli",
+      "license": "MIT",
+      "recipeRevision": "1ee249c9da168084b1c6c9f7488bdffa2ac33c84",
+      "upstream": "https://github.com/google/brotli"
+    },
+    {
+      "binary": "busybox",
+      "version": "1.37.0-r31",
+      "sourcePackage": "busybox",
+      "license": "GPL-2.0-only",
+      "recipeRevision": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+      "upstream": "https://busybox.net/"
+    },
+    {
+      "binary": "busybox-binsh",
+      "version": "1.37.0-r31",
+      "sourcePackage": "busybox",
+      "license": "GPL-2.0-only",
+      "recipeRevision": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+      "upstream": "https://busybox.net/"
+    },
+    {
+      "binary": "c-ares",
+      "version": "1.34.8-r0",
+      "sourcePackage": "c-ares",
+      "license": "MIT",
+      "recipeRevision": "138a6bf9dea5974644e48fef4826b7c474f2f7d8",
+      "upstream": "https://c-ares.org/"
+    },
+    {
+      "binary": "ca-certificates",
+      "version": "20260909-r0",
+      "sourcePackage": "ca-certificates",
+      "license": "MPL-2.0 AND MIT",
+      "recipeRevision": "eb7078df3a16d666e8f7723f94bb92e00d4b9236",
+      "upstream": "https://www.mozilla.org/en-US/about/governance/policies/security-group/certs/"
+    },
+    {
+      "binary": "ca-certificates-bundle",
+      "version": "20260909-r0",
+      "sourcePackage": "ca-certificates",
+      "license": "MPL-2.0 AND MIT",
+      "recipeRevision": "eb7078df3a16d666e8f7723f94bb92e00d4b9236",
+      "upstream": "https://www.mozilla.org/en-US/about/governance/policies/security-group/certs/"
+    },
+    {
+      "binary": "curl",
+      "version": "8.22.0-r0",
+      "sourcePackage": "curl",
+      "license": "curl",
+      "recipeRevision": "ab53c408436ac7199ed5b67bde204aaca73003bd",
+      "upstream": "https://curl.se/"
+    },
+    {
+      "binary": "fontconfig",
+      "version": "2.17.1-r1",
+      "sourcePackage": "fontconfig",
+      "license": "MIT",
+      "recipeRevision": "07061cb5a28861b108b09adc09ebd4fd962e549f",
+      "upstream": "https://www.freedesktop.org/wiki/Software/fontconfig"
+    },
+    {
+      "binary": "freetype",
+      "version": "2.14.3-r0",
+      "sourcePackage": "freetype",
+      "license": "FTL OR GPL-2.0-or-later",
+      "recipeRevision": "ad16b0afc1a315c4095a75ff72ebbe3cfa29b671",
+      "upstream": "https://www.freetype.org/"
+    },
+    {
+      "binary": "geoip",
+      "version": "1.6.12-r6",
+      "sourcePackage": "geoip",
+      "license": "LGPL-2.1-or-later",
+      "recipeRevision": "6db81e6559d66572861f28962c24459c4a583da1",
+      "upstream": "http://www.maxmind.com/app/ip-location"
+    },
+    {
+      "binary": "gettext-envsubst",
+      "version": "1.0-r0",
+      "sourcePackage": "gettext",
+      "license": "GPL-3.0-or-later AND LGPL-2.1-or-later AND MIT",
+      "recipeRevision": "a0b12dbf67fb047e79a1b76c6dfe6f2904d0d391",
+      "upstream": "https://www.gnu.org/software/gettext/gettext.html"
+    },
+    {
+      "binary": "libapk",
+      "version": "3.0.8-r0",
+      "sourcePackage": "apk-tools",
+      "license": "GPL-2.0-only",
+      "recipeRevision": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+      "upstream": "https://gitlab.alpinelinux.org/alpine/apk-tools"
+    },
+    {
+      "binary": "libavif",
+      "version": "1.4.1-r0",
+      "sourcePackage": "libavif",
+      "license": "BSD-2-Clause",
+      "recipeRevision": "7c091e42619c47958002c5de53dd7f02dd4c83ac",
+      "upstream": "https://aomediacodec.github.io/av1-avif/"
+    },
+    {
+      "binary": "libbsd",
+      "version": "0.12.2-r0",
+      "sourcePackage": "libbsd",
+      "license": "BSD-3-Clause",
+      "recipeRevision": "02365e78d654a7beb23fd35d7d69f4a649009ede",
+      "upstream": "https://libbsd.freedesktop.org/"
+    },
+    {
+      "binary": "libbz2",
+      "version": "1.0.8-r6",
+      "sourcePackage": "bzip2",
+      "license": "bzip2-1.0.6",
+      "recipeRevision": "33283848034c9885d984c8e8697c645c57324938",
+      "upstream": "https://sourceware.org/bzip2/"
+    },
+    {
+      "binary": "libcrypto3",
+      "version": "3.5.8-r0",
+      "sourcePackage": "openssl",
+      "license": "Apache-2.0",
+      "recipeRevision": "013edf8b29199933e8ea34dde460b5584b979042",
+      "upstream": "https://www.openssl.org/"
+    },
+    {
+      "binary": "libcurl",
+      "version": "8.22.0-r0",
+      "sourcePackage": "curl",
+      "license": "curl",
+      "recipeRevision": "ab53c408436ac7199ed5b67bde204aaca73003bd",
+      "upstream": "https://curl.se/"
+    },
+    {
+      "binary": "libdav1d",
+      "version": "1.5.3-r0",
+      "sourcePackage": "dav1d",
+      "license": "BSD-2-Clause",
+      "recipeRevision": "6a13170ddff8fdf27712aa7d0e5437aa2407ff56",
+      "upstream": "https://code.videolan.org/videolan/dav1d"
+    },
+    {
+      "binary": "libedit",
+      "version": "20260508.3.1-r1",
+      "sourcePackage": "libedit",
+      "license": "BSD-3-Clause",
+      "recipeRevision": "7c805161e588c028cdee3f19f500849fb2c75d42",
+      "upstream": "https://www.thrysoee.dk/editline"
+    },
+    {
+      "binary": "libexpat",
+      "version": "2.8.4-r0",
+      "sourcePackage": "expat",
+      "license": "MIT",
+      "recipeRevision": "08d1eb8641965d3807628f6a4ff15914be5b79ae",
+      "upstream": "https://libexpat.github.io/"
+    },
+    {
+      "binary": "libgcc",
+      "version": "15.2.0-r5",
+      "sourcePackage": "gcc",
+      "license": "GPL-2.0-or-later AND LGPL-2.1-or-later",
+      "recipeRevision": "423a8ad043d07f2c7546c8ec3e2b0384cda360ae",
+      "upstream": "https://gcc.gnu.org"
+    },
+    {
+      "binary": "libgd",
+      "version": "2.3.3-r10",
+      "sourcePackage": "gd",
+      "license": "GD",
+      "recipeRevision": "bf4ebac970366eda6cc26aa61c8dddae0d6916ee",
+      "upstream": "https://libgd.github.io/"
+    },
+    {
+      "binary": "libice",
+      "version": "1.1.2-r0",
+      "sourcePackage": "libice",
+      "license": "X11",
+      "recipeRevision": "d4941e833167c30aa1172e6d8420d084698254ab",
+      "upstream": "https://xorg.freedesktop.org/"
+    },
+    {
+      "binary": "libidn2",
+      "version": "2.3.8-r0",
+      "sourcePackage": "libidn2",
+      "license": "GPL-2.0-or-later OR LGPL-3.0-or-later",
+      "recipeRevision": "8240e09aa2fdd8f9979b2016be082273965aff0c",
+      "upstream": "https://www.gnu.org/software/libidn#libidn2"
+    },
+    {
+      "binary": "libintl",
+      "version": "1.0-r0",
+      "sourcePackage": "gettext",
+      "license": "LGPL-2.1-or-later",
+      "recipeRevision": "a0b12dbf67fb047e79a1b76c6dfe6f2904d0d391",
+      "upstream": "https://www.gnu.org/software/gettext/gettext.html"
+    },
+    {
+      "binary": "libjpeg-turbo",
+      "version": "3.1.3-r0",
+      "sourcePackage": "libjpeg-turbo",
+      "license": "BSD-3-Clause AND IJG AND Zlib",
+      "recipeRevision": "5fe6bebf850fc964a8525c81548397c39cb6f7cd",
+      "upstream": "https://libjpeg-turbo.org/"
+    },
+    {
+      "binary": "libmd",
+      "version": "1.2.0-r0",
+      "sourcePackage": "libmd",
+      "license": "BSD-3-Clause AND BSD-2-Clause AND ISC AND Beerware AND Public Domain",
+      "recipeRevision": "87b78bc6890645c317d3167bdbb0187502d0cda9",
+      "upstream": "https://www.hadrons.org/software/libmd/"
+    },
+    {
+      "binary": "libncursesw",
+      "version": "6.6_p20260516-r0",
+      "sourcePackage": "ncurses",
+      "license": "X11",
+      "recipeRevision": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+      "upstream": "https://invisible-island.net/ncurses/"
+    },
+    {
+      "binary": "libpng",
+      "version": "1.6.58-r1",
+      "sourcePackage": "libpng",
+      "license": "Libpng",
+      "recipeRevision": "47f0ce2db0f841ad73afd91ff4d71bca0f46ad05",
+      "upstream": "http://www.libpng.org"
+    },
+    {
+      "binary": "libpsl",
+      "version": "0.21.5-r3",
+      "sourcePackage": "libpsl",
+      "license": "MIT",
+      "recipeRevision": "6bd45b53fb316dc01bda59f5feaf1e127eb64f22",
+      "upstream": "https://rockdaboot.github.io/libpsl"
+    },
+    {
+      "binary": "libsharpyuv",
+      "version": "1.6.0-r0",
+      "sourcePackage": "libwebp",
+      "license": "BSD-3-Clause",
+      "recipeRevision": "af8b48fabd19b69b00f5efe192f461896a38cf74",
+      "upstream": "https://developers.google.com/speed/webp"
+    },
+    {
+      "binary": "libsm",
+      "version": "1.2.6-r0",
+      "sourcePackage": "libsm",
+      "license": "MIT",
+      "recipeRevision": "4eaa957537767ad0344894ad0e609068b26bf85d",
+      "upstream": "https://xorg.freedesktop.org/"
+    },
+    {
+      "binary": "libssl3",
+      "version": "3.5.8-r0",
+      "sourcePackage": "openssl",
+      "license": "Apache-2.0",
+      "recipeRevision": "013edf8b29199933e8ea34dde460b5584b979042",
+      "upstream": "https://www.openssl.org/"
+    },
+    {
+      "binary": "libstdc++",
+      "version": "15.2.0-r5",
+      "sourcePackage": "gcc",
+      "license": "GPL-2.0-or-later AND LGPL-2.1-or-later",
+      "recipeRevision": "423a8ad043d07f2c7546c8ec3e2b0384cda360ae",
+      "upstream": "https://gcc.gnu.org"
+    },
+    {
+      "binary": "libunistring",
+      "version": "1.4.2-r0",
+      "sourcePackage": "libunistring",
+      "license": "GPL-2.0-or-later OR LGPL-3.0-or-later",
+      "recipeRevision": "30d9f19340385b2cd16eaf1cc6a9a8b30c4afe1c",
+      "upstream": "https://www.gnu.org/software/libunistring/"
+    },
+    {
+      "binary": "libuuid",
+      "version": "2.42.3-r1",
+      "sourcePackage": "util-linux",
+      "license": "BSD-3-Clause",
+      "recipeRevision": "d98c55af59055e6ca60fbe36e171546918709965",
+      "upstream": "https://git.kernel.org/cgit/utils/util-linux/util-linux.git"
+    },
+    {
+      "binary": "libwebp",
+      "version": "1.6.0-r0",
+      "sourcePackage": "libwebp",
+      "license": "BSD-3-Clause",
+      "recipeRevision": "af8b48fabd19b69b00f5efe192f461896a38cf74",
+      "upstream": "https://developers.google.com/speed/webp"
+    },
+    {
+      "binary": "libx11",
+      "version": "1.8.13-r0",
+      "sourcePackage": "libx11",
+      "license": "X11",
+      "recipeRevision": "f993bc30142d46271ede4a746c1abefaa1a78eee",
+      "upstream": "https://xorg.freedesktop.org/"
+    },
+    {
+      "binary": "libxau",
+      "version": "1.0.12-r0",
+      "sourcePackage": "libxau",
+      "license": "MIT",
+      "recipeRevision": "6bd45b53fb316dc01bda59f5feaf1e127eb64f22",
+      "upstream": "https://xorg.freedesktop.org/"
+    },
+    {
+      "binary": "libxcb",
+      "version": "1.17.0-r2",
+      "sourcePackage": "libxcb",
+      "license": "MIT",
+      "recipeRevision": "5e1b822309fb17cc2ebd46d6fbacb1763acbcdd1",
+      "upstream": "https://xcb.freedesktop.org/"
+    },
+    {
+      "binary": "libxdmcp",
+      "version": "1.1.5-r1",
+      "sourcePackage": "libxdmcp",
+      "license": "MIT",
+      "recipeRevision": "614e9166706cec427fc3d907b8d981390a42e088",
+      "upstream": "https://xorg.freedesktop.org/"
+    },
+    {
+      "binary": "libxext",
+      "version": "1.3.7-r0",
+      "sourcePackage": "libxext",
+      "license": "MIT",
+      "recipeRevision": "4ec252fa3e6e8edf16d0d6da3fe6dd39e2263942",
+      "upstream": "https://xorg.freedesktop.org/"
+    },
+    {
+      "binary": "libxml2",
+      "version": "2.13.9-r2",
+      "sourcePackage": "libxml2",
+      "license": "MIT",
+      "recipeRevision": "f1bd5b6767a0e7fdda380c95138a1c938eb6e102",
+      "upstream": "https://gitlab.gnome.org/GNOME/libxml2"
+    },
+    {
+      "binary": "libxpm",
+      "version": "3.5.19-r0",
+      "sourcePackage": "libxpm",
+      "license": "X11",
+      "recipeRevision": "30778c48d72b12e64d7de8dfcef2937aa2886690",
+      "upstream": "https://xorg.freedesktop.org/"
+    },
+    {
+      "binary": "libxslt",
+      "version": "1.1.43-r3",
+      "sourcePackage": "libxslt",
+      "license": "X11",
+      "recipeRevision": "730f2f5bdc97be98b2beee33f55134c622e6189c",
+      "upstream": "http://xmlsoft.org/XSLT/"
+    },
+    {
+      "binary": "libxt",
+      "version": "1.3.1-r0",
+      "sourcePackage": "libxt",
+      "license": "MIT",
+      "recipeRevision": "60222ebeadec75e483e49194130c6963d0fcbf75",
+      "upstream": "https://xorg.freedesktop.org/"
+    },
+    {
+      "binary": "libyuv",
+      "version": "0.0.1928-r0",
+      "sourcePackage": "libyuv",
+      "license": "BSD-3-Clause",
+      "recipeRevision": "6d055fa770a2fbbd807ee496c4dc8c69d00fbee4",
+      "upstream": "https://chromium.googlesource.com/libyuv/libyuv/"
+    },
+    {
+      "binary": "musl",
+      "version": "1.2.6-r2",
+      "sourcePackage": "musl",
+      "license": "MIT",
+      "recipeRevision": "f5640d3a10f664c9119720c60515265d3d6f6d01",
+      "upstream": "https://musl.libc.org/"
+    },
+    {
+      "binary": "musl-utils",
+      "version": "1.2.6-r2",
+      "sourcePackage": "musl",
+      "license": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+      "recipeRevision": "f5640d3a10f664c9119720c60515265d3d6f6d01",
+      "upstream": "https://musl.libc.org/"
+    },
+    {
+      "binary": "ncurses-terminfo-base",
+      "version": "6.6_p20260516-r0",
+      "sourcePackage": "ncurses",
+      "license": "X11",
+      "recipeRevision": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+      "upstream": "https://invisible-island.net/ncurses/"
+    },
+    {
+      "binary": "nghttp2-libs",
+      "version": "1.69.0-r0",
+      "sourcePackage": "nghttp2",
+      "license": "MIT",
+      "recipeRevision": "2f3038c86a2a055b2becb5a8c4fd86365f77347a",
+      "upstream": "https://nghttp2.org"
+    },
+    {
+      "binary": "nginx",
+      "version": "1.30.5-r1",
+      "sourcePackage": "nginx",
+      "license": "2-clause BSD-like license",
+      "recipeRevision": null,
+      "upstream": "https://nginx.org/"
+    },
+    {
+      "binary": "nginx-module-acme",
+      "version": "1.30.5.0.4.1-r1",
+      "sourcePackage": "nginx-module-acme",
+      "license": "2-clause BSD-like license",
+      "recipeRevision": null,
+      "upstream": "https://nginx.org/"
+    },
+    {
+      "binary": "nginx-module-geoip",
+      "version": "1.30.5-r1",
+      "sourcePackage": "nginx-module-geoip",
+      "license": "2-clause BSD-like license",
+      "recipeRevision": null,
+      "upstream": "https://nginx.org/"
+    },
+    {
+      "binary": "nginx-module-image-filter",
+      "version": "1.30.5-r1",
+      "sourcePackage": "nginx-module-image-filter",
+      "license": "2-clause BSD-like license",
+      "recipeRevision": null,
+      "upstream": "https://nginx.org/"
+    },
+    {
+      "binary": "nginx-module-njs",
+      "version": "1.30.5.1.0.1-r1",
+      "sourcePackage": "nginx-module-njs",
+      "license": "2-clause BSD-like license",
+      "recipeRevision": null,
+      "upstream": "https://nginx.org/"
+    },
+    {
+      "binary": "nginx-module-xslt",
+      "version": "1.30.5-r1",
+      "sourcePackage": "nginx-module-xslt",
+      "license": "2-clause BSD-like license",
+      "recipeRevision": null,
+      "upstream": "https://nginx.org/"
+    },
+    {
+      "binary": "pcre2",
+      "version": "10.48-r0",
+      "sourcePackage": "pcre2",
+      "license": "BSD-3-Clause",
+      "recipeRevision": "abc383a51f67922cd61e338b1461cddaa1814b28",
+      "upstream": "https://pcre.org/"
+    },
+    {
+      "binary": "scanelf",
+      "version": "1.3.9-r1",
+      "sourcePackage": "pax-utils",
+      "license": "GPL-2.0-only",
+      "recipeRevision": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+      "upstream": "https://wiki.gentoo.org/wiki/Hardened/PaX_Utilities"
+    },
+    {
+      "binary": "ssl_client",
+      "version": "1.37.0-r31",
+      "sourcePackage": "busybox",
+      "license": "GPL-2.0-only",
+      "recipeRevision": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+      "upstream": "https://busybox.net/"
+    },
+    {
+      "binary": "tiff",
+      "version": "4.7.1-r0",
+      "sourcePackage": "tiff",
+      "license": "libtiff",
+      "recipeRevision": "259914876552dabe6576835e874adc99129b58ae",
+      "upstream": "https://gitlab.com/libtiff/libtiff"
+    },
+    {
+      "binary": "tzdata",
+      "version": "2026d-r0",
+      "sourcePackage": "tzdata",
+      "license": "Public-Domain",
+      "recipeRevision": "a19caf9fe771707618d4d9e4fa2dd9db8155b461",
+      "upstream": "https://www.iana.org/time-zones"
+    },
+    {
+      "binary": "xz-libs",
+      "version": "5.8.4-r0",
+      "sourcePackage": "xz",
+      "license": "GPL-2.0-or-later AND 0BSD AND Public-Domain AND LGPL-2.1-or-later",
+      "recipeRevision": "0c088d609f9fe69eedd6b4c7f4b99cdad847c20a",
+      "upstream": "https://tukaani.org/xz/"
+    },
+    {
+      "binary": "zlib",
+      "version": "1.3.2-r0",
+      "sourcePackage": "zlib",
+      "license": "Zlib",
+      "recipeRevision": "f248b33b5943c7dc69bf691031d7612ab2e8ed93",
+      "upstream": "https://zlib.net/"
+    },
+    {
+      "binary": "zstd-libs",
+      "version": "1.5.7-r2",
+      "sourcePackage": "zstd",
+      "license": "BSD-3-Clause OR GPL-2.0-or-later",
+      "recipeRevision": "3c6e2ee2b16f403d53eab39c4426eb61f003c322",
+      "upstream": "https://facebook.github.io/zstd/"
+    }
+  ]
+}

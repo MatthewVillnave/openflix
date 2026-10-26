@@ -315,14 +315,10 @@ try {
   mark(
     'Actual Chromium decode/progression/pause/seek/reporting from either independent backend; automatic direct preference',
   );
-  phase = 'offline startup fallback';
+  phase = 'offline authorization fails closed';
   await compose('stop', 'jellyfin-a');
-  const fallback = await browser([
-    { title: 'Shared work', expectedItemId: sourceB.itemId, mode: 'remux' },
-  ]);
-  assert.ok(fallback.passed);
-  assert.equal((await (await api('/catalog/works/' + shared.id)).json()).work.sourceCount, 2);
-  mark('Offline A remains indexed; bounded fresh planning selects and decodes B before playback');
+  assert.equal((await api('/catalog/works/' + shared.id)).status, 503);
+  mark('Offline source does not bypass current access verification');
   phase = 'connector removal';
   const removed = await api('/connectors/' + servers[0].connector.id, undefined, 'DELETE');
   assert.equal(removed.status, 200);
@@ -363,7 +359,7 @@ try {
     },
     body: JSON.stringify({ groupId: shared.id, profile }),
   });
-  assert.equal(denied.status, 403);
+  assert.equal(denied.status, 404);
   const logs = await compose('logs', '--no-color', 'server');
   for (const secret of secrets) assert.ok(!logs.includes(secret));
   const stats = await run([

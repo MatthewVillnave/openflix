@@ -60,6 +60,8 @@ export interface MediaConnector {
     options?: { pageSize?: number; signal?: AbortSignal },
   ): AsyncIterable<readonly MediaItem[]>;
   getItem(id: string): Promise<MediaItem>;
+  /** Optional bounded raster derivative capability; never an arbitrary upstream URL. */
+  getArtwork?(id: string, kind: 'poster' | 'backdrop', signal: AbortSignal): Promise<Uint8Array>;
   search(query: string): Promise<MediaItem[]>;
   getPlaybackInfo(
     itemId: string,

@@ -1,0 +1,3 @@
+# Playback scope
+
+OpenFlix uses authenticated OpenFlix playback routes and asks the connected Jellyfin server for supported direct streams or bounded HLS conversion. Supported input depends on its metadata, server and browser; output is bounded to 1080p and four-hour sources for the relevant HLS path. Recognized HDR input requires conversion to SDR. Unsupported/ambiguous formats can fail closed. Subtitle rendering, alternate tracks, DRM, live and remote sources, unrestricted 4K and seamless midstream fallback are not established. A playback session can update the user's Jellyfin watch state; source-specific OpenFlix resume is scoped to that user's connection.
