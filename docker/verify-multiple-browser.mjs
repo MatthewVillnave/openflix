@@ -97,6 +97,8 @@ const proxy = createServer(
 );
 await new Promise((resolve) => proxy.listen(8443, '127.0.0.1', resolve));
 let browser,
+  diagnosticPage,
+  diagnostics = [],
   step = 'launch';
 try {
   browser = await chromium.launch({
@@ -105,6 +107,7 @@ try {
   });
   const context = await browser.newContext(),
     page = await context.newPage();
+  diagnosticPage = page;
   page.setDefaultTimeout(30000);
   const resources = [],
     reports = [],
@@ -113,6 +116,10 @@ try {
   page.on('pageerror', () => errors.push('javascript'));
   page.on('response', (r) => {
     if (r.url().endsWith('/progress')) reportStatuses.push(r.status());
+    if (r.url().includes('/api/v1/catalog/'))
+      diagnostics.push({ category: 'catalog', status: r.status() });
+    if (r.url().endsWith('/playback/sessions'))
+      diagnostics.push({ category: 'playback', status: r.status() });
   });
   page.on('request', (r) => {
     if (r.url().includes('/playback/')) {
@@ -129,12 +136,17 @@ try {
   const scope = page;
   const results = [];
   for (const test of cases) {
-    step = 'select ' + test.mode;
-    await scope.locator('.poster-card').filter({ hasText: test.title }).first().click();
+    step = 'select poster ' + test.mode;
+    await scope
+      .locator('.poster-grid .poster-card')
+      .filter({ hasText: test.title })
+      .first()
+      .click();
     if (test.sourceItemId) {
       await scope.getByText('Versions & sources', { exact: true }).click();
       await scope.getByLabel('Source/version').selectOption(test.sourceItemId);
     }
+    step = 'select watch ' + test.mode;
     const planned = page.waitForResponse(
       (r) => r.url().endsWith('/playback/sessions') && r.request().method() === 'POST',
     );
@@ -163,12 +175,15 @@ try {
     await scope.locator('video').evaluate((m) => {
       m.currentTime = 7;
     });
+    step = 'seek settle ' + test.mode;
     await page.waitForFunction(() => {
       const m = document.querySelector('video');
       return !m.seeking && m.currentTime >= 6.9 && m.readyState >= 2;
     });
+    step = 'resume after seek ' + test.mode;
     await scope.locator('video').evaluate((m) => m.play());
     await page.waitForFunction(() => document.querySelector('video').currentTime > 7.5);
+    step = 'stop ' + test.mode;
     const stopped = page.waitForResponse(
       (r) => r.url().endsWith('/stop') && r.request().method() === 'POST',
     );
@@ -205,8 +220,35 @@ try {
       logout: true,
     }),
   );
-} catch {
-  console.error(JSON.stringify({ failedStep: step }));
+} catch (error) {
+  const media = await diagnosticPage
+    ?.evaluate(() => {
+      const m = document.querySelector('video');
+      return m
+        ? {
+            readyState: m.readyState,
+            networkState: m.networkState,
+            currentTime: m.currentTime,
+            paused: m.paused,
+            seeking: m.seeking,
+            error: m.error?.code,
+          }
+        : null;
+    })
+    .catch(() => null);
+  const hasAlert = await diagnosticPage
+    ?.locator('[role=alert]')
+    .count()
+    .catch(() => 0);
+  console.error(
+    JSON.stringify({
+      failedStep: step,
+      errorType: error?.name,
+      media,
+      hasAlert: Boolean(hasAlert),
+      diagnostics: diagnostics.slice(-12),
+    }),
+  );
   process.exitCode = 1;
 } finally {
   await browser?.close();

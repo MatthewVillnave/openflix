@@ -300,3 +300,14 @@ it('aborts upstream permission checks on a real browser disconnect and releases 
   upstream.state.itemWait = undefined;
   expect((await get(`/libraries/${library.id}/items?limit=20`)).statusCode).toBe(200);
 });
+it('returns a complete fail-closed response over HTTP when permission verification fails', async () => {
+  await sync();
+  const library = (await get('/libraries')).json().libraries[0];
+  upstream.state.valid = false;
+  const address = await app.listen({ host: '127.0.0.1', port: 0 });
+  const response = await fetch(`${address}/api/v1/catalog/libraries/${library.id}/items`, {
+    headers: { cookie },
+  });
+  expect(response.status).toBe(503);
+  expect(await response.json()).toMatchObject({ error: expect.stringContaining('permissions') });
+});

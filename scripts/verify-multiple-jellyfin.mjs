@@ -326,6 +326,10 @@ try {
   assert.equal(surviving.work.id, shared.id);
   assert.equal(surviving.work.sourceCount, 1);
   assert.equal(surviving.sources.items[0].itemId, sourceB.itemId);
+  // Several complete browser journeys share one proxy IP and consume the production
+  // per-minute request budget, including expected missing-artwork responses. Let
+  // that window expire before testing the distinct post-removal journey.
+  await delay(61000);
   assert.ok(
     (await browser([{ title: 'Shared work', expectedItemId: sourceB.itemId, mode: 'remux' }]))
       .passed,
@@ -382,6 +386,24 @@ try {
     'Two-Jellyfin verification: ' + checks.length + '/' + checks.length + ' groups passed',
   );
 } catch (error) {
+  try {
+    const log = await compose('logs', '--no-color', '--no-log-prefix', 'server');
+    const statusCounts = {};
+    for (const line of log.split('\n')) {
+      try {
+        const event = JSON.parse(line);
+        if (event.event === 'http.completed' && [429, 500, 502, 503].includes(event.status)) {
+          const key = `${event.route} ${event.status}`;
+          statusCounts[key] = (statusCounts[key] ?? 0) + 1;
+        }
+      } catch {
+        /* Only sanitized structured events are relevant. */
+      }
+    }
+    console.error(JSON.stringify({ statusCounts }));
+  } catch {
+    /* Diagnostics must not interfere with cleanup. */
+  }
   let message = error.message;
   for (const secret of secrets) message = message.replaceAll(secret, '[redacted]');
   console.error(JSON.stringify({ phase, error: message }));
