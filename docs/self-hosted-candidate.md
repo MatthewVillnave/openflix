@@ -27,16 +27,19 @@ Stop with `docker compose --env-file "$HOME/.config/openflix/local.env" -f docke
 For a consistent backup, first capture the actual volume and image from the running server, then stop the services and archive the complete volume. This example writes a private unencrypted backup outside the source directory; protect it with your backup system:
 
 ```sh
+(
+set -eu
 candidate_server=$(docker compose --env-file "$HOME/.config/openflix/local.env" -f docker-compose.local.yml ps -q server)
+[ -n "$candidate_server" ] || { echo 'Server container not found' >&2; exit 1; }
 candidate_volume=$(docker inspect "$candidate_server" --format '{{range .Mounts}}{{if eq .Destination "/config"}}{{.Name}}{{end}}{{end}}')
 candidate_image=$(docker inspect "$candidate_server" --format '{{.Image}}')
-test -n "$candidate_volume" && test -n "$candidate_image"
+[ -n "$candidate_volume" ] && [ -n "$candidate_image" ] || { echo 'Volume or image missing' >&2; exit 1; }
 docker compose --env-file "$HOME/.config/openflix/local.env" -f docker-compose.local.yml stop
-umask 077
-docker run --rm --network none --user 0 --mount "type=volume,src=$candidate_volume,dst=/data,readonly" --entrypoint tar "$candidate_image" -C /data -cf - . > "$HOME/.config/openflix/backup.tar"
+sh scripts/backup-volume.sh "$candidate_volume" "$candidate_image" "$HOME/.config/openflix/backup.tar"
+)
 ```
 
-Back up the key separately and securely. Treat the backup as sensitive: it contains account data and encrypted connector tokens. Test restoration into a separate isolated project before relying on it. Do not copy production data or keys into a test instance without authorization.
+The backup command refuses to replace an existing `backup.tar`; choose a new filename for each recovery point. If it fails, the stopped services can be restarted with the normal startup command. Back up the key separately and securely. Treat the backup as sensitive: it contains account data and encrypted connector tokens. Test restoration into a separate isolated project before relying on it. Do not copy production data or keys into a test instance without authorization.
 
 To restore a trusted backup into a **new, empty** volume for an isolated project, stop the original local service first so port 8080 is free. The example below refuses to overwrite an existing restore volume. It uses the same key file; without the original key, saved Jellyfin credentials cannot be decrypted.
 

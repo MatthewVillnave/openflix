@@ -2,8 +2,9 @@
 FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 RUN npm install --global pnpm@11.19.0
+COPY . /input
+RUN python3 /input/scripts/create-source-candidate.py --stage /app && rm -rf /input
 WORKDIR /app
-COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm build:packages
 RUN mkdir -p /config && chown -R node:node /app /config && chmod 0700 /config
@@ -26,8 +27,8 @@ ENV NODE_ENV=production OPENFLIX_HOST=0.0.0.0 OPENFLIX_PORT=8787 OPENFLIX_DATA_D
 WORKDIR /app
 RUN mkdir /config && chown node:node /config && chmod 0700 /config
 COPY --from=build --chown=node:node /out/ ./
-COPY LICENSE NOTICE THIRD-PARTY-NOTICES.md /app/legal/
-COPY third-party/ /app/legal/third-party/
+COPY --from=build /app/LICENSE /app/NOTICE /app/THIRD-PARTY-NOTICES.md /app/legal/
+COPY --from=build /app/third-party/ /app/legal/third-party/
 USER node
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s CMD node -e "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
