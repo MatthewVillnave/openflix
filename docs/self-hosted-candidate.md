@@ -44,14 +44,25 @@ The backup command refuses to replace an existing `backup.tar`; choose a new fil
 To restore a trusted backup into a **new, empty** volume for an isolated project, stop the original local service first so port 8080 is free. The example below refuses to overwrite an existing restore volume. It uses the same key file; without the original key, saved Jellyfin credentials cannot be decrypted.
 
 ```sh
+(
+set -eu
 restore_volume=openflix-restore-test_openflix-config
+backup_file="$HOME/.config/openflix/backup.tar"
+key_file="$HOME/.config/openflix/local.env"
+[ -r "$backup_file" ] && [ -r "$key_file" ] || { echo 'Backup or original key file missing' >&2; exit 1; }
+tar -tf "$backup_file" >/dev/null
+# Resolve the image independently; no variables from the backup subshell are needed.
+candidate_image=$(docker compose --env-file "$key_file" -f docker-compose.local.yml images -q server)
+[ -n "$candidate_image" ] || { echo 'Build the matching server image first' >&2; exit 1; }
+docker image inspect "$candidate_image" >/dev/null
 if docker volume inspect "$restore_volume" >/dev/null 2>&1; then
-  echo 'Restore volume already exists; choose a new project name.'
-else
-  docker volume create "$restore_volume" &&
-    docker run --rm -i --network none --user 0 --mount "type=volume,src=$restore_volume,dst=/data" --entrypoint tar "$candidate_image" -C /data -xf - < "$HOME/.config/openflix/backup.tar" &&
-    docker compose --env-file "$HOME/.config/openflix/local.env" -p openflix-restore-test -f docker-compose.local.yml up --build -d --wait
+  echo 'Restore volume already exists; choose a new project name.' >&2
+  exit 1
 fi
+docker volume create "$restore_volume"
+docker run --rm -i --network none --user 0 --mount "type=volume,src=$restore_volume,dst=/data" --entrypoint tar "$candidate_image" -C /data -xf - < "$backup_file"
+docker compose --env-file "$key_file" -p openflix-restore-test -f docker-compose.local.yml up --build -d --wait
+)
 ```
 
 Confirm the restored account can sign in and that its settings are present, then stop the restore project with `docker compose --env-file "$HOME/.config/openflix/local.env" -p openflix-restore-test -f docker-compose.local.yml down`. This leaves the restored volume intact. Archive extraction is appropriate only for a backup you trust. Do not restore over a volume containing data you need.

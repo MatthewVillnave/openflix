@@ -182,6 +182,7 @@ tests/playback-fixture.ts
 tests/playback-hls.test.ts
 tests/playback-http.test.ts
 tests/player-web.test.tsx
+tests/restore-docs.test.ts
 tests/source-archive.test.ts
 tests/source-selection.test.ts
 tests/unified-web.test.tsx

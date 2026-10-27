@@ -138,9 +138,7 @@ function PlayerSession({
       if (activeSession.current !== session.id) return;
       if (mounted.current) {
         setError((e as Error).message);
-        node.pause();
-        node.removeAttribute('src');
-        node.load();
+        // Session cleanup captures position before pausing/resetting the media element.
         setSession(null);
       }
       pendingReport.current = false;

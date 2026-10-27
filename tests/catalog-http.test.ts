@@ -292,7 +292,12 @@ it('aborts upstream permission checks on a real browser disconnect and releases 
   client.on('error', () => {});
   client.end();
   await expect
-    .poll(() => upstream.state.requests.filter((r) => /\/Items\/[a-f0-9]+\?/.test(r.path)).length)
+    .poll(
+      () =>
+        upstream.state.requests.filter(
+          (r) => /\/Items\/[a-f0-9]+\?/.test(r.path) || r.path.includes('ids='),
+        ).length,
+    )
     .toBeGreaterThanOrEqual(4);
   client.destroy();
   await expect.poll(() => upstream.state.itemAborts).toBeGreaterThanOrEqual(4);
@@ -311,3 +316,21 @@ it('returns a complete fail-closed response over HTTP when permission verificati
   expect(response.status).toBe(503);
   expect(await response.json()).toMatchObject({ error: expect.stringContaining('permissions') });
 });
+
+it('authorizes a 100-item page using user-scoped batches at 350ms upstream latency and rejects missing items', async () => {
+  upstream.state.catalog = Array.from({ length: 100 }, (_, i) => ({
+    Id: itemId(i + 1),
+    Name: `Movie ${i}`,
+    Type: 'Movie',
+  }));
+  await sync();
+  const library = (await get('/libraries')).json().libraries[0];
+  upstream.state.permissionDelay = 350;
+  const before = upstream.state.requests.length;
+  expect((await get(`/libraries/${library.id}/items?limit=100`)).statusCode).toBe(200);
+  const batchCalls = upstream.state.requests.slice(before).filter((r) => r.path.includes('ids='));
+  expect(batchCalls).toHaveLength(4);
+  expect(batchCalls.every((r) => r.path.includes('userId='))).toBe(true);
+  upstream.state.catalog.pop();
+  expect((await get(`/libraries/${library.id}/items?limit=100`)).statusCode).toBe(503);
+}, 10000);

@@ -258,6 +258,24 @@ const server = createServer(async (req, res) => {
       send({}, 400);
       return;
     }
+    if (q.has('ids')) {
+      const requested = q.getAll('ids').flatMap((value) => value.split(','));
+      const Items = requested.flatMap((id) => {
+        const n = Number.parseInt(id, 16);
+        const Type =
+          {
+            999: 'Folder',
+            1001: 'Series',
+            1002: 'Season',
+            1003: 'Episode',
+            1099: 'Folder',
+            2001: 'Audio',
+          }[n] ?? (n >= 1 && n <= 205 ? 'Movie' : null);
+        return Type ? [{ Id: id, Name: 'Fixture item', Type }] : [];
+      });
+      send({ Items, StartIndex: 0, TotalRecordCount: Items.length });
+      return;
+    }
     const music = q.get('parentId') === '66666666666666666666666666666666';
     const tv = q.get('parentId') === '44444444444444444444444444444444';
     if (!tv && catalogMode === 'partial' && offset >= 100) {

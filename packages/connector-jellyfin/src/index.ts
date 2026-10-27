@@ -396,14 +396,32 @@ export function createJellyfinConnector(
       if (ids.length > 256 || ids.some((id) => !identifier.safeParse(id).success))
         throw new ConnectorError('invalid_configuration');
       await withCredential(async (api, credential) => {
-        for (const id of ids) {
-          options.signal?.throwIfAborted();
-          const item = normalizeItem(
-            (await catalogApi(api).getItem({ itemId: id, userId: credential.userId })).data,
-          );
-          if (item.id !== id) throw new ConnectorError('invalid_response');
-          noSecretEcho(item, [credential.token]);
-        }
+        options.signal?.throwIfAborted();
+        const requested = [...new Set(ids)];
+        const page = pageSchema.parse(
+          (
+            await catalogApi(api).getItems({
+              userId: credential.userId,
+              ids: requested,
+              recursive: true,
+              startIndex: 0,
+              limit: requested.length,
+              enableImages: false,
+              enableUserData: false,
+              enableTotalRecordCount: true,
+            })
+          ).data,
+        );
+        const returned = page.Items.map((item) => item.Id);
+        if (
+          page.StartIndex !== 0 ||
+          page.TotalRecordCount !== requested.length ||
+          returned.length !== requested.length ||
+          new Set(returned).size !== requested.length ||
+          returned.some((id) => !requested.includes(id))
+        )
+          throw new ConnectorError('unauthorized');
+        noSecretEcho(page, [credential.token]);
       });
     },
     async getArtwork(id, kind, signal) {

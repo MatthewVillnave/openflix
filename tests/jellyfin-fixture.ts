@@ -27,6 +27,7 @@ export async function jellyfinFixture() {
     catalogWait: undefined as Promise<void> | undefined,
     itemWait: undefined as Promise<void> | undefined,
     itemAborts: 0,
+    permissionDelay: 0,
     playback: playbackFixtureState(),
     collectionType: 'movies' as string | null,
     libraryName: 'Accessible movies',
@@ -89,6 +90,8 @@ export async function jellyfinFixture() {
       return;
     }
     if (path === '/jellyfin/System/Info/Public') {
+      if (state.permissionDelay)
+        await new Promise((resolve) => setTimeout(resolve, state.permissionDelay));
       json({
         Id: state.serverIdResponses.shift() ?? state.serverId,
         ServerName: state.name,
@@ -154,6 +157,23 @@ export async function jellyfinFixture() {
     if (catalogUrl.pathname === '/jellyfin/Items') {
       await state.catalogWait;
       const query = catalogUrl.searchParams;
+      if (query.has('ids')) {
+        if (state.permissionDelay)
+          await new Promise((resolve) => setTimeout(resolve, state.permissionDelay));
+        response.once('close', () => {
+          if (!response.writableEnded) state.itemAborts++;
+        });
+        await state.itemWait;
+        if (response.destroyed) return;
+        if (query.get('userId') !== currentUserId) {
+          json({}, 403);
+          return;
+        }
+        const requested = query.getAll('ids').flatMap((value) => value.split(','));
+        const items = state.catalog.filter((item) => requested.includes(String(item.Id)));
+        json({ Items: items, StartIndex: 0, TotalRecordCount: items.length });
+        return;
+      }
       if (
         query.get('userId') !== currentUserId ||
         query.get('recursive') !== 'true' ||

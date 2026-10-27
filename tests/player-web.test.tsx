@@ -292,3 +292,37 @@ it('does not let an old ended report clear a newer retry session', async () => {
     next.streamPath,
   );
 });
+
+it.each([10, 0])(
+  'preserves final position %s when failed reporting cleanup resets media',
+  async (position) => {
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(function (
+      this: HTMLMediaElement,
+    ) {
+      this.currentTime = 0;
+    });
+    let reports = 0;
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      if (String(url).endsWith('/sessions'))
+        return new Response(JSON.stringify(session), { status: 201 });
+      if (String(url).endsWith('/progress'))
+        return new Response(null, { status: ++reports === 1 ? 204 : 503 });
+      return new Response(null, { status: 204 });
+    });
+    render(<Player item={item} />);
+    const media = (await screen.findByLabelText('Video player')) as HTMLVideoElement;
+    media.currentTime = 5;
+    fireEvent.playing(media);
+    await waitFor(() => expect(reports).toBe(1));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    media.currentTime = position;
+    fireEvent.pause(media);
+    await waitFor(() =>
+      expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/stop'))).toBe(true),
+    );
+    const stop = fetcher.mock.calls.find(([url]) => String(url).endsWith('/stop'))!;
+    expect(JSON.parse(stop[1]!.body as string).positionMs).toBe(position * 1000);
+  },
+);
