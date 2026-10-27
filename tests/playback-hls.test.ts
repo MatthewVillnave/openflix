@@ -44,7 +44,7 @@ beforeEach(async () => {
       Container: 'mkv',
       SupportsDirectPlay: false,
       SupportsTranscoding: true,
-      TranscodingUrl: `/videos/${playbackItemId}/master.m3u8?DeviceId=fixture&MediaSourceId=${sourceId}&PlaySessionId=${playSessionId}&VideoCodec=h264&AudioCodec=aac&SegmentContainer=ts&h264-audiochannels=2&aac-profile=lc&aac-audiochannels=2&ApiKey=${fixture.state.token}`,
+      TranscodingUrl: `/videos/${playbackItemId}/master.m3u8?DeviceId=fixture&MediaSourceId=${sourceId}&PlaySessionId=${playSessionId}&VideoCodec=h264&AudioCodec=aac&SegmentContainer=ts&SubtitleMethod=Encode&h264-audiochannels=2&aac-profile=lc&aac-audiochannels=2&ApiKey=${fixture.state.token}`,
     },
   ];
 });
@@ -407,4 +407,189 @@ it('does not expand the resource map indefinitely across playlist reloads', asyn
   await expect(connector.openPlaybackStream(p, request())).rejects.toMatchObject({
     diagnostic: { stage: 'resource_bounds', reason: 'resource_limit' },
   });
+});
+it.each([
+  ['unknown_query_name', (url: string) => url + '&UnrecognizedPrivateField=private-secret'],
+  ['query_value_length', (url: string) => url + '&Tag=' + 'x'.repeat(1025)],
+  ['query_value_shape', (url: string) => url + '&Tag=private%20secret'],
+  ['duplicate_query', (url: string) => url + '&VideoCodec=h264'],
+  ['credential_mismatch', (url: string) => url.replace(/ApiKey=[^&]+/, 'ApiKey=private-secret')],
+  [
+    'binding_mismatch',
+    (url: string) => url.replace(/PlaySessionId=[^&]+/, 'PlaySessionId=private-secret'),
+  ],
+  ['missing_binding', (url: string) => url.replace(/&PlaySessionId=[^&]+/, '')],
+  ['stream_index', (url: string) => url + '&AudioStreamIndex=99'],
+  ['output_profile', (url: string) => url.replace('VideoCodec=h264', 'VideoCodec=private-secret')],
+  ['numeric_bound', (url: string) => url + '&MaxWidth=0'],
+  ['subtitle_policy', (url: string) => url + '&SubtitleStreamIndex=1'],
+  ['origin', (url: string) => 'https://private.invalid' + url],
+  ['path_or_item', (url: string) => url.replace('/master.m3u8', '/private-secret.m3u8')],
+  ['syntax', (url: string) => url + ' '],
+  ['resource_kind', (url: string) => url.replace('/master.m3u8', '/hls1/main/1.ts')],
+] as const)(
+  'classifies rejected %s without disclosing reference values',
+  async (referenceRule, mutate) => {
+    const source = fixture.state.playback.sources[0]!;
+    source.TranscodingUrl = mutate(String(source.TranscodingUrl));
+    const error = await plan().catch((error) => error);
+    expect(error).toMatchObject({
+      code: 'invalid_response',
+      diagnostic: { stage: 'resource_reference', reason: 'unsafe_reference', referenceRule },
+    });
+    expect(JSON.stringify(error)).not.toContain('private-secret');
+    expect(JSON.stringify(error)).not.toContain('private.invalid');
+    expect(JSON.stringify(error)).not.toContain(fixture.state.token);
+  },
+);
+it('rejects an invalid subtitle method without reflecting its value', async () => {
+  const source = fixture.state.playback.sources[0]!;
+  source.TranscodingUrl = String(source.TranscodingUrl).replace(
+    'SubtitleMethod=Encode',
+    'SubtitleMethod=private-secret',
+  );
+  const error = await plan().catch((error) => error);
+  expect(error).toMatchObject({
+    diagnostic: { referenceRule: 'subtitle_policy' },
+  });
+  expect(JSON.stringify(error)).not.toContain('private-secret');
+});
+
+it.each(['Encode', 'Embed', 'External', 'Hls', 'Drop'])(
+  'accepts disabled-subtitle %s metadata but forces no subtitle resources',
+  async (method) => {
+    const source = fixture.state.playback.sources[0]!;
+    source.TranscodingUrl =
+      String(source.TranscodingUrl).replace('SubtitleMethod=Encode', `SubtitleMethod=${method}`) +
+      '&SubtitleStreamIndex=-1&SubtitleCodec=ass,subrip,pgssub&EnableSubtitlesInManifest=false';
+    const p = await plan();
+    const manifest = await body(await connector.openPlaybackStream(p, request()));
+    expect(manifest).not.toContain('SubtitleMethod');
+    expect(fixture.state.playback.subtitleRequests.length).toBeGreaterThan(0);
+    for (const options of fixture.state.playback.subtitleRequests) {
+      expect(options).toEqual({ index: '-1', method: 'Drop', manifest: 'false', codec: null });
+    }
+    await connector.closePlayback(p);
+  },
+);
+it.each([
+  '&SubtitleStreamIndex=0',
+  '&EnableSubtitlesInManifest=true',
+  '&AlwaysBurnInSubtitleWhenTranscoding=true',
+  '&SubtitleCodec=https%3A%2F%2Fevil.invalid',
+  '&SubtitleCodec=unrecognized',
+  '&SubtitleMethod=Drop',
+  '&SUBTITLEMETHOD=Drop',
+])('continues rejecting unsafe or conflicting subtitle controls %#', async (extra) => {
+  fixture.state.playback.sources[0]!.TranscodingUrl =
+    String(fixture.state.playback.sources[0]!.TranscodingUrl) + extra;
+  await expect(plan()).rejects.toMatchObject({ code: 'invalid_response' });
+});
+
+it('reports every conflicting subtitle condition together without upstream values', async () => {
+  const source = fixture.state.playback.sources[0]!;
+  source.TranscodingUrl =
+    String(source.TranscodingUrl).replace(
+      'SubtitleMethod=Encode',
+      'SubtitleMethod=private-secret',
+    ) +
+    '&SubtitleCodec=private-secret&SubtitleStreamIndex=3&EnableSubtitlesInManifest=true&AlwaysBurnInSubtitleWhenTranscoding=true';
+  const error = await plan().catch((error) => error);
+  expect(error).toMatchObject({
+    diagnostic: {
+      referenceRule: 'subtitle_policy',
+      subtitleIssues: ['method', 'codec', 'manifest', 'index', 'burn_in'],
+    },
+  });
+  expect(JSON.stringify(error)).not.toContain('private-secret');
+  expect(fixture.state.playback.subtitleRequests).toHaveLength(0);
+});
+
+it('binds subtitle-off and selected audio negotiation to the selected media source', async () => {
+  await plan();
+  const requests = fixture.state.requests.filter((r) => r.path.endsWith('/PlaybackInfo'));
+  const negotiation = requests
+    .map((r) => JSON.parse(r.body))
+    .find((b) => b.EnableTranscoding === true);
+  expect(negotiation).toMatchObject({
+    MediaSourceId: sourceId,
+    AudioStreamIndex: 1,
+    SubtitleStreamIndex: -1,
+    AutoOpenLiveStream: false,
+  });
+  expect(fixture.state.playback.reports).toHaveLength(0);
+  expect(fixture.state.playback.subtitleRequests).toHaveLength(0);
+});
+it('rejects a different media source returned during track negotiation', async () => {
+  fixture.state.playback.mismatchNegotiatedSource = true;
+  await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+  expect(fixture.state.playback.subtitleRequests).toHaveLength(0);
+});
+
+it.each([
+  'HDR10',
+  'HDR10Plus',
+  'HLG',
+  'DOVI',
+  'DOVIWithHDR10',
+  'DOVIWithHLG',
+  'DOVIWithSDR',
+  'DOVIWithEL',
+  'DOVIWithHDR10Plus',
+  'DOVIWithELHDR10Plus',
+])('negotiates %s input as SDR video conversion, never copy', async (range) => {
+  const source = fixture.state.playback.sources[0]!;
+  (source.MediaStreams as Record<string, unknown>[])[0]!.VideoRangeType = range;
+  source.TranscodingUrl += '&h264-rangetype=SDR';
+  const p = await plan();
+  expect(p).toMatchObject({ mode: 'transcode', videoTranscoded: true });
+  const negotiation = fixture.state.requests
+    .filter((r) => r.path.endsWith('/PlaybackInfo'))
+    .map((r) => JSON.parse(r.body))
+    .find((b) => b.EnableTranscoding);
+  expect(negotiation.DeviceProfile.CodecProfiles[0].Conditions).toContainEqual({
+    Condition: 'Equals',
+    Property: 'VideoRangeType',
+    Value: 'SDR',
+  });
+  await body(await connector.openPlaybackStream(p, request()));
+  expect(
+    fixture.state.playback.outputRequests.every((r) => r.range === 'SDR' && r.copy === 'false'),
+  ).toBe(true);
+  await connector.closePlayback(p);
+});
+it.each(['Unknown', 'DOVIInvalid', 'private-secret'])(
+  'rejects unrecognized or invalid input range %s',
+  async (range) => {
+    (
+      fixture.state.playback.sources[0]!.MediaStreams as Record<string, unknown>[]
+    )[0]!.VideoRangeType = range;
+    await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+  },
+);
+it.each(['HDR10', 'SDR,HDR10', 'private-secret'])(
+  'rejects non-SDR output range %s',
+  async (range) => {
+    fixture.state.playback.sources[0]!.TranscodingUrl += '&h264-rangetype=' + range;
+    await expect(plan()).rejects.toMatchObject({
+      code: 'invalid_response',
+      diagnostic: { referenceRule: 'output_profile' },
+    });
+  },
+);
+
+it.each([
+  { Width: 3840, Height: 2160 },
+  { Width: 0 },
+  { IsInterlaced: true },
+  { AverageFrameRate: 120 },
+  { Codec: 'private-secret' },
+])('retains input resource and codec bounds during HDR negotiation %#', async (changes) => {
+  Object.assign(
+    (fixture.state.playback.sources[0]!.MediaStreams as Record<string, unknown>[])[0]!,
+    { VideoRangeType: 'HDR10', ...changes },
+  );
+  await expect(plan()).rejects.toMatchObject({ code: 'unsupported' });
+  expect(fixture.state.requests.filter((r) => r.path.endsWith('/PlaybackInfo'))).toHaveLength(1);
+  expect(fixture.state.playback.outputRequests).toHaveLength(0);
 });

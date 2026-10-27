@@ -1,0 +1,2259 @@
+{
+  "description": "Resolved server-runtime and browser-build npm packages for the tested Linux x86-64 candidate; registry tarballs do not necessarily contain complete corresponding source for native components.",
+  "packages": [
+    {
+      "name": "@fastify/ajv-compiler",
+      "version": "4.0.6",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/ajv-compiler.git",
+      "registryTarball": "https://registry.npmjs.org/@fastify/ajv-compiler/-/ajv-compiler-4.0.6.tgz",
+      "integrity": "sha512-NtuzM0SfaMJbGlnjr9LWQUN5LzgSrbB8tf/wRZNas+4E1O/Nmzl53e7ruT61HDZyRCJGC6FxIogmNZO1c5ETBA==",
+      "localTarball": "packages/9a7ee65f4f1a50c4bd78321e8ffb1b664446f076b851ee09938cc1a974750e4d.tgz",
+      "sha256": "7c65d581bb832775ee0533d6f1f08784ccf3db6d6775f2fc3810bfbe83b6b6ec",
+      "sizeBytes": 14075,
+      "registryGitHead": "18da46820a1e8c05271ec21d7ddb65b404db58e4",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/ajv-compiler.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@fastify/cookie",
+      "version": "11.1.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fastify-cookie.git",
+      "registryTarball": "https://registry.npmjs.org/@fastify/cookie/-/cookie-11.1.2.tgz",
+      "integrity": "sha512-Dtrpk/YOGUsbRMvP/8ZqPpwnMRv0qSqodFdoQ2B589Obc7jw4s4Qla+cV72Bsm7WsZJnqlYFX/i7uSBq0xzg6g==",
+      "localTarball": "packages/f3663abf3b36d7102316b80217700e02bddbfaa870e7ea09f52f6cb040be1fa0.tgz",
+      "sha256": "3a89f54381d2f6c1afb91ff23da71c5a5d65fef467a6242853f4c91e0c07fe22",
+      "sizeBytes": 17650,
+      "registryGitHead": "c2407730e56bd75210bc67f73b6d4b14fdcde2cd",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fastify-cookie.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@fastify/error",
+      "version": "4.2.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fastify-error.git",
+      "registryTarball": "https://registry.npmjs.org/@fastify/error/-/error-4.2.0.tgz",
+      "integrity": "sha512-RSo3sVDXfHskiBZKBPRgnQTtIqpi/7zhJOEmAxCiBcM7d0uwdGdxLlsCaLzGs8v8NnxIRlfG0N51p5yFaOentQ==",
+      "localTarball": "packages/1bf75cc22380f20ea29e1dcd9c368cb320f3b24804b50a2c49e839bbaab77b0b.tgz",
+      "sha256": "58ec6d9b9c29a78cbe98de68cf8d7b648ca4f8791db6c2d32d8a72e26415245f",
+      "sizeBytes": 7928,
+      "registryGitHead": "3b27b7600007a85ff5c1acac5a3254be27cb6f51",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fastify-error.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@fastify/fast-json-stringify-compiler",
+      "version": "5.1.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fast-json-stringify-compiler.git",
+      "registryTarball": "https://registry.npmjs.org/@fastify/fast-json-stringify-compiler/-/fast-json-stringify-compiler-5.1.0.tgz",
+      "integrity": "sha512-PxcYtKLbQ8Z+yApiqjK8FwxIwvEj38k2OiLc17u8dkJSlmfi2wHHPaSnaoqBPQqtvF8YVsDgDpP2snDCfFrpfw==",
+      "localTarball": "packages/b8340009098d3b4421bf416d193c5643bb5b49ef61becc46e88cc6d2d51a58bc.tgz",
+      "sha256": "ee0b833182a3ef32328c6942c33b610c350ea1cc88a771faa22ce66e56982ae2",
+      "sizeBytes": 7409,
+      "registryGitHead": "3fe31c92eb143edde49b0352f6b01705f57abcb0",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fast-json-stringify-compiler.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@fastify/forwarded",
+      "version": "3.0.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/forwarded.git",
+      "registryTarball": "https://registry.npmjs.org/@fastify/forwarded/-/forwarded-3.0.2.tgz",
+      "integrity": "sha512-NE8HgKLgYejV9lDpqkEFaDKMLYelJBVfHekhB0UKvX0ghagXRJqg68feg8er1NPXxG4N9i6vPxzt8E+3wHfcmA==",
+      "localTarball": "packages/9517305dee465b6fe066a8325c24365335d169004648bd8c2fcb8e75db5b2891.tgz",
+      "sha256": "54bf1f4507cfa8376c5c1f0344a52b8261de4beced320c52f0cabaf0faf8360b",
+      "sizeBytes": 2554,
+      "registryGitHead": "09abf57aed15bf27da8a9c5f162bee58eb15326d",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/forwarded.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@fastify/helmet",
+      "version": "13.1.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fastify-helmet.git",
+      "registryTarball": "https://registry.npmjs.org/@fastify/helmet/-/helmet-13.1.1.tgz",
+      "integrity": "sha512-bSat5DTq8geASv8G6P0KW1UbltZ+xGD/zyd9S72pT7ogAHehcsWL85GdjMRCjDsExJvaEvgEZ52qU/2HXirVCw==",
+      "localTarball": "packages/a623a8aac7a691314b4e5751ea10a02e7ad4346698671767e7200957e006875a.tgz",
+      "sha256": "b168e917058112527e4f73835aa21c32e28b40b395137fa066b5207af510c5cf",
+      "sizeBytes": 11756,
+      "registryGitHead": "c4bbcb2dda6675d634230d657ec56831acd24d9a",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fastify-helmet.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@fastify/merge-json-schemas",
+      "version": "0.2.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/merge-json-schemas.git",
+      "registryTarball": "https://registry.npmjs.org/@fastify/merge-json-schemas/-/merge-json-schemas-0.2.1.tgz",
+      "integrity": "sha512-OA3KGBCy6KtIvLf8DINC5880o5iBlDX4SxzLQS8HorJAbqluzLRn80UXU0bxZn7UOFhFgpRJDasfwn9nG4FG4A==",
+      "localTarball": "packages/3295cd6a76a8cb81f9c52e52f1c0b3c89e9bd5876d27e964e314777edaa10b24.tgz",
+      "sha256": "7f040daf23110134ecb74ae4ed9405c05fabfa969a587ea5cd13013329f44c28",
+      "sizeBytes": 12528,
+      "registryGitHead": "ed66b9028266f09cd7a1b0ba115a042f6f436413",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/merge-json-schemas.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@fastify/proxy-addr",
+      "version": "5.1.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/proxy-addr.git",
+      "registryTarball": "https://registry.npmjs.org/@fastify/proxy-addr/-/proxy-addr-5.1.1.tgz",
+      "integrity": "sha512-zv07Y9GEuDsJPegZoDFd4SDWaZOW8N2pa0GSrYmKpId/tjt1Hgo3BjZBVjdVpfVrHaA+Qv5jawtS2O50J5xM9g==",
+      "localTarball": "packages/0b19bf92838a5f79264b0db40cbb1606dd58c951979c3d6b9fb1e4485346133c.tgz",
+      "sha256": "babef1401ce205bc3336781faa433ce438cb6f23add92a594d16d9a9ce09fbff",
+      "sizeBytes": 9162,
+      "registryGitHead": "f28dc210bf8211198faac629765b87acf1c3e405",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/proxy-addr.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@fastify/rate-limit",
+      "version": "10.3.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fastify-rate-limit.git",
+      "registryTarball": "https://registry.npmjs.org/@fastify/rate-limit/-/rate-limit-10.3.0.tgz",
+      "integrity": "sha512-eIGkG9XKQs0nyynatApA3EVrojHOuq4l6fhB4eeCk4PIOeadvOJz9/4w3vGI44Go17uaXOWEcPkaD8kuKm7g6Q==",
+      "localTarball": "packages/805e77295fcd84c01e1bd0ff4e4cbb5a5ab9ecfe449dfcbf8db1964d831e7897.tgz",
+      "sha256": "4340fcec045ae4e2822a7f3cf104dcd028d217bf0ed083d52fd77a677f958d27",
+      "sizeBytes": 29669,
+      "registryGitHead": "48c79b15e3192efb02b8e1b63769d5965b5931fd",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fastify-rate-limit.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/ansi",
+      "version": "2.0.8",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/ansi/-/ansi-2.0.8.tgz",
+      "integrity": "sha512-WpQM+Ti6Z40EFwwt+uL2p4UabT+W179zHp6HhLVOzfbwnVn05IPO/eXIZXGNqcT1jbQ15SujNLzQ39k4QPPxBQ==",
+      "localTarball": "packages/47ce08a94e37eeb7fe8b0541d371e0688610037fc6fde6f1a96ec82911560227.tgz",
+      "sha256": "edde498bd1d6411ffe83f33dbc08e9bcfc7208dce1bf098ac76ec4822bec5e12",
+      "sizeBytes": 2569,
+      "registryGitHead": "5748bd9966b5e175ddf5995ee4cdce6f60c4272e",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/checkbox",
+      "version": "5.2.5",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/checkbox/-/checkbox-5.2.5.tgz",
+      "integrity": "sha512-bRt8J8m+Fot9CXv+zNQGXUq2ET0MggR1fPz7v6edN6MFYmsbfGnMmkmWZJEegMKqrAC8ej/o1sqisHZXZJMAfQ==",
+      "localTarball": "packages/ab1670c9b2e7d1f8691259cbd2a940d8294691d05df534e5f6b05cda6e2f2d99.tgz",
+      "sha256": "49268afeb190651a87226b49cc2e049b01c8fb3115cd0c802da5121a73e93d35",
+      "sizeBytes": 6571,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/confirm",
+      "version": "6.3.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/confirm/-/confirm-6.3.2.tgz",
+      "integrity": "sha512-Xvr/0HggjddPtGppuqVmxhTw+Hr8PvsZ/k0HmOEaAqQEt80OITNkFWnsdNmyT0/eM4Ab+iJLx2R8rctlEyfSVg==",
+      "localTarball": "packages/1dc7e303681e4f60f8263f542d5bdf17b49e07bcd50c1f159fe998c06eb7c006.tgz",
+      "sha256": "3a393739d631dfa4efefd64c20f8477a3191b258c4b29159a67f398c0d4e5b01",
+      "sizeBytes": 3812,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/core",
+      "version": "12.0.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/core/-/core-12.0.3.tgz",
+      "integrity": "sha512-wsSy0sznmXwkty+2PzZwx00Cazc/E0r0B7mAzdGROz2Ct+DFZXaK7WDjGZvgjRldxH5ZhFVfF2lgkYrqgOw2KA==",
+      "localTarball": "packages/5a951808b4492be40f1684df00b6585094fa4a00f961e552100f19cb48f61db3.tgz",
+      "sha256": "eb1a4838fd3f5dfaa2a33b93f7cba205895652236bd1c9298275ff900f670d1b",
+      "sizeBytes": 18849,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/editor",
+      "version": "5.3.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/editor/-/editor-5.3.3.tgz",
+      "integrity": "sha512-YsKkS2q63IiLtaDK/9nqzdComN97SDQrmKiyNggN+ceP4ty+Z6VwyTz3FpjeUWeW1Efss2xHFKCC9sx7hnrsxg==",
+      "localTarball": "packages/86e4cf48e051a7baf869430ad65be316a45afe100874884287b77120b1269e60.tgz",
+      "sha256": "e85adcf934a44795a5311dce72c53eddbeee36c89ff94a1463477575b7a6c870",
+      "sizeBytes": 4031,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/expand",
+      "version": "5.1.5",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/expand/-/expand-5.1.5.tgz",
+      "integrity": "sha512-uHuXLmXW+TtIfT/9vSBotypAkqn1n34Ul+CLGPos/xANyO4Ff5xZzkYhbKR4NEcfVK4a9mHQOpwVZzluSHFRGw==",
+      "localTarball": "packages/31fddae074b0fd5d57402f415d16a5d339a8227b0e2c77da4f813d08b121a922.tgz",
+      "sha256": "9a1fec96d8873a4d397a271448679bd1a2f768ef0388b2bbc8ca30468e7bdc3f",
+      "sizeBytes": 4446,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/external-editor",
+      "version": "3.0.5",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/external-editor/-/external-editor-3.0.5.tgz",
+      "integrity": "sha512-f3QQJRIX5ZEneBHNUIuPjmbdzHnmRFJA8r2dkcb8q+OM5Uv5KtnuAttQumnrjcBVBM3mcTX1CkmtAkU58VRZxg==",
+      "localTarball": "packages/1bf92b56ceef04594bb58761e0b832938d9b8f9f34e5828b94d828e8e0382c16.tgz",
+      "sha256": "1a91ae54d461678a92e160cb299cc9c632d23b747195e97a5401c0587f266e5f",
+      "sizeBytes": 5793,
+      "registryGitHead": "5748bd9966b5e175ddf5995ee4cdce6f60c4272e",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/figures",
+      "version": "2.0.9",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/figures/-/figures-2.0.9.tgz",
+      "integrity": "sha512-EAWgUTGQ/Umgga51dE3B2PUHbufuXarDfg86uVgoSgNHNNQnyFKcOrQLWVqYMghuSyHh8+2HUH0Js9cTC1WAdg==",
+      "localTarball": "packages/576b4b5b151bc40bccd4bbb64d430af417d1c575d421f19650bedf7b9e0d3c75.tgz",
+      "sha256": "69536b324e2c57c31da3e906afd864473a119f628a6390c54febe6285c00c63a",
+      "sizeBytes": 5053,
+      "registryGitHead": "5748bd9966b5e175ddf5995ee4cdce6f60c4272e",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/input",
+      "version": "5.1.6",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/input/-/input-5.1.6.tgz",
+      "integrity": "sha512-HtcJhB2QFVXbLuJ5S3syhNbTUVxYvwqV4VRBDkQceBloC9bmTViUoRFP5PbSaDZb3HzfPmpuU/gG4ybVBz4FHA==",
+      "localTarball": "packages/bd6d0748257bee5b795521945c5c357144bfe045d6a7a81902d12049433b53b6.tgz",
+      "sha256": "62f314f79e0e81fd9432be5ba777db2da36443b67a2f15dfbc5456bcc98583a1",
+      "sizeBytes": 4462,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/number",
+      "version": "4.2.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/number/-/number-4.2.3.tgz",
+      "integrity": "sha512-6Yuwh1NGSbu1Lo4N1EWjXs1jKRntLg/ZCwhmeorEHde90v1XxAozdbd4Iu30eOQLW+6h1hp2O9ujNfLSbTPJnA==",
+      "localTarball": "packages/a26426ab1dffb71e2afed785dd5ccc3c068abe7b668d5dc143959a792fc56c52.tgz",
+      "sha256": "a5778c6ae2fe8dec6bf22af41dbffdd82ab9ed7459ee49843b0e93e48e92504d",
+      "sizeBytes": 4547,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/password",
+      "version": "5.2.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/password/-/password-5.2.2.tgz",
+      "integrity": "sha512-W9zYdyzogK+6110mqwaSJWCBu2yA5Q/OfnGSjjZB1bNpHlmUozXxTl0+QOZBNeVd6Qo81/qT75gW05gLAtITxw==",
+      "localTarball": "packages/7bdaf2b5d476a78c298dd6ef453b661ecf61165a7262711149d5260791297912.tgz",
+      "sha256": "09ac0b50a30ef8dc3df675e6b05339e276709dce5f42b5ffdfe1aab4846a1ef4",
+      "sizeBytes": 4073,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/prompts",
+      "version": "8.7.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/prompts/-/prompts-8.7.2.tgz",
+      "integrity": "sha512-QoRB4wFIjgH5iOhSjoIKMkTvSHDuV+O3OITlIqAYO0oK5x364GJILXiMBvlPiE+klg7Xx9tq5XVqQHcGUDYYPA==",
+      "localTarball": "packages/97d44ad6efb4353fe7f4184a90138d6c752869a899ee1e08ac533958ee6ddfa4.tgz",
+      "sha256": "8f2379d7b91c6d681cd708cdc58814a384face493b2eec8dfb528bb71be3da90",
+      "sizeBytes": 8622,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/rawlist",
+      "version": "5.3.5",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/rawlist/-/rawlist-5.3.5.tgz",
+      "integrity": "sha512-1oHky1ONfCOwNrnkQGDE1oaSij/3fI6HFMSf2H/WsGO2lEyDX9My82iggITSy9ddSZ8yk8j9v41OI0fVoSIoaA==",
+      "localTarball": "packages/a138601441518b696c9b8c70ce565148ab507611d5e70c56f81a642f8ade9cc0.tgz",
+      "sha256": "4adc353497d083c6bfd70ddd4caa25327122479084e861c0a6ffb2b8009fd3b0",
+      "sizeBytes": 4910,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/search",
+      "version": "4.3.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/search/-/search-4.3.3.tgz",
+      "integrity": "sha512-fyuIU1Nbpvwlikjg3gXwJFDI11+EFjqQ7P+iByfmivIKQ1vmaykNrD/vy5unHuUqUpsOsnvJ25//tPF7E/RBRA==",
+      "localTarball": "packages/6d5495ee8a2054ac02e3d67634ca9eddce7237a7dba85f4d7fb0d1c34703ef90.tgz",
+      "sha256": "da950aee7301fb318f3d328b402732f9771ffd5fa0aa49ef66a7e85026de3058",
+      "sizeBytes": 6580,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/select",
+      "version": "5.2.5",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/select/-/select-5.2.5.tgz",
+      "integrity": "sha512-9kc15hr8r/kI+3DO/xLog5nOzTz1jqsHXa6JBFzmQKhkoJ8Slda1I1L/uD8ZSZ9tF1yp79wwXe7mclvX1rqR2Q==",
+      "localTarball": "packages/a79628bc40e315562eb461abe1debab3442acc73c035be9b7a3e6c60ea8f5c18.tgz",
+      "sha256": "f20f97d11705b283d98fd4929e7c7639a4862925f7719dd2c38e8f581a105dc7",
+      "sizeBytes": 6146,
+      "registryGitHead": "cbdb34bfc6c245941d80ef88493c50b3d6dbfce6",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@inquirer/type",
+      "version": "4.1.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/SBoudrias/Inquirer.js.git",
+      "registryTarball": "https://registry.npmjs.org/@inquirer/type/-/type-4.1.1.tgz",
+      "integrity": "sha512-yJoHYrMnxIsJZCY+0Vb66Dy3he3kL3e2wOBKhoSwWWAzZAY82emlxwgprCtp6yRixvNRNq9ztfRWQYPNr3Go7A==",
+      "localTarball": "packages/15f289cf44cd6833ac3de5b5a2375afcca9af0aeb04ce7afa8040a7cc301329f.tgz",
+      "sha256": "a723dc8e533685ba740e9b8695e7f4d0cb821f3a12f0a8a6ce4bc80f69480c1c",
+      "sizeBytes": 2770,
+      "registryGitHead": "5748bd9966b5e175ddf5995ee4cdce6f60c4272e",
+      "registryRepository": {
+        "url": "git+https://github.com/SBoudrias/Inquirer.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@jellyfin/sdk",
+      "version": "1.0.0",
+      "license": "MPL-2.0",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/jellyfin/jellyfin-sdk-typescript.git",
+      "registryTarball": "https://registry.npmjs.org/@jellyfin/sdk/-/sdk-1.0.0.tgz",
+      "integrity": "sha512-bu7EbMxEz+mH2N/v8Oj/dDCQQvTmEVTZBzKhYgwpKrL9l63LMZvjY2gvnU4imMi9389kzh0LQD75MzMtcoDJtA==",
+      "localTarball": "packages/0a26750e805796de254cce8e5915a8fd6bf907be6c3877e230df6b8e3b40ea52.tgz",
+      "sha256": "8c506d5377d4e1cb8d42d824d81563ebceab0f9ef7941c1e24daa5162f0189aa",
+      "sizeBytes": 325427,
+      "registryGitHead": "8a167e4aedd5a86993c4273fe153d49722233c3b",
+      "registryRepository": {
+        "url": "git+https://github.com/jellyfin/jellyfin-sdk-typescript.git",
+        "type": "git"
+      },
+      "registryLicense": "MPL-2.0"
+    },
+    {
+      "name": "@lukeed/ms",
+      "version": "2.0.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "lukeed/ms",
+      "registryTarball": "https://registry.npmjs.org/@lukeed/ms/-/ms-2.0.2.tgz",
+      "integrity": "sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==",
+      "localTarball": "packages/d585b560960d07ec0c2a6ee86326b8eb98e218d74fe6d7a37d249e1c44c60447.tgz",
+      "sha256": "fed80c8ee4923ee7d5a08fe6e30ba9244c45da7e19f7592b72dee235eb65f7d4",
+      "sizeBytes": 3704,
+      "registryGitHead": "ea01baec0cc2ae2aa7679a7f08ea4b4ee5f9b3e3",
+      "registryRepository": {
+        "url": "git+https://github.com/lukeed/ms.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@node-rs/argon2",
+      "version": "2.2.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/napi-rs/node-rs.git",
+      "registryTarball": "https://registry.npmjs.org/@node-rs/argon2/-/argon2-2.2.1.tgz",
+      "integrity": "sha512-miqgmDcvOoAxCf0H3iW2nSd09FFO15geUU30yRNEr2XVXYreErwxAOm1rAKHxNDdjcySA+UTDGMXOWtvFJ3hXQ==",
+      "localTarball": "packages/dc5faded1c1b89196d77f0d0f73a545d83d6d25fb4e16853d512c1c2f0320feb.tgz",
+      "sha256": "02c4605ff3faebdecb8757649978b07f6ac1714ac94abab1f5e5040921652f53",
+      "sizeBytes": 8361,
+      "registryGitHead": "56c64a1f875d9568b0a6a79b6c658ce5996d25a2",
+      "registryRepository": {
+        "url": "git+https://github.com/napi-rs/node-rs.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@node-rs/argon2-linux-x64-gnu",
+      "version": "2.2.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/napi-rs/node-rs.git",
+      "registryTarball": "https://registry.npmjs.org/@node-rs/argon2-linux-x64-gnu/-/argon2-linux-x64-gnu-2.2.1.tgz",
+      "integrity": "sha512-PIbG2WrqB84k2sdirnSXigFJvAemw0JkzZ/hOg6I9tO2GvhlY4P4z0NgmoRm7iKH+XTMo199src1Upm7RZwRAw==",
+      "localTarball": "packages/9c113864a2d86f4f2db0f36bbfcd342281456e84baa8f9245e54b11487a6a6ae.tgz",
+      "sha256": "630e0718a3d87379f21a6a5a9b934083344ddb5c5acae6ccef461437b173f6f6",
+      "sizeBytes": 341298,
+      "registryGitHead": null,
+      "registryRepository": {
+        "url": "git+https://github.com/napi-rs/node-rs.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@pinojs/redact",
+      "version": "0.4.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/pinojs/redact.git",
+      "registryTarball": "https://registry.npmjs.org/@pinojs/redact/-/redact-0.4.0.tgz",
+      "integrity": "sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==",
+      "localTarball": "packages/84a96edf818709ec781512fcc3ef6a9e5968ab18b8cf3c6afa5354b55a6c5a82.tgz",
+      "sha256": "d66004def64efb6c13629b0740639344e0775fe537373674571711a2bb2fc704",
+      "sizeBytes": 19289,
+      "registryGitHead": "c91398e51d0676ae8744eb4c1c7c5dbf8e18d4ed",
+      "registryRepository": {
+        "url": "git+https://github.com/pinojs/redact.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "@types/node",
+      "version": "24.19.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "registryTarball": "https://registry.npmjs.org/@types/node/-/node-24.19.1.tgz",
+      "integrity": "sha512-aS3/DG0oM05K0RIXXP+hKjinGG5IgSSVGzswZxW3O0sS3pH4/fycXundUC9XsszgKCk4gHXylTEK6hyFxVxnoQ==",
+      "localTarball": "packages/db8c17a68d0bfa484994404311602ca8646c6074d270627a250ec5bb5d5641b9.tgz",
+      "sha256": "4605482935b2a8c26c53c7637fbc20665e49f9b0b6dc0db50449500e86727a82",
+      "sizeBytes": 474801,
+      "registryGitHead": null,
+      "registryRepository": {
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "type": "git",
+        "directory": "types/node"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "abstract-logging",
+      "version": "2.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/jsumners/abstract-logging.git",
+      "registryTarball": "https://registry.npmjs.org/abstract-logging/-/abstract-logging-2.0.1.tgz",
+      "integrity": "sha512-2BjRTZxTPvheOvGbBslFSYOUkr+SjPtOnrLP33f+VIWLzezQpZcqVg7ja3L4dBXmzzgwT+a029jRx5PCi3JuiA==",
+      "localTarball": "packages/72c3f5cb0b07c1bf6e1209afbd97f2fcb5c87a2513db7d2d841900dc18d74289.tgz",
+      "sha256": "9a2ab6159e9d3b04e10f1536fab762d18e09d353941a298171e57b6e25640994",
+      "sizeBytes": 1223,
+      "registryGitHead": "80dfaef91ee87008f4ed2b6e78921d383bccd406",
+      "registryRepository": {
+        "url": "git+https://github.com/jsumners/abstract-logging.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "agent-base",
+      "version": "6.0.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/TooTallNate/node-agent-base.git",
+      "registryTarball": "https://registry.npmjs.org/agent-base/-/agent-base-6.0.2.tgz",
+      "integrity": "sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==",
+      "localTarball": "packages/90b79cd8f1f67d4f29e7209a89558cc8e59d9703970fea7598104fe49242ad3a.tgz",
+      "sha256": "bc6da06f2a2e6bc80fa5878bd7227bd0318812976d45f47f17e1aafcec2be831",
+      "sizeBytes": 9273,
+      "registryGitHead": "c4b8ea2e1a11bae023bb09b708050a50418204e9",
+      "registryRepository": {
+        "url": "git://github.com/TooTallNate/node-agent-base.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "ajv",
+      "version": "8.20.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "ajv-validator/ajv",
+      "registryTarball": "https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz",
+      "integrity": "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==",
+      "localTarball": "packages/9c728cf87aba8556fa4bad7cee40316e8e2393a5caa8e21ea76d5ad2e870594d.tgz",
+      "sha256": "b2f0b3a893bbb8cc5efb6814f08b1499e19e31d5dd73683f5893382f48f6e7b3",
+      "sizeBytes": 217611,
+      "registryGitHead": "0fba0b8e649909613cfce0999b149cd08f4a4987",
+      "registryRepository": {
+        "url": "git+https://github.com/ajv-validator/ajv.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "ajv-formats",
+      "version": "3.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/ajv-validator/ajv-formats.git",
+      "registryTarball": "https://registry.npmjs.org/ajv-formats/-/ajv-formats-3.0.1.tgz",
+      "integrity": "sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==",
+      "localTarball": "packages/3081140538322aaf684c239fd5c532b47691d82b42e6cc4a5e60df5eaaab538a.tgz",
+      "sha256": "f4d6980fd367381fd29199066911e863db8d97496613b6c2c5b91563a150acc5",
+      "sizeBytes": 15999,
+      "registryGitHead": "1fb3fa7d967f919ff924bb34aef73a2f39ab0de3",
+      "registryRepository": {
+        "url": "git+https://github.com/ajv-validator/ajv-formats.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "asynckit",
+      "version": "0.4.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/alexindigo/asynckit.git",
+      "registryTarball": "https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz",
+      "integrity": "sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==",
+      "localTarball": "packages/e54c0004f31bd0783134afe6ff005293b9c43376e12e2026d2afff50620115b1.tgz",
+      "sha256": "8c254f30f70792645042e4d71f590ec49f8e386a475772f7430c73b964b57dcf",
+      "sizeBytes": 8111,
+      "registryGitHead": "583a75ed4fe41761b66416bb6e703ebb1f8963bf",
+      "registryRepository": {
+        "url": "git+https://github.com/alexindigo/asynckit.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "atomic-sleep",
+      "version": "1.0.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/davidmarkclements/atomic-sleep.git",
+      "registryTarball": "https://registry.npmjs.org/atomic-sleep/-/atomic-sleep-1.0.0.tgz",
+      "integrity": "sha512-kNOjDqAh7px0XWNI+4QbzoiR/nTkHAWNud2uvnJquD1/x5a7EQZMJT0AczqK0Qn67oY/TTQ1LbUKajZpp3I9tQ==",
+      "localTarball": "packages/c2aa1160674677a67c8f8c4f84ce74846b64181defdd862ba85d82042577c2b9.tgz",
+      "sha256": "44749ee4b82d2b5fa66323af77c5b836c08368667015a9c8a966033801a56964",
+      "sizeBytes": 2822,
+      "registryGitHead": "b8149d3ca276c84a54fa8fa1478f9cc79aabc15a",
+      "registryRepository": {
+        "url": "git+https://github.com/davidmarkclements/atomic-sleep.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "avvio",
+      "version": "9.3.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/avvio.git",
+      "registryTarball": "https://registry.npmjs.org/avvio/-/avvio-9.3.0.tgz",
+      "integrity": "sha512-g2tQ7LE7oOSqDfwEm3M+ZCMTJc7KiZCdJ4UwyZJb5ckTKyYu50OYmvv0mCFXPuYXoM4zkSt8zM9XQ9KCvxA74A==",
+      "localTarball": "packages/c83c8b6bb6fd7653d6eaf0fda9412d37d19b96c06905afec4300d5ebcbfb47ee.tgz",
+      "sha256": "f6045be9f2d859a829f97b4b31be4918bb12751c203bfd2140c426fa783abd2c",
+      "sizeBytes": 35158,
+      "registryGitHead": "39a7367ba3c829acd17bbecaea3e43b72a00420d",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/avvio.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "axios",
+      "version": "1.20.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/axios/axios.git",
+      "registryTarball": "https://registry.npmjs.org/axios/-/axios-1.20.0.tgz",
+      "integrity": "sha512-r8aOh8j9cGKpgQAqpzrUHnSIc6a59Y3Xf/cv8sy1DrHCkZHzQGEuoq1tARk6qSyDdtQGSDgpb9kFlruzPvrgwg==",
+      "localTarball": "packages/64964b1c4273ee54e6f457e9dcc43904e6642ddf6657395485f1e636db4dd2f0.tgz",
+      "sha256": "5aa2dc9a5d6ced926e4b6ca8ef8e0253b118867e240db8650c49379e972c12ac",
+      "sizeBytes": 554708,
+      "registryGitHead": "84a9f3b9a4f3244b8c8e818f557d64c7b964fb25",
+      "registryRepository": {
+        "url": "git+https://github.com/axios/axios.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "better-sqlite3",
+      "version": "13.0.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/WiseLibs/better-sqlite3.git",
+      "registryTarball": "https://registry.npmjs.org/better-sqlite3/-/better-sqlite3-13.0.3.tgz",
+      "integrity": "sha512-RbOBxmLBG8uvFUc15X9+9SFemKcQ0WBuISBVkpuiaUB2qblC8UWlHEjdWVoZ8AdhSwmoEgsiXKfopX0CQxaACQ==",
+      "localTarball": "packages/71ac05d79b4f1ab316c5a2273698895e4bcd423995dddb8f032e8d6e76ab9681.tgz",
+      "sha256": "77e0513dc1a469fb3bceec4c7fb5ad3f403109787eda05be047ec17fd56868cb",
+      "sizeBytes": 11402131,
+      "registryGitHead": "dbc2ea1165fef1f599b9be12faea33fa5e9d7ffb",
+      "registryRepository": {
+        "url": "git://github.com/WiseLibs/better-sqlite3.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "call-bind-apply-helpers",
+      "version": "1.0.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/ljharb/call-bind-apply-helpers.git",
+      "registryTarball": "https://registry.npmjs.org/call-bind-apply-helpers/-/call-bind-apply-helpers-1.0.2.tgz",
+      "integrity": "sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==",
+      "localTarball": "packages/4609144d3832c8d207742fac4d64cdd9ba0ea606187486b9322717dddd80d211.tgz",
+      "sha256": "073e9ff9dbabedf5c128020a677381e9f92c90188d118830b30a7656a7c37d2c",
+      "sizeBytes": 6067,
+      "registryGitHead": "7068296a67b98424d5299606599d2f8117ded880",
+      "registryRepository": {
+        "url": "git+https://github.com/ljharb/call-bind-apply-helpers.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "chardet",
+      "version": "2.2.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/runk/node-chardet.git",
+      "registryTarball": "https://registry.npmjs.org/chardet/-/chardet-2.2.0.tgz",
+      "integrity": "sha512-rddelWYNPRrXq6PtNEN2S3f6t9ILzvqaN5pVgi4kqt9jHQaXIial9PznB5iSPVlQSLNaaH22ItWz3EJtQ10+OA==",
+      "localTarball": "packages/8cd0ca83e8440ad36d5a22f31a1266eca32805c3dd4461d615af60dbfb37ea31.tgz",
+      "sha256": "4ed40fdfccd182e88dfee363488ab4e9a159752f64e035e39bd783de7d007d08",
+      "sizeBytes": 25685,
+      "registryGitHead": "1a8216d75eca573972d0b11ef00fd21e965bfd08",
+      "registryRepository": {
+        "url": "git+https://github.com/runk/node-chardet.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "cli-width",
+      "version": "4.1.0",
+      "license": "ISC",
+      "scopes": ["server-runtime"],
+      "repository": "git@github.com:knownasilya/cli-width.git",
+      "registryTarball": "https://registry.npmjs.org/cli-width/-/cli-width-4.1.0.tgz",
+      "integrity": "sha512-ouuZd4/dm2Sw5Gmqy6bGyNNNe1qt9RpmxveLSO7KcgsTnU7RXfsw+/bukWGo1abgBiMAic068rclZsO4IWmmxQ==",
+      "localTarball": "packages/c05d23b9e508d1f8330d9bd4a41711fa1b75b29b639cf611c4e2123d1a7383c9.tgz",
+      "sha256": "17681f520e0b169950e3e0712ded701306efa98b2bd1daa6ca53db8362557ffb",
+      "sizeBytes": 2244,
+      "registryGitHead": "a813d2498abe52e3730bfe24cb7d934b04013633",
+      "registryRepository": {
+        "url": "git+ssh://git@github.com/knownasilya/cli-width.git",
+        "type": "git"
+      },
+      "registryLicense": "ISC"
+    },
+    {
+      "name": "combined-stream",
+      "version": "1.0.8",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/felixge/node-combined-stream.git",
+      "registryTarball": "https://registry.npmjs.org/combined-stream/-/combined-stream-1.0.8.tgz",
+      "integrity": "sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==",
+      "localTarball": "packages/bdadd8ca27a3d78fbe2c2aff27aa35bf6f351e51b8dae917df0b61d8325dfbed.tgz",
+      "sha256": "b6be5aabe53e90635beb77cd0e0ba7ae6a25c8cf903b15fcc342353e732e1512",
+      "sizeBytes": 4068,
+      "registryGitHead": "5298bece5aba2cf4d2f5ec84c4fc128572c41cee",
+      "registryRepository": {
+        "url": "git://github.com/felixge/node-combined-stream.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "cookie",
+      "version": "1.1.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "jshttp/cookie",
+      "registryTarball": "https://registry.npmjs.org/cookie/-/cookie-1.1.1.tgz",
+      "integrity": "sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==",
+      "localTarball": "packages/51314e7467e12a5d2b3a370c2526c25c395a5f2c58bfd824d4fb01b42d0c563d.tgz",
+      "sha256": "0e9342b066986722098d9b108b238033862eae90b3d53ff90581538264d91b60",
+      "sizeBytes": 13358,
+      "registryGitHead": "1b89eec4e33256ac31962f4c0d6e711fff478803",
+      "registryRepository": {
+        "url": "git+https://github.com/jshttp/cookie.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "cookie",
+      "version": "2.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "jshttp/cookie",
+      "registryTarball": "https://registry.npmjs.org/cookie/-/cookie-2.0.1.tgz",
+      "integrity": "sha512-yuToqVvRrj6pfDXREyQAAv8SkAEk/8GS3jQRTiUMm66TVtBYmqQeoEjL2Lmq8Rpo6271vH76InTChTitEAm65w==",
+      "localTarball": "packages/a1393363cfdaeb183bab2d777f1d772c2130f03ccc38fde73313132d4dd1b41a.tgz",
+      "sha256": "8516126668fc55128916561047c055db77d0401dee1db108adce7267b4b06ff0",
+      "sizeBytes": 13277,
+      "registryGitHead": "51c485421a95ee796de6d8dab53a5ade0a20db8a",
+      "registryRepository": {
+        "url": "git+https://github.com/jshttp/cookie.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "debug",
+      "version": "4.4.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/debug-js/debug.git",
+      "registryTarball": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
+      "integrity": "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==",
+      "localTarball": "packages/6390bf853aed627edd1fc017f5dc4771098786a93330a9fdd12060b62475b446.tgz",
+      "sha256": "89c1ac9c946ee8905a875837114528e97eeae35e03be3190584b2216af43e4a7",
+      "sizeBytes": 13449,
+      "registryGitHead": "6b2c5fbdb7d414483d9e306ef234acb4cd7ea67c",
+      "registryRepository": {
+        "url": "git://github.com/debug-js/debug.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "delayed-stream",
+      "version": "1.0.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/felixge/node-delayed-stream.git",
+      "registryTarball": "https://registry.npmjs.org/delayed-stream/-/delayed-stream-1.0.0.tgz",
+      "integrity": "sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==",
+      "localTarball": "packages/cff14fcf469afa09b024543077b81df453b8884d8951ee4c13a643a8937f2773.tgz",
+      "sha256": "ac38fce4217dfb1d772427c7d8d0d073e35ecd832915e97a61d9ab5c504129d3",
+      "sizeBytes": 3464,
+      "registryGitHead": "07a9dc99fb8f1a488160026b9ad77493f766fb84",
+      "registryRepository": {
+        "url": "git://github.com/felixge/node-delayed-stream.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "dequal",
+      "version": "2.0.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "lukeed/dequal",
+      "registryTarball": "https://registry.npmjs.org/dequal/-/dequal-2.0.3.tgz",
+      "integrity": "sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==",
+      "localTarball": "packages/8cd13c985843cf649785915a020f79e968f7d8491a97da72b8cb44c1da686471.tgz",
+      "sha256": "941d90d6629878167d10d2a05d8c6df8f8fa13acc826616abb49db63ac6a5c35",
+      "sizeBytes": 4286,
+      "registryGitHead": "37d4f27de03fa6264e406cd03288cec8255fca4c",
+      "registryRepository": {
+        "url": "git+https://github.com/lukeed/dequal.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "dunder-proto",
+      "version": "1.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/es-shims/dunder-proto.git",
+      "registryTarball": "https://registry.npmjs.org/dunder-proto/-/dunder-proto-1.0.1.tgz",
+      "integrity": "sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==",
+      "localTarball": "packages/390fd69f2035b583e461890d5b0a3230f4adb33b042e6f0d1472dd911bc1de98.tgz",
+      "sha256": "ed1342228c82c10df9921c59d684df516a0cd6ed25b61e5f9d6330895326cfdb",
+      "sizeBytes": 5049,
+      "registryGitHead": "c6f4b69ab80c495777870f6a5f6a22db16ecaecb",
+      "registryRepository": {
+        "url": "git+https://github.com/es-shims/dunder-proto.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "es-define-property",
+      "version": "1.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/ljharb/es-define-property.git",
+      "registryTarball": "https://registry.npmjs.org/es-define-property/-/es-define-property-1.0.1.tgz",
+      "integrity": "sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g==",
+      "localTarball": "packages/6a37646cc624feb0059507df1fd0b2b961e28240b1990413b09706235dcdd94a.tgz",
+      "sha256": "5986b8b13121340a8b0d5c7d8f0f961aa80ef3a74515ca9cb7a78d86ed0385f7",
+      "sizeBytes": 4431,
+      "registryGitHead": "50ef129225ae17336a774f0eefc4e6bc88c79b8e",
+      "registryRepository": {
+        "url": "git+https://github.com/ljharb/es-define-property.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "es-errors",
+      "version": "1.3.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/ljharb/es-errors.git",
+      "registryTarball": "https://registry.npmjs.org/es-errors/-/es-errors-1.3.0.tgz",
+      "integrity": "sha512-Zf5H2Kxt2xjTvbJvP2ZWLEICxA6j+hAmMzIlypy4xcBg1vKVnx89Wy0GbS+kf5cwCVFFzdCFh2XSCFNULS6csw==",
+      "localTarball": "packages/645b141d3027520f69209dba8e012e737f0ee8cad89ea8d0e26d02669d14a981.tgz",
+      "sha256": "d14dd1c35b4bd3b8aca3219fd3627eb7f3eb49cf6b4c8a7ca58b91fd7a190993",
+      "sizeBytes": 5338,
+      "registryGitHead": "5599cf0ebe75cc3685445f83ca80207a357fdb12",
+      "registryRepository": {
+        "url": "git+https://github.com/ljharb/es-errors.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "es-object-atoms",
+      "version": "1.1.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/ljharb/es-object-atoms.git",
+      "registryTarball": "https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.2.tgz",
+      "integrity": "sha512-HWcBoN6NileqtSydK2FqHbS/LoDd2pqrnQHLyJzBj4kOp/ky2MWMN694xOfkK8/SnUsW2DH7EfyVlydKCsm1Zw==",
+      "localTarball": "packages/6c43e9e16513bd04b4784db8238ac828178eb6048e1df1a4f745e86cba436433.tgz",
+      "sha256": "f295c5df6751c65b4b9492b03c88fab5e13419de28a51ecdf17e693b4a421af0",
+      "sizeBytes": 4820,
+      "registryGitHead": "9e62644a85743af8a51d3e276bc40c3cd4cafcd1",
+      "registryRepository": {
+        "url": "git+https://github.com/ljharb/es-object-atoms.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "es-set-tostringtag",
+      "version": "2.1.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/es-shims/es-set-tostringtag.git",
+      "registryTarball": "https://registry.npmjs.org/es-set-tostringtag/-/es-set-tostringtag-2.1.0.tgz",
+      "integrity": "sha512-j6vWzfrGVfyXxge+O0x5sh6cvxAog0a/4Rdd2K36zCMV5eJ+/+tOAngRO8cODMNWbVRdVlmGZQL2YS3yR8bIUA==",
+      "localTarball": "packages/26f2706fefe123e522855f73b1448149254db436cc8b3ce87d49389bef646511.tgz",
+      "sha256": "5675f51a5c33ee402bff8a2a341a0390f85e82d3c199859244d2f67091b0b93d",
+      "sizeBytes": 5583,
+      "registryGitHead": "90e506fbfe24630e6fe3871639000d2f0ba09d6f",
+      "registryRepository": {
+        "url": "git+https://github.com/es-shims/es-set-tostringtag.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fast-decode-uri-component",
+      "version": "1.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/delvedor/fast-decode-uri-component.git",
+      "registryTarball": "https://registry.npmjs.org/fast-decode-uri-component/-/fast-decode-uri-component-1.0.1.tgz",
+      "integrity": "sha512-WKgKWg5eUxvRZGwW8FvfbaH7AXSh2cL+3j5fMGzUMCxWBJ3dV3a7Wz8y2f/uQ0e3B6WmodD3oS54jTQ9HVTIIg==",
+      "localTarball": "packages/95838b6ffb7de2f93311b2e183cee9b70085ad55da2d566dda73654178e15f19.tgz",
+      "sha256": "de015feadef7113b88f0a56a04f8f7b4f3566d43823adc452216fc081ce8d2a7",
+      "sizeBytes": 3600,
+      "registryGitHead": "c124e25816434dcb25813a4a7b9c3898eec76922",
+      "registryRepository": {
+        "url": "git+https://github.com/delvedor/fast-decode-uri-component.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fast-deep-equal",
+      "version": "3.1.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/epoberezkin/fast-deep-equal.git",
+      "registryTarball": "https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz",
+      "integrity": "sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==",
+      "localTarball": "packages/60db03f2d9496a0b9ae959899afa824927ba0b591f97c193aa8b0c67acc710e6.tgz",
+      "sha256": "b019a0980f27638dc3f85836b0e478f188e00d7a6e5852c0819fa86f56e47b8f",
+      "sizeBytes": 3656,
+      "registryGitHead": "d807ffc5013e710deb1c63d463a03f729bcd144d",
+      "registryRepository": {
+        "url": "git+https://github.com/epoberezkin/fast-deep-equal.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fast-json-stringify",
+      "version": "7.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fast-json-stringify.git",
+      "registryTarball": "https://registry.npmjs.org/fast-json-stringify/-/fast-json-stringify-7.0.1.tgz",
+      "integrity": "sha512-eRSayARSbbwlBjpP4vnTTIRD5QPcIrmihPxDeN1DtKnHPg66UuJLx+8hlK1kaFdjvzyQ/dzALoi4vwAQ+T+iZA==",
+      "localTarball": "packages/76509c4d26d8e6b306f6a34ff4168666af1e947c89afb44f2f88b59561054adb.tgz",
+      "sha256": "a887740fd16ad88d84b0669ca182cdb06776750739752166d63e184569356a31",
+      "sizeBytes": 66348,
+      "registryGitHead": "6aa2ed4cc403cf68d7c31ee4dd14724372fea664",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fast-json-stringify.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fast-querystring",
+      "version": "1.1.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/anonrig/fast-querystring.git",
+      "registryTarball": "https://registry.npmjs.org/fast-querystring/-/fast-querystring-1.1.2.tgz",
+      "integrity": "sha512-g6KuKWmFXc0fID8WWH0jit4g0AGBoJhCkJMb1RmbsSEUNvQ+ZC8D6CUZ+GtF8nMzSPXnhiePyyqqipzNNEnHjg==",
+      "localTarball": "packages/cba33e11059e20a42a55b7d50d43f3fd229669f40d5a1bc970940c7319a7a0bc.tgz",
+      "sha256": "f165a9cb6994ee56b985821adcab43d858cbad39cfcd3315424a7552b732a722",
+      "sizeBytes": 5571,
+      "registryGitHead": "ecf9c8a2d1aa34a0aef903e4a568d4dc6544e5fd",
+      "registryRepository": {
+        "url": "git+https://github.com/anonrig/fast-querystring.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fast-string-truncated-width",
+      "version": "3.0.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "github:fabiospampinato/fast-string-truncated-width",
+      "registryTarball": "https://registry.npmjs.org/fast-string-truncated-width/-/fast-string-truncated-width-3.0.3.tgz",
+      "integrity": "sha512-0jjjIEL6+0jag3l2XWWizO64/aZVtpiGE3t0Zgqxv0DPuxiMjvB3M24fCyhZUO4KomJQPj3LTSUnDP3GpdwC0g==",
+      "localTarball": "packages/17d7d8903746ab82110215b2e84a4fb0216749251419d1ee064920f13d509676.tgz",
+      "sha256": "b5dace35423470b453ed5dba20419052124b8a65cb233833f17e5483523b5eb1",
+      "sizeBytes": 4390,
+      "registryGitHead": "e9196041e6f9d05ac5ba49a0611b5eb60e8288f0",
+      "registryRepository": {
+        "url": "git+https://github.com/fabiospampinato/fast-string-truncated-width.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fast-string-width",
+      "version": "3.0.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "github:fabiospampinato/fast-string-width",
+      "registryTarball": "https://registry.npmjs.org/fast-string-width/-/fast-string-width-3.0.2.tgz",
+      "integrity": "sha512-gX8LrtNEI5hq8DVUfRQMbr5lpaS4nMIWV+7XEbXk2b8kiQIizgnlr12B4dA3ZEx3308ze0O4Q1R+cHts8kyUJg==",
+      "localTarball": "packages/36dc062e688bc5c607abb9b31b565e5aaaa2c7c7163c141851b91fc763dfe9c0.tgz",
+      "sha256": "72daf113df209b0e55a227ff5f62683ca99da07b59c5da36a2da62920cb3752a",
+      "sizeBytes": 1805,
+      "registryGitHead": "f49e7b7662906e0028a68a16b5358500b2f3152d",
+      "registryRepository": {
+        "url": "git+https://github.com/fabiospampinato/fast-string-width.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fast-uri",
+      "version": "3.1.9",
+      "license": "BSD-3-Clause",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fast-uri.git",
+      "registryTarball": "https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.9.tgz",
+      "integrity": "sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==",
+      "localTarball": "packages/ebad77a3620fa91df963b03739060d6c46511db49213f13f448655f7ac8a8b22.tgz",
+      "sha256": "4f5a67f7b61110aae7b3ad38e806627f5712f4c150bd38eb804a562e69a9ee5e",
+      "sizeBytes": 50086,
+      "registryGitHead": "0def70338a0fa2f12a10c83ae8eafc2139ae9a07",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fast-uri.git",
+        "type": "git"
+      },
+      "registryLicense": "BSD-3-Clause"
+    },
+    {
+      "name": "fast-uri",
+      "version": "4.2.3",
+      "license": "BSD-3-Clause",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fast-uri.git",
+      "registryTarball": "https://registry.npmjs.org/fast-uri/-/fast-uri-4.2.3.tgz",
+      "integrity": "sha512-I1PXwP5eAhlNlcdpjt9CgB59op2ZvZfxw+BkqGFVIUOgNpCVTcTqp3HhTX7brxj5vsip+nSY4nTvff+eIA76hg==",
+      "localTarball": "packages/39881bd30d1f61f75962f75329543e21bde683511951d4000e9727b4701916c7.tgz",
+      "sha256": "781233dfc458464975bc5d67392aab75503dee65a5d06a7231f702a8cefe97c5",
+      "sizeBytes": 74515,
+      "registryGitHead": "00f41407ef64b4944060ca3e7fd2d637916a71ea",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fast-uri.git",
+        "type": "git"
+      },
+      "registryLicense": "BSD-3-Clause"
+    },
+    {
+      "name": "fast-wrap-ansi",
+      "version": "0.2.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/43081j/fast-wrap-ansi.git",
+      "registryTarball": "https://registry.npmjs.org/fast-wrap-ansi/-/fast-wrap-ansi-0.2.2.tgz",
+      "integrity": "sha512-7F2Fl+TjRSenLqlU3UjSH0iyqopqoZIu7eZVpEirP2g1GtWa2G/ecEmBdgz31+Mxr+ELclgg6sokpSFIQiZ02Q==",
+      "localTarball": "packages/01e38051be7ddd77b1fc3dc05a4814c8e2aa38380f15869939404ccb2e951e3e.tgz",
+      "sha256": "f6b4a10f346b4405f01a1734be4c29b1aba315977f409ed11ea12ff2d3fae051",
+      "sizeBytes": 3549,
+      "registryGitHead": "450c19f7be340ce6d4213cc17882e5b82da6ce1d",
+      "registryRepository": {
+        "url": "git+https://github.com/43081j/fast-wrap-ansi.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fastify",
+      "version": "5.12.7",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fastify.git",
+      "registryTarball": "https://registry.npmjs.org/fastify/-/fastify-5.12.7.tgz",
+      "integrity": "sha512-v4pEPsTRPuqlDIYiQFB+BHjVN4SdHX9u0ABk0ZDUKbbdY1vsNryUd1j4Z+jQEZajvYIVk047Kimva9/AJ79GYw==",
+      "localTarball": "packages/d5d4677ba134a5d7e007fe5cd18bf5f41e72e6174361c71ae23578f840f01b3e.tgz",
+      "sha256": "edc1716d83378350b767a4105b690041f8a2a523d930500ba9d1b36c7ca67dfe",
+      "sizeBytes": 527352,
+      "registryGitHead": "9f400035ebaf572b95989db5040ebb09c01e4e77",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fastify.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fastify-plugin",
+      "version": "5.1.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fastify-plugin.git",
+      "registryTarball": "https://registry.npmjs.org/fastify-plugin/-/fastify-plugin-5.1.0.tgz",
+      "integrity": "sha512-FAIDA8eovSt5qcDgcBvDuX/v0Cjz0ohGhENZ/wpc3y+oZCY2afZ9Baqql3g/lC+OHRnciQol4ww7tuthOb9idw==",
+      "localTarball": "packages/5fab4954ca97a5cc4365df95e5a15832aa642626ee27d4cd398c930ac1084f42.tgz",
+      "sha256": "27c12cf73dd7f2b31d4b5220e572e870eb938570f106cdeeb3bf092f1aba8dc3",
+      "sizeBytes": 10117,
+      "registryGitHead": "86edf4ad4aaf32729b0c77c7987887d408215fed",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fastify-plugin.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fastify-plugin",
+      "version": "6.0.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/fastify-plugin.git",
+      "registryTarball": "https://registry.npmjs.org/fastify-plugin/-/fastify-plugin-6.0.0.tgz",
+      "integrity": "sha512-fZOty7z3O7vOliF6d8bHE3wiEh1KcNnKEQensSgTk9C1DvN6nRLS++XVd86v33Hw/8u9Un8A1zDrQ8ujcQDHEg==",
+      "localTarball": "packages/af49a55cbab198a75ec75439d1f5adc76d53915ce051e104dec295fb5e349fd9.tgz",
+      "sha256": "0d07c8759627ca6003c1d497c5919a291abd8f668f5fa30ea3fa27d1d8cf1e4c",
+      "sizeBytes": 10350,
+      "registryGitHead": "05c1c32b3cbfc86390243a0366e3288762c43bfc",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/fastify-plugin.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "fastq",
+      "version": "1.20.3",
+      "license": "ISC",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/mcollina/fastq.git",
+      "registryTarball": "https://registry.npmjs.org/fastq/-/fastq-1.20.3.tgz",
+      "integrity": "sha512-XKv5nnLs6nLF71NgiKJLIZFLkPyIEuOselLG7ujZnGrRfQK8HpvY+WqKhAJUAdLomwVHErVS4LfxFlPq0/FTAw==",
+      "localTarball": "packages/a7ea9f9d907eca5d922a2d332ac31060235e707382b0c51db9398921da8df6ed.tgz",
+      "sha256": "cdcbf6387484c524461ddc4c338d2acb25276c4072ecea495959178d28367fef",
+      "sizeBytes": 10427,
+      "registryGitHead": "733cb2c78d475f0b0b76f54e737200a54fee7d27",
+      "registryRepository": {
+        "url": "git+https://github.com/mcollina/fastq.git",
+        "type": "git"
+      },
+      "registryLicense": "ISC"
+    },
+    {
+      "name": "find-my-way",
+      "version": "9.9.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/delvedor/find-my-way.git",
+      "registryTarball": "https://registry.npmjs.org/find-my-way/-/find-my-way-9.9.0.tgz",
+      "integrity": "sha512-sJsgZ1sQH2UDuowPuMKg8az7Qc8F0jnj+SKkFWU/+T0xcFlgV5skgXOGUqmQzOdmW6ALA7AhJINWx3qFBkbLHA==",
+      "localTarball": "packages/2cea9dbbd13ef171d476fc8b3d9857f64a5e0e22ced7b423b64a5a0a0cf6573c.tgz",
+      "sha256": "73735f2bd2e86206f8f12a2c0dc37d54deb29d5baebf8366740f792add23ea00",
+      "sizeBytes": 65066,
+      "registryGitHead": "31aa3ae9c26a898d3f478c6bbfcd079ab85d1b99",
+      "registryRepository": {
+        "url": "git+https://github.com/delvedor/find-my-way.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "follow-redirects",
+      "version": "1.16.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+ssh://git@github.com/follow-redirects/follow-redirects.git",
+      "registryTarball": "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.16.1.tgz",
+      "integrity": "sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==",
+      "localTarball": "packages/34896378d81b6d93f409908a6d7ed16a43f20d37336c433778097e99b0e88c31.tgz",
+      "sha256": "6e075d999dc5ff568916954508397b11a537b18bde615986d7bd8b3d3fa1799f",
+      "sizeBytes": 10076,
+      "registryGitHead": "46301256333c90b7faac7aa126effe72ec16d16e",
+      "registryRepository": {
+        "url": "git+ssh://git@github.com/follow-redirects/follow-redirects.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "form-data",
+      "version": "4.0.6",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/form-data/form-data.git",
+      "registryTarball": "https://registry.npmjs.org/form-data/-/form-data-4.0.6.tgz",
+      "integrity": "sha512-vKatAh4SlVfgbv+YtmhiRjhEMJsYpsG1Y2rMQtR+SVSbytsSD1YGzDIcrAJmdFec88u/+VoGmxnl+80gL1tRCQ==",
+      "localTarball": "packages/f78599f94cbc992198448eb1b86692e140a3edb96f902ea4c32f7c1a863a0b0e.tgz",
+      "sha256": "fc4d94e9b629f5378367ba46da7d96115696c01e25c99cd57c2c9a3d098bb557",
+      "sizeBytes": 24198,
+      "registryGitHead": "64190db548c0179e37206858e39f27cf513e9435",
+      "registryRepository": {
+        "url": "git://github.com/form-data/form-data.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "function-bind",
+      "version": "1.1.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/Raynos/function-bind.git",
+      "registryTarball": "https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz",
+      "integrity": "sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==",
+      "localTarball": "packages/83de3b394293d96fb3fea968392a9d9ffb8b461f6c173bbb76a5bc51db5bec52.tgz",
+      "sha256": "704402651b02a1454f17d445fc7dd716efc282d059407126d58ef30a47e807aa",
+      "sizeBytes": 9799,
+      "registryGitHead": "40197beb5f4cf89dd005f0b268256c1e4716ea81",
+      "registryRepository": {
+        "url": "git+https://github.com/Raynos/function-bind.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "get-intrinsic",
+      "version": "1.3.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/ljharb/get-intrinsic.git",
+      "registryTarball": "https://registry.npmjs.org/get-intrinsic/-/get-intrinsic-1.3.0.tgz",
+      "integrity": "sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==",
+      "localTarball": "packages/ed58a6c65bdcf204ee65b42f777b1f33020efdfb236af3831d238b8baabcbbf7.tgz",
+      "sha256": "662e27e54e00fe46fbb08f9f4aacb054e3695dbe72cc14b436613fbcfb780544",
+      "sizeBytes": 13800,
+      "registryGitHead": "9d747e0540e5e03421e7411b7946c23f4b010fd5",
+      "registryRepository": {
+        "url": "git+https://github.com/ljharb/get-intrinsic.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "get-proto",
+      "version": "1.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/ljharb/get-proto.git",
+      "registryTarball": "https://registry.npmjs.org/get-proto/-/get-proto-1.0.1.tgz",
+      "integrity": "sha512-sTSfBjoXBp89JvIKIefqw7U2CCebsc74kiY6awiGogKtoSGbgjYE/G/+l9sF3MWFPNc9IcoOC4ODfKHfxFmp0g==",
+      "localTarball": "packages/abfbcfda1d91167af8b57b7d1385f31513bdf4d38e9141e2db6dbb68a9365773.tgz",
+      "sha256": "eb2cc52afb1f1fd82c5fc2a58c2380f0f16fdcdb5631538f3c66887435d70681",
+      "sizeBytes": 4474,
+      "registryGitHead": "1b92a72e80c026d391589a807272c50469d37c43",
+      "registryRepository": {
+        "url": "git+https://github.com/ljharb/get-proto.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "gopd",
+      "version": "1.2.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/ljharb/gopd.git",
+      "registryTarball": "https://registry.npmjs.org/gopd/-/gopd-1.2.0.tgz",
+      "integrity": "sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==",
+      "localTarball": "packages/f757cb02c87ace6527b13d93a039184daf59e5f4511f9f558a3729aef1f1b6bb.tgz",
+      "sha256": "d536d0de4dd285dc1468fbb7f39334a47ee0eec9c27f9b626a6e71466c9fda82",
+      "sizeBytes": 4584,
+      "registryGitHead": "7f867f97d7c895a982a3b631287fd2c36d39c2ff",
+      "registryRepository": {
+        "url": "git+https://github.com/ljharb/gopd.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "has-symbols",
+      "version": "1.1.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/inspect-js/has-symbols.git",
+      "registryTarball": "https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz",
+      "integrity": "sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==",
+      "localTarball": "packages/c0d7b7b02fe7161b003559eb9011d0e346cb07ad54c046cb4da80d42c1f682b4.tgz",
+      "sha256": "4460c7532f28b8df2ddc9a1ec17816d43c24d4b9591dc6c5936b82f7f86ae7c5",
+      "sizeBytes": 8059,
+      "registryGitHead": "270f0a67b5f4cb12715e0a84e672aaee64d1b4f1",
+      "registryRepository": {
+        "url": "git://github.com/inspect-js/has-symbols.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "has-tostringtag",
+      "version": "1.0.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/inspect-js/has-tostringtag.git",
+      "registryTarball": "https://registry.npmjs.org/has-tostringtag/-/has-tostringtag-1.0.2.tgz",
+      "integrity": "sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==",
+      "localTarball": "packages/e39d802569f1249ba08678c5fb24fc1b87ee4c92cc0f6eaa259f5b54038f2e13.tgz",
+      "sha256": "dc1c74e3f1179a6271f84747d72c89f258aa46ad3e6464fae0e41737a7f0ef7b",
+      "sizeBytes": 6465,
+      "registryGitHead": "690da6a3afbddcf018aa162c42869dcf4f8375f1",
+      "registryRepository": {
+        "url": "git+https://github.com/inspect-js/has-tostringtag.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "hasown",
+      "version": "2.0.4",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/inspect-js/hasOwn.git",
+      "registryTarball": "https://registry.npmjs.org/hasown/-/hasown-2.0.4.tgz",
+      "integrity": "sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==",
+      "localTarball": "packages/ba2e3a5fbd1028da71e02d351c424d0d8063ffc9afe439a85d8b952077be8b8b.tgz",
+      "sha256": "e9d2b03f95573600e1c13124ce618e3142ed2c538d164595bedcd4408b8a4e4c",
+      "sizeBytes": 4608,
+      "registryGitHead": "97f3a857d30d06e4081626ea6e5e3c00023627ff",
+      "registryRepository": {
+        "url": "git+https://github.com/inspect-js/hasOwn.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "helmet",
+      "version": "8.3.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/helmetjs/helmet.git",
+      "registryTarball": "https://registry.npmjs.org/helmet/-/helmet-8.3.0.tgz",
+      "integrity": "sha512-Qgpiaws3Sm30Av8Eah6sjMCZZwjlBu+E68rhpCWBshY1lb09HtLwj5GviX0OyQIn+ulUS0iX0AxN5n3tLZzz1w==",
+      "localTarball": "packages/bd6bcebb5443c89a4f9df1806daf1049cc701adf9e85c2dd4681bc5fdd609616.tgz",
+      "sha256": "b8a9ed18c15665bf2de38f409468904dd3d4bbb849b946f6b4557ee7e7ab449b",
+      "sizeBytes": 23236,
+      "registryGitHead": null,
+      "registryRepository": {
+        "url": "git://github.com/helmetjs/helmet.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "hls.js",
+      "version": "1.7.3",
+      "license": "Apache-2.0",
+      "scopes": ["browser-build"],
+      "repository": "https://github.com/video-dev/hls.js",
+      "registryTarball": "https://registry.npmjs.org/hls.js/-/hls.js-1.7.3.tgz",
+      "integrity": "sha512-MsPlx6yVW4Qv4C7mEVou4/gk/5cN2dVxOTnrNjPSmyH2f0Ln+/UkG10Ax1PE6OvrmTVPKgQYozTtBaPOuCzq7A==",
+      "localTarball": "packages/e23771b0575a78326e6b33780c4376fd765c74cd3d73452f77936a4b9b5e9c3a.tgz",
+      "sha256": "a7290f1645f7c605baec75638acda6c6f7b08dde8a615c841a19d0e38df88729",
+      "sizeBytes": 8006283,
+      "registryGitHead": "e5ff3583965e3af16c4a4b4d2b5f7bd1ffb5b7de",
+      "registryRepository": {
+        "url": "git+https://github.com/video-dev/hls.js.git",
+        "type": "git"
+      },
+      "registryLicense": "Apache-2.0"
+    },
+    {
+      "name": "https-proxy-agent",
+      "version": "5.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/TooTallNate/node-https-proxy-agent.git",
+      "registryTarball": "https://registry.npmjs.org/https-proxy-agent/-/https-proxy-agent-5.0.1.tgz",
+      "integrity": "sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==",
+      "localTarball": "packages/acdc336da538f649ef0823d0029e8e9a5605d86f48f956e3dbf94ef54da00e8e.tgz",
+      "sha256": "6da16fb44331f2e5d30bd21bf880aa934c1ad4fe7da7187910ef2b2509712019",
+      "sizeBytes": 8412,
+      "registryGitHead": "d0d80cc0482f20495aa8595f802e1a9f3b1b3409",
+      "registryRepository": {
+        "url": "git://github.com/TooTallNate/node-https-proxy-agent.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "iconv-lite",
+      "version": "0.7.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/pillarjs/iconv-lite.git",
+      "registryTarball": "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.7.3.tgz",
+      "integrity": "sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ==",
+      "localTarball": "packages/76dc46c7125d24015248138147d9e4cde7c341cd2f40acf5fc9eb9874785cf9b.tgz",
+      "sha256": "40789b7733e230a0439e07075fe2f37819f4a47ee7115fe17188451fab8e3941",
+      "sizeBytes": 189859,
+      "registryGitHead": "43694e28291d3b0cb3a452c77be40c4fd3a4bd85",
+      "registryRepository": {
+        "url": "git+https://github.com/pillarjs/iconv-lite.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "ipaddr.js",
+      "version": "2.5.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/whitequark/ipaddr.js.git",
+      "registryTarball": "https://registry.npmjs.org/ipaddr.js/-/ipaddr.js-2.5.0.tgz",
+      "integrity": "sha512-aq+t5NAc+cS6rZQQVWC2x98CPqGtKKTMDd4Gaodv0wShnItdKg/51djkGJ1hqH+Oy0ivDftCbSLCQob8zso01w==",
+      "localTarball": "packages/cb3eb5b02801a63fbaf355582a1e113c29d6fc8377f3abd6fa736a19a4eb74d2.tgz",
+      "sha256": "586f7ae92cc869bf61612f0d2765a02d98f813c7d1fff461745b93178da626c3",
+      "sizeBytes": 13969,
+      "registryGitHead": "dc55282780d8702bac31ef012ca52e4a77fbca1f",
+      "registryRepository": {
+        "url": "git+https://github.com/whitequark/ipaddr.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "json-schema-ref-resolver",
+      "version": "3.0.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/json-schema-ref-resolver.git",
+      "registryTarball": "https://registry.npmjs.org/json-schema-ref-resolver/-/json-schema-ref-resolver-3.0.0.tgz",
+      "integrity": "sha512-hOrZIVL5jyYFjzk7+y7n5JDzGlU8rfWDuYyHwGa2WA8/pcmMHezp2xsVwxrebD/Q9t8Nc5DboieySDpCp4WG4A==",
+      "localTarball": "packages/4d374a9c168d202969a677e1af324191b132280d1a88ad280eca3ef112346896.tgz",
+      "sha256": "abbcae713d66f530be057b05affde461e0c8041a6f72bdd641eceacb673e9e62",
+      "sizeBytes": 9472,
+      "registryGitHead": "21a9e9dd81b5adcf83368761c141816c0973f3a3",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/json-schema-ref-resolver.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "json-schema-traverse",
+      "version": "1.0.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/epoberezkin/json-schema-traverse.git",
+      "registryTarball": "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz",
+      "integrity": "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==",
+      "localTarball": "packages/e830fd7d93f6ebaa303067a25ee40b4b88dce5126f3473b7f80f712ea55d44b8.tgz",
+      "sha256": "023222622df29fc274bde5d3590e47aa1d4a8e3c1d6e2aba029948ed79799b21",
+      "sizeBytes": 6074,
+      "registryGitHead": "6b45983cd76270042cc79527da5c8972f13599ec",
+      "registryRepository": {
+        "url": "git+https://github.com/epoberezkin/json-schema-traverse.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "light-my-request",
+      "version": "6.6.0",
+      "license": "BSD-3-Clause",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/light-my-request.git",
+      "registryTarball": "https://registry.npmjs.org/light-my-request/-/light-my-request-6.6.0.tgz",
+      "integrity": "sha512-CHYbu8RtboSIoVsHZ6Ye4cj4Aw/yg2oAFimlF7mNvfDV192LR7nDiKtSIfCuLT7KokPSTn/9kfVLm5OGN0A28A==",
+      "localTarball": "packages/dd787fbb4af9a499882575cefc2d5666f8fa88fccd1b55eddc88a1b3aa106a62.tgz",
+      "sha256": "16270b0b82c7ffff1c1c364bfa161c23ac155aed98d4b09a140e0d80c8789930",
+      "sizeBytes": 30753,
+      "registryGitHead": "ba843523df70e057efa678b4ebf6a2bb313677b9",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/light-my-request.git",
+        "type": "git"
+      },
+      "registryLicense": "BSD-3-Clause"
+    },
+    {
+      "name": "math-intrinsics",
+      "version": "1.1.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/es-shims/math-intrinsics.git",
+      "registryTarball": "https://registry.npmjs.org/math-intrinsics/-/math-intrinsics-1.1.0.tgz",
+      "integrity": "sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==",
+      "localTarball": "packages/f585fed67bcee1ccc26f6fd0010ab256b0e752435b26949a15143b03495a11d9.tgz",
+      "sha256": "b8c2c35575493dc086df88cfc468a9e2651b6617336480ab3f00fcf853f443a7",
+      "sizeBytes": 6355,
+      "registryGitHead": "84ffc824e044a91da1b847bde30c0286519eabf1",
+      "registryRepository": {
+        "url": "git+https://github.com/es-shims/math-intrinsics.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "mime-db",
+      "version": "1.52.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "jshttp/mime-db",
+      "registryTarball": "https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz",
+      "integrity": "sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==",
+      "localTarball": "packages/7cfa78c6359b5b06cbb7cde9659b052fb92a58e290411458d496ea39857bc15b.tgz",
+      "sha256": "b8e70bb4d52acd5d0d1ed848c0e6e3c903a533aa500acffbe003f011b18f9e3b",
+      "sizeBytes": 26992,
+      "registryGitHead": "ebb6bf92ea39d3168a50942295d5edfdcdce641a",
+      "registryRepository": {
+        "url": "git+https://github.com/jshttp/mime-db.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "mime-types",
+      "version": "2.1.35",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "jshttp/mime-types",
+      "registryTarball": "https://registry.npmjs.org/mime-types/-/mime-types-2.1.35.tgz",
+      "integrity": "sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==",
+      "localTarball": "packages/a4d3481c7c7fa681b0c2a946f94b390ac9f96f0412b1ec63b79eba32dab82500.tgz",
+      "sha256": "49734fc98906e9baaacf8034923470a4c84de72943a7c005face63360701d1c3",
+      "sizeBytes": 5591,
+      "registryGitHead": "ef932231c20e716ec27ea159c082322c3c485b66",
+      "registryRepository": {
+        "url": "git+https://github.com/jshttp/mime-types.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "ms",
+      "version": "2.1.3",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "vercel/ms",
+      "registryTarball": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
+      "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
+      "localTarball": "packages/2083576c5af8054927640b4788059806d07e250a26066c9ccb2d928394fb9226.tgz",
+      "sha256": "f6616e15e530ed552f9daa2d3ce71963947c6bc7c98c9b64fd3e673fd02622c6",
+      "sizeBytes": 2967,
+      "registryGitHead": "1c6264b795492e8fdecbc82cb8802fcfbfc08d26",
+      "registryRepository": {
+        "url": "git+https://github.com/vercel/ms.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "mute-stream",
+      "version": "3.0.0",
+      "license": "ISC",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/npm/mute-stream.git",
+      "registryTarball": "https://registry.npmjs.org/mute-stream/-/mute-stream-3.0.0.tgz",
+      "integrity": "sha512-dkEJPVvun4FryqBmZ5KhDo0K9iDXAwn08tMLDinNdRBNPcYEDiWYysLcc6k3mjTMlbP9KyylvRpd4wFtwrT9rw==",
+      "localTarball": "packages/eb2993784d22f2439b2bd63d57d776315f4d5ca647c84da53d61484d28bf6d67.tgz",
+      "sha256": "09489744153746acf7572655eae3f591c7a38f4faa31e25831eb04fb2e4b68eb",
+      "sizeBytes": 2818,
+      "registryGitHead": "f1e5ef01aace27d1545c05954d0c17172bc463a1",
+      "registryRepository": {
+        "url": "git+https://github.com/npm/mute-stream.git",
+        "type": "git"
+      },
+      "registryLicense": "ISC"
+    },
+    {
+      "name": "node-addon-api",
+      "version": "8.9.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/nodejs/node-addon-api.git",
+      "registryTarball": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.9.2.tgz",
+      "integrity": "sha512-VijLXbi3UACN69I0JVXJsX4tjACjNoQDgv2gTF6sx2wWEi8tkSg2eX8p5gSIFi8z2+DL3oHmY6OyKce38SDolg==",
+      "localTarball": "packages/85ae7b46799e601feeabb27b3713d6edbc2de78de8b5fedf5b409c7b684eead7.tgz",
+      "sha256": "4cd65698541b19a33f798f1dc25c02c6ed1c9d7749b8824b1a1ccecdd197c8ea",
+      "sizeBytes": 62490,
+      "registryGitHead": "2faf3294972dfcb3707fd5e28d451485f19e3dad",
+      "registryRepository": {
+        "url": "git://github.com/nodejs/node-addon-api.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "on-exit-leak-free",
+      "version": "2.1.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/mcollina/on-exit-or-gc.git",
+      "registryTarball": "https://registry.npmjs.org/on-exit-leak-free/-/on-exit-leak-free-2.1.2.tgz",
+      "integrity": "sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==",
+      "localTarball": "packages/b692f2f4cc2e441e7c280c3f5fe462b570aa7f17d0748ac128e6bc08e778f36e.tgz",
+      "sha256": "1ed10cfc6a8a8807b1c7b7eae520dbd15a104d5d0256202f8b08e1ec56cda1a8",
+      "sizeBytes": 3658,
+      "registryGitHead": "54e85eb597d8ae9104324070ad767c120d975f2c",
+      "registryRepository": {
+        "url": "git+https://github.com/mcollina/on-exit-or-gc.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "pino",
+      "version": "10.3.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/pinojs/pino.git",
+      "registryTarball": "https://registry.npmjs.org/pino/-/pino-10.3.1.tgz",
+      "integrity": "sha512-r34yH/GlQpKZbU1BvFFqOjhISRo1MNx1tWYsYvmj6KIRHSPMT2+yHOEb1SG6NMvRoHRF0a07kCOox/9yakl1vg==",
+      "localTarball": "packages/f5b5bc0b63db1ba52fe4481cfb363976af503354442d7bc9fd27c5e7845cc25e.tgz",
+      "sha256": "f570202f76745e817d96077bda2243a1420dcf543aea5d0abb1591252e6b06af",
+      "sizeBytes": 146732,
+      "registryGitHead": "6b344980eae3ebed904fc87caf4bba0ab9dbe946",
+      "registryRepository": {
+        "url": "git+https://github.com/pinojs/pino.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "pino-abstract-transport",
+      "version": "3.0.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/pinojs/pino-abstract-transport.git",
+      "registryTarball": "https://registry.npmjs.org/pino-abstract-transport/-/pino-abstract-transport-3.0.0.tgz",
+      "integrity": "sha512-wlfUczU+n7Hy/Ha5j9a/gZNy7We5+cXp8YL+X+PG8S0KXxw7n/JXA3c46Y0zQznIJ83URJiwy7Lh56WLokNuxg==",
+      "localTarball": "packages/6b8ec2055592c260d2dc1b2655280edf2bfc5e71f5b873908591daad27256f0c.tgz",
+      "sha256": "c02acefdad584490119ebd0ce2cdf29dead64971082a7ea74c28d92eef5a3c6a",
+      "sizeBytes": 8703,
+      "registryGitHead": "11556d6e141366ca7cbe1138ce8ddef72eaa2558",
+      "registryRepository": {
+        "url": "git+https://github.com/pinojs/pino-abstract-transport.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "pino-std-serializers",
+      "version": "7.1.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+ssh://git@github.com/pinojs/pino-std-serializers.git",
+      "registryTarball": "https://registry.npmjs.org/pino-std-serializers/-/pino-std-serializers-7.1.0.tgz",
+      "integrity": "sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw==",
+      "localTarball": "packages/31bdc1360e7b36f28f398600f0c7f7f3b9d4f7bc076c49b106722ee9d70abebe.tgz",
+      "sha256": "c8ee1578a9fd84a929924515d7572eaeb4a3944d38953eaf8eb3dbd165020763",
+      "sizeBytes": 10180,
+      "registryGitHead": "d32587d2006fd7697f04fe91dcb07830807719fe",
+      "registryRepository": {
+        "url": "git+ssh://git@github.com/pinojs/pino-std-serializers.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "process-warning",
+      "version": "4.0.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/process-warning.git",
+      "registryTarball": "https://registry.npmjs.org/process-warning/-/process-warning-4.0.1.tgz",
+      "integrity": "sha512-3c2LzQ3rY9d0hc1emcsHhfT9Jwz0cChib/QN89oME2R451w5fy3f0afAhERFZAwrbDU43wk12d0ORBpDVME50Q==",
+      "localTarball": "packages/495bd29a52f6ed8cd5a15480b7004ac5ec61539cb63c6c54d4e66e5b3369191a.tgz",
+      "sha256": "828285e437d503f1e315053aa6bff99e859b5f352878fe7eba171fe824696ca6",
+      "sizeBytes": 6613,
+      "registryGitHead": "1f0a4700f557892e9527af86a9492c9f1919fa58",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/process-warning.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "process-warning",
+      "version": "5.1.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/process-warning.git",
+      "registryTarball": "https://registry.npmjs.org/process-warning/-/process-warning-5.1.0.tgz",
+      "integrity": "sha512-jQSaVHsPgtyw60e1rQ/A+/ArPEj/S8pS/vFnyGa/gYFXrKk/6RuDkoqVDQ5NI5MmS01698ltlAk0NoDBNLujRw==",
+      "localTarball": "packages/69378cc91efa6511d03a3dc3a51d2fde29635e2aa047a7a8fff3664c2cc119c7.tgz",
+      "sha256": "98812059c26360ab9a3908a0de8556be7ef63c71fb76d04285a81e2c5d12451f",
+      "sizeBytes": 8641,
+      "registryGitHead": "2b3001a6665760157764f98e8a7e6f029808b2c8",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/process-warning.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "proxy-from-env",
+      "version": "2.1.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/Rob--W/proxy-from-env.git",
+      "registryTarball": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-2.1.0.tgz",
+      "integrity": "sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==",
+      "localTarball": "packages/892c3217563598ae8d25643ccaeb7fcb0bc1ff1ad31e1d17aaadc419002eaa1f.tgz",
+      "sha256": "e9c52dbf1e382319d5da00b8d964805859b7eb1424450e049d12743d7e19fc9a",
+      "sizeBytes": 5358,
+      "registryGitHead": "570ce3a4279d83af3ff13e7600a347d01c453394",
+      "registryRepository": {
+        "url": "git+https://github.com/Rob--W/proxy-from-env.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "quick-format-unescaped",
+      "version": "4.0.4",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/davidmarkclements/quick-format.git",
+      "registryTarball": "https://registry.npmjs.org/quick-format-unescaped/-/quick-format-unescaped-4.0.4.tgz",
+      "integrity": "sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg==",
+      "localTarball": "packages/0fc7e46ef06c50d89f8fc6a36ec30cafee31f56bc4597ef2c4af87ce36308425.tgz",
+      "sha256": "acba54ec5587ffddfb0811b693aad4844366772f01511291302d3380d431a485",
+      "sizeBytes": 4066,
+      "registryGitHead": "20ebf64c2f2e182f97923a423d468757b9a24a63",
+      "registryRepository": {
+        "url": "git+https://github.com/davidmarkclements/quick-format.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "react",
+      "version": "19.3.0",
+      "license": "MIT",
+      "scopes": ["browser-build"],
+      "repository": "https://github.com/react/react.git",
+      "registryTarball": "https://registry.npmjs.org/react/-/react-19.3.0.tgz",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==",
+      "localTarball": "packages/bd679726788e3c19d89bfd28ed998dc0ecc3cc762ce165eb4dcc8e602e251ba5.tgz",
+      "sha256": "5a4024110c49476e1538a70fd65b9e59d038fcc280b78eb933c24e10453afbf9",
+      "sizeBytes": 26394,
+      "registryGitHead": "1d34f91dfde6bba84d08b683aaba164c7194dacb",
+      "registryRepository": {
+        "url": "git+https://github.com/react/react.git",
+        "type": "git",
+        "directory": "packages/react"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.3.0",
+      "license": "MIT",
+      "scopes": ["browser-build"],
+      "repository": "https://github.com/react/react.git",
+      "registryTarball": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.0.tgz",
+      "integrity": "sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==",
+      "localTarball": "packages/e7069d7b1afc7978790db9dab0b1ad4016b25e5342165b01f575d1ea977c108c.tgz",
+      "sha256": "dbeffb1e6cdbbbba07f799da4635333d0e20c210a32278dded85441ec4cb6a17",
+      "sizeBytes": 1409226,
+      "registryGitHead": "1d34f91dfde6bba84d08b683aaba164c7194dacb",
+      "registryRepository": {
+        "url": "git+https://github.com/react/react.git",
+        "type": "git",
+        "directory": "packages/react-dom"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "real-require",
+      "version": "0.2.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/pinojs/real-require.git",
+      "registryTarball": "https://registry.npmjs.org/real-require/-/real-require-0.2.0.tgz",
+      "integrity": "sha512-57frrGM/OCTLqLOAh0mhVA9VBMHd+9U7Zb2THMGdBUoZVOtGbJzjxsYGDJ3A9AYYCP4hn6y1TVbaOfzWtm5GFg==",
+      "localTarball": "packages/91c5cc0bc3663f58e45690b626d3140155b2f44a8ffde897ce3e03cb9596d135.tgz",
+      "sha256": "2aa86d462e4bcec95cca91c935002e102644e1bb2fcd36a9b52e4f4555c73f96",
+      "sizeBytes": 2382,
+      "registryGitHead": "514f9d0ff860dd84a6cff52d89d437d5a5c3203b",
+      "registryRepository": {
+        "url": "git+https://github.com/pinojs/real-require.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "real-require",
+      "version": "1.0.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/pinojs/real-require.git",
+      "registryTarball": "https://registry.npmjs.org/real-require/-/real-require-1.0.0.tgz",
+      "integrity": "sha512-P4nbQYQfePJxRSmY+v/KINxVucm4NF3p3s7pJveMTtom52FR4YGltUQLB8idDXwDDWW+eYrWDFbuzUnjoWHF7g==",
+      "localTarball": "packages/0565be5110c7f1cd1a9cb137728de4c064a3e2649930bb3f4185e02c848bbfe7.tgz",
+      "sha256": "7a12c339665133f4ae2a2f447dfe1521c9969ede6c80dd09e781f600a2da3763",
+      "sizeBytes": 2083,
+      "registryGitHead": "c732a11f880ba6876649b090c6374f0e4065b2b4",
+      "registryRepository": {
+        "url": "git+https://github.com/pinojs/real-require.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "require-from-string",
+      "version": "2.0.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "floatdrop/require-from-string",
+      "registryTarball": "https://registry.npmjs.org/require-from-string/-/require-from-string-2.0.2.tgz",
+      "integrity": "sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==",
+      "localTarball": "packages/bc20339cbc91aaa3e6dc66f64fe3d3d1063c41024a0cfb526869b55ebbec3ad4.tgz",
+      "sha256": "cb694a4965908f7775a0c757f00cf4e624d193cd71d77988fbcca0f597b88d82",
+      "sizeBytes": 1816,
+      "registryGitHead": "d1575a49065eb7a49b86b4de963f04f1a14dfd60",
+      "registryRepository": {
+        "url": "git+https://github.com/floatdrop/require-from-string.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "ret",
+      "version": "0.5.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/fent/ret.js.git",
+      "registryTarball": "https://registry.npmjs.org/ret/-/ret-0.5.0.tgz",
+      "integrity": "sha512-I1XxrZSQ+oErkRR4jYbAyEEu2I0avBvvMM5JN+6EBprOGRCs63ENqZ3vjavq8fBw2+62G5LF5XelKwuJpcvcxw==",
+      "localTarball": "packages/b38fa89231a46b6da5e6754ea958b0dc08b4aa48fc94b99bd82cd28806e929b4.tgz",
+      "sha256": "4a990f0113ddcbc04d77b279730659ccfe5e5d700d014fc584bb09a9f50dff61",
+      "sizeBytes": 16454,
+      "registryGitHead": "90a77fcb4e3869bc45b61d332b852948b5982637",
+      "registryRepository": {
+        "url": "git://github.com/fent/ret.js.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "reusify",
+      "version": "1.1.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/mcollina/reusify.git",
+      "registryTarball": "https://registry.npmjs.org/reusify/-/reusify-1.1.0.tgz",
+      "integrity": "sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==",
+      "localTarball": "packages/49a719604e00d222b4f894e54e83f6a37eacefb85bbd7d7ff41d0b3cc6da47e4.tgz",
+      "sha256": "2460004412100eea8e96b98f14d3dfb4e22a6628654e5431d14f974c6201ca18",
+      "sizeBytes": 4683,
+      "registryGitHead": "b2b16eef390ac330068c1ccea4fdec233f4d0f6a",
+      "registryRepository": {
+        "url": "git+https://github.com/mcollina/reusify.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "rfdc",
+      "version": "1.4.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/davidmarkclements/rfdc.git",
+      "registryTarball": "https://registry.npmjs.org/rfdc/-/rfdc-1.4.1.tgz",
+      "integrity": "sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==",
+      "localTarball": "packages/254614cf47e3b568e914e632c0510d09b47b3a287cab5d1a834576511a341a2f.tgz",
+      "sha256": "559af1871d927b198ddfa472da35839ba31b01fdf4645206aae279cab91d566a",
+      "sizeBytes": 6828,
+      "registryGitHead": "29ea53f8ccc618495b40cfafba475952b62be847",
+      "registryRepository": {
+        "url": "git+https://github.com/davidmarkclements/rfdc.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "safe-regex2",
+      "version": "5.1.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git://github.com/fastify/safe-regex2.git",
+      "registryTarball": "https://registry.npmjs.org/safe-regex2/-/safe-regex2-5.1.1.tgz",
+      "integrity": "sha512-mOSBvHGDZMuIEZMdOz/aCEYDCv0E7nfcNsIhUF+/P+xC7Hyf3FkvymqgPbg9D1EdSGu+uKbJgy09K/RKKc7kJA==",
+      "localTarball": "packages/0ae99310d2b2cdfbc491fb8a0830a704e36ae2a0a21afe8f57e053c7d1cd3eda.tgz",
+      "sha256": "a963f5da58a4cb231a7647304fdcb47617563ad969f72fd9bbc681dbac9322e1",
+      "sizeBytes": 4884,
+      "registryGitHead": "35dd3a751b3362d265adfc30170078667464645e",
+      "registryRepository": {
+        "url": "git://github.com/fastify/safe-regex2.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "safe-stable-stringify",
+      "version": "2.5.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/BridgeAR/safe-stable-stringify.git",
+      "registryTarball": "https://registry.npmjs.org/safe-stable-stringify/-/safe-stable-stringify-2.5.0.tgz",
+      "integrity": "sha512-b3rppTKm9T+PsVCBEOUR46GWI7fdOs00VKZ1+9c1EWDaDMvjQc6tUwuFyIprgGgTcWoVHSKrU8H31ZHA2e0RHA==",
+      "localTarball": "packages/280202ea3426f791307dfb975189503a7397eb4e3dc5487f6803c63347662c1a.tgz",
+      "sha256": "acf5b4e0f8e5f0bfd9479eae41a6dd90e175d89eecd98fe1c834eab602073e91",
+      "sizeBytes": 7286,
+      "registryGitHead": "0c192c2c1e26676ba5af1f7dbe066b98d76f353f",
+      "registryRepository": {
+        "url": "git+https://github.com/BridgeAR/safe-stable-stringify.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "safer-buffer",
+      "version": "2.1.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/ChALkeR/safer-buffer.git",
+      "registryTarball": "https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz",
+      "integrity": "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==",
+      "localTarball": "packages/2fb14d3728e4ebf313be4634b146bd90cd3ad3559157baec03b64eec0878a0ba.tgz",
+      "sha256": "78812f65ae3b98071ce1c9bacbe0666f4220d0b2753c2a11530eb27df440a3b3",
+      "sizeBytes": 12035,
+      "registryGitHead": "e8ac214944eda30e1e6c6b7d7e7f6a21cf7dce7c",
+      "registryRepository": {
+        "url": "git+https://github.com/ChALkeR/safer-buffer.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "scheduler",
+      "version": "0.28.0",
+      "license": "MIT",
+      "scopes": ["browser-build"],
+      "repository": "https://github.com/react/react.git",
+      "registryTarball": "https://registry.npmjs.org/scheduler/-/scheduler-0.28.0.tgz",
+      "integrity": "sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==",
+      "localTarball": "packages/e06edbe7016d8d031d2dad11c0bbf39ddadfa0baa594a53369cda8972bfc7ece.tgz",
+      "sha256": "302995d590e3c0a11eeb40d1d0f299c1df1800135d599d85cdd5faeb614f32d6",
+      "sizeBytes": 10011,
+      "registryGitHead": "1d34f91dfde6bba84d08b683aaba164c7194dacb",
+      "registryRepository": {
+        "url": "git+https://github.com/react/react.git",
+        "type": "git",
+        "directory": "packages/scheduler"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "secure-json-parse",
+      "version": "4.1.0",
+      "license": "BSD-3-Clause",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/fastify/secure-json-parse.git",
+      "registryTarball": "https://registry.npmjs.org/secure-json-parse/-/secure-json-parse-4.1.0.tgz",
+      "integrity": "sha512-l4KnYfEyqYJxDwlNVyRfO2E4NTHfMKAWdUuA8J0yve2Dz/E/PdBepY03RvyJpssIpRFwJoCD55wA+mEDs6ByWA==",
+      "localTarball": "packages/4d874ce31a4d724ff093b3b605f5c51561d1d819551158fc19f42178918cf206.tgz",
+      "sha256": "c60942c81cbd56b695c8a0ddb1558933d5f20c63b8176ad594717fe5aaf842eb",
+      "sizeBytes": 9853,
+      "registryGitHead": "bb46008b83674b74b482250bd54d8e2acb516358",
+      "registryRepository": {
+        "url": "git+https://github.com/fastify/secure-json-parse.git",
+        "type": "git"
+      },
+      "registryLicense": "BSD-3-Clause"
+    },
+    {
+      "name": "semver",
+      "version": "7.8.5",
+      "license": "ISC",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/npm/node-semver.git",
+      "registryTarball": "https://registry.npmjs.org/semver/-/semver-7.8.5.tgz",
+      "integrity": "sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==",
+      "localTarball": "packages/82a86616e50ded7925322daf1aa73ade1c2c4b1f4f9ac088bc8cb5b82de067bd.tgz",
+      "sha256": "d85045d4300d7d57c891336b95df532e73f34c22ffcd222452b6d08b9d127d5d",
+      "sizeBytes": 29399,
+      "registryGitHead": "6e05b7637396ac66522cff8731f07cfe0ef49a29",
+      "registryRepository": {
+        "url": "git+https://github.com/npm/node-semver.git",
+        "type": "git"
+      },
+      "registryLicense": "ISC"
+    },
+    {
+      "name": "set-cookie-parser",
+      "version": "2.7.2",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "nfriedly/set-cookie-parser",
+      "registryTarball": "https://registry.npmjs.org/set-cookie-parser/-/set-cookie-parser-2.7.2.tgz",
+      "integrity": "sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw==",
+      "localTarball": "packages/ffda4466caf78b3b9898398218173e1f3c015ed77116c85affcee7315a430d92.tgz",
+      "sha256": "1fdf9181ca54f9cdbd4d6bcfc59d28d9f0495fc2743029169d8213987210596c",
+      "sizeBytes": 6185,
+      "registryGitHead": "6e0577b39bddeb2ca30c6c6332f2abfccea51906",
+      "registryRepository": {
+        "url": "git+https://github.com/nfriedly/set-cookie-parser.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "signal-exit",
+      "version": "4.1.0",
+      "license": "ISC",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/tapjs/signal-exit.git",
+      "registryTarball": "https://registry.npmjs.org/signal-exit/-/signal-exit-4.1.0.tgz",
+      "integrity": "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==",
+      "localTarball": "packages/09ce5ebc7ff1552bf0ed979e2479321c6a9a4b7a06d90ece7a70fa360007eff4.tgz",
+      "sha256": "9d3b58a811ecf6a641537387289274cd14f5bb912a27e4f1f2a74182bca8b795",
+      "sizeBytes": 13369,
+      "registryGitHead": "458776d9cf8be89712aa1f7b45bb2163ce15ef4a",
+      "registryRepository": {
+        "url": "git+https://github.com/tapjs/signal-exit.git",
+        "type": "git"
+      },
+      "registryLicense": "ISC"
+    },
+    {
+      "name": "sonic-boom",
+      "version": "4.2.1",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/pinojs/sonic-boom.git",
+      "registryTarball": "https://registry.npmjs.org/sonic-boom/-/sonic-boom-4.2.1.tgz",
+      "integrity": "sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==",
+      "localTarball": "packages/1ad45b357b121cfde07ed556c8c6cbbfe84cfea913b7e9fe7ab869db6825371d.tgz",
+      "sha256": "bf128eca0c2a2ed9eb9f598a69eb374df08f3886dd9c506c5129935487166b87",
+      "sizeBytes": 15731,
+      "registryGitHead": "ada84a68dfccfe9cf1b34f4b3170b6907dd4c468",
+      "registryRepository": {
+        "url": "git+https://github.com/pinojs/sonic-boom.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "split2",
+      "version": "4.2.0",
+      "license": "ISC",
+      "scopes": ["server-runtime"],
+      "repository": "https://github.com/mcollina/split2.git",
+      "registryTarball": "https://registry.npmjs.org/split2/-/split2-4.2.0.tgz",
+      "integrity": "sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==",
+      "localTarball": "packages/ac1d8053759f4403e45cd65fc4f307c82a59f4e7d06f7f03c3f3c351c35afbbc.tgz",
+      "sha256": "e0061e7f042fc5ff6dcda8afb66619757d92ab1ff514a28a5904f2ebde27bf54",
+      "sizeBytes": 4668,
+      "registryGitHead": "919b26b59c9762b817a121f4416ccc44d82043ad",
+      "registryRepository": {
+        "url": "git+https://github.com/mcollina/split2.git",
+        "type": "git"
+      },
+      "registryLicense": "ISC"
+    },
+    {
+      "name": "thread-stream",
+      "version": "4.2.0",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/mcollina/thread-stream.git",
+      "registryTarball": "https://registry.npmjs.org/thread-stream/-/thread-stream-4.2.0.tgz",
+      "integrity": "sha512-e2zZ96wSChazBsbENf/Pcm/4swHt2cEKQ92rhUjkL9GCKiTDJIaTBenjE/m9DXi0QBmTMDkFDdOomUy20A1tDQ==",
+      "localTarball": "packages/11bc28461eb7a1a8280383a9e479e616949caa676b8d4400caf51153488d1f7e.tgz",
+      "sha256": "e98272ddea88338742f60df3328bcb616efcb7c6184ddb0ee5608058b73f1885",
+      "sizeBytes": 21147,
+      "registryGitHead": "e73c3dd60fe99492721002e6a7901a7311b7031c",
+      "registryRepository": {
+        "url": "git+https://github.com/mcollina/thread-stream.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "toad-cache",
+      "version": "3.7.4",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/kibertoad/toad-cache.git",
+      "registryTarball": "https://registry.npmjs.org/toad-cache/-/toad-cache-3.7.4.tgz",
+      "integrity": "sha512-m1TdR/rvT7kgGJZhspNtXdsdYk0fddFpJJFlG5s+UkPFo6lkLoZ3YLOaovPYjq1R75NP5JfeTlSHaOsE09peCg==",
+      "localTarball": "packages/39f94a73f06a0af19baff32998573c43df1cf854abbc9af8a56c9e2e6fc4d941.tgz",
+      "sha256": "fb7f029bae841d6c98fe234c8fa171c1dce6b287a7c4cf9295f772771a30ffc4",
+      "sizeBytes": 7142,
+      "registryGitHead": null,
+      "registryRepository": {
+        "url": "git+https://github.com/kibertoad/toad-cache.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "undici-types",
+      "version": "7.24.6",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/nodejs/undici.git",
+      "registryTarball": "https://registry.npmjs.org/undici-types/-/undici-types-7.24.6.tgz",
+      "integrity": "sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==",
+      "localTarball": "packages/b558fb42b821cb0034fd1642d232c81c327a0a5f71125bc02ae301d1a5c77dea.tgz",
+      "sha256": "2abf595a86b87dd22951218848ec4ad89c018db0e656716dc04b8b2f9290a0f4",
+      "sizeBytes": 28510,
+      "registryGitHead": "38eab360daff8f72927dd6083e755ca37d6d624e",
+      "registryRepository": {
+        "url": "git+https://github.com/nodejs/undici.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    },
+    {
+      "name": "zod",
+      "version": "4.6.7",
+      "license": "MIT",
+      "scopes": ["server-runtime"],
+      "repository": "git+https://github.com/colinhacks/zod.git",
+      "registryTarball": "https://registry.npmjs.org/zod/-/zod-4.6.7.tgz",
+      "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==",
+      "localTarball": "packages/31d0566281954af7ee8d8cdd37dca1de5306b74849793e091bcc14a1d800a1c9.tgz",
+      "sha256": "84efd155bed93270286e793fc951be270b536cbd5b0eeb111f0fa3967201d698",
+      "sizeBytes": 1141941,
+      "registryGitHead": "b500a2ee95134f81d74da7911d7378dd2853d042",
+      "registryRepository": {
+        "url": "git+https://github.com/colinhacks/zod.git",
+        "type": "git"
+      },
+      "registryLicense": "MIT"
+    }
+  ],
+  "upstreamArchives": [
+    {
+      "name": "jellyfin-sdk",
+      "repository": "https://github.com/jellyfin/jellyfin-sdk-typescript",
+      "revision": "8a167e4aedd5a86993c4273fe153d49722233c3b",
+      "registryMetadata": "npm version gitHead for corresponding non-platform package",
+      "download": "https://codeload.github.com/jellyfin/jellyfin-sdk-typescript/tar.gz/8a167e4aedd5a86993c4273fe153d49722233c3b",
+      "localFile": "upstream/jellyfin-sdk-8a167e4aedd5a86993c4273fe153d49722233c3b.tar.gz",
+      "sha256": "3e34d4b4b79526c9589ef4e2379c2c8fd61a7ae0347145b148946c382827ef2a",
+      "bytes": 321492
+    },
+    {
+      "name": "node-rs",
+      "repository": "https://github.com/napi-rs/node-rs",
+      "revision": "56c64a1f875d9568b0a6a79b6c658ce5996d25a2",
+      "registryMetadata": "npm version gitHead for corresponding non-platform package",
+      "download": "https://codeload.github.com/napi-rs/node-rs/tar.gz/56c64a1f875d9568b0a6a79b6c658ce5996d25a2",
+      "localFile": "upstream/node-rs-56c64a1f875d9568b0a6a79b6c658ce5996d25a2.tar.gz",
+      "sha256": "346056747d8c7a3f92ade067fb75f13cb5f604b01613837ef68562552aae84ea",
+      "bytes": 6031234
+    },
+    {
+      "name": "better-sqlite3",
+      "repository": "https://github.com/WiseLibs/better-sqlite3",
+      "revision": "dbc2ea1165fef1f599b9be12faea33fa5e9d7ffb",
+      "registryMetadata": "npm version gitHead for corresponding non-platform package",
+      "download": "https://codeload.github.com/WiseLibs/better-sqlite3/tar.gz/dbc2ea1165fef1f599b9be12faea33fa5e9d7ffb",
+      "localFile": "upstream/better-sqlite3-dbc2ea1165fef1f599b9be12faea33fa5e9d7ffb.tar.gz",
+      "sha256": "8d461cd4cdd798def3a0b7ed9ef6af2f411a1a09aa8f205ca3d8fe06ba476b78",
+      "bytes": 2740378
+    },
+    {
+      "name": "hls-js",
+      "repository": "https://github.com/video-dev/hls.js",
+      "revision": "e5ff3583965e3af16c4a4b4d2b5f7bd1ffb5b7de",
+      "registryMetadata": "npm version gitHead for corresponding non-platform package",
+      "download": "https://codeload.github.com/video-dev/hls.js/tar.gz/e5ff3583965e3af16c4a4b4d2b5f7bd1ffb5b7de",
+      "localFile": "upstream/hls-js-e5ff3583965e3af16c4a4b4d2b5f7bd1ffb5b7de.tar.gz",
+      "sha256": "82c374fe98647f5c09959b33082e0d973de34baf0763db025233c7581d928b8b",
+      "bytes": 988225
+    },
+    {
+      "name": "react",
+      "download": "https://codeload.github.com/facebook/react/tar.gz/1d34f91dfde6bba84d08b683aaba164c7194dacb",
+      "localFile": "upstream/react-1d34f91dfde6bba84d08b683aaba164c7194dacb.tar.gz",
+      "sha256": "ef34c2ad2fe4af769cdc8a067d827fbba8fde677d83f5befaa8a8cc5c3a8c6be",
+      "bytes": 10252630,
+      "verification": "official HTTPS source; locally computed SHA-256"
+    },
+    {
+      "name": "node",
+      "download": "https://nodejs.org/dist/v24.19.0/node-v24.19.0.tar.xz",
+      "localFile": "upstream/node-v24.19.0.tar.xz",
+      "sha256": "f6d95e10a0431ee1067fc6aabe9f762908b4716dd35324e1ddb4b1466b76659f",
+      "bytes": 55505276,
+      "verification": "official Node release SHA-256 list"
+    },
+    {
+      "name": "nginx",
+      "download": "https://nginx.org/download/nginx-1.30.5.tar.gz",
+      "localFile": "upstream/nginx-1.30.5.tar.gz",
+      "sha256": "6c20565aa2325cb82216ae804f4a4ff1875179014759a381c42ddc8e11c4906d",
+      "bytes": 1328600,
+      "verification": "official HTTPS source; locally computed SHA-256"
+    }
+  ],
+  "sourceLimitations": [
+    "Registry package tarballs can contain compiled native artifacts or generated code; their contents are not automatically complete corresponding source.",
+    "The linux-x64-gnu Argon2 binary package has no registry gitHead. The included wrapper source revision is version-associated but exact binary build correspondence is unverified.",
+    "The registry gives no gitHead for @types/node 24.19.1, helmet 8.3.0 or toad-cache 3.7.4.",
+    "Pinned Node and Nginx base images also contain OS packages whose exact source packages and build recipes must be inventoried for each distributed image."
+  ]
+}

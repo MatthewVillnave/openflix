@@ -1,3 +1,6 @@
+import { getImageApi } from '@jellyfin/sdk/lib/utils/api/image-api.js';
+import { validateArtwork } from './artwork.js';
+import type { ImageApi } from '@jellyfin/sdk/lib/generated-client/api/image-api.js';
 import { playbackOperations } from './playback.js';
 import type { LibraryApi } from '@jellyfin/sdk/lib/generated-client/api/library-api.js';
 import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api.js';
@@ -90,7 +93,7 @@ function normalized(error: unknown): ConnectorError {
   }
   return new ConnectorError('invalid_response');
 }
-function apiFor(baseUrl: string, deviceId: string, token = ''): JellyfinApi {
+function apiFor(baseUrl: string, deviceId: string, token = '', signal?: AbortSignal): JellyfinApi {
   if (!/^[a-zA-Z0-9-]{1,128}$/.test(deviceId)) throw new ConnectorError('invalid_configuration');
   const transport = axios.create({
     adapter: 'http',
@@ -103,10 +106,10 @@ function apiFor(baseUrl: string, deviceId: string, token = ''): JellyfinApi {
   });
   // Absolute deadline also bounds slow/dripping responses, not just socket inactivity.
   transport.interceptors.request.use((config) => {
-    config.signal =
-      config.signal instanceof AbortSignal
-        ? AbortSignal.any([config.signal, AbortSignal.timeout(5000)])
-        : AbortSignal.timeout(5000);
+    const signals = [AbortSignal.timeout(5000)];
+    if (config.signal instanceof AbortSignal) signals.push(config.signal);
+    if (signal) signals.push(signal);
+    config.signal = AbortSignal.any(signals);
     return config;
   });
   return new Jellyfin({
@@ -175,11 +178,13 @@ function noSecretEcho(value: unknown, secrets: string[]): void {
 export interface JellyfinConnectorOptions {
   baseUrl: string;
   credential: CredentialRef;
+  signal?: AbortSignal;
 }
 /** Opaque bytes are server-only. The caller must encrypt them and clear the buffer. */
 export async function authenticateJellyfin(input: {
   baseUrl: string;
   deviceId: string;
+  expectedServerId?: string;
   username: string;
   password: string;
 }): Promise<{ server: ConnectorServerInfo; libraries: Library[]; secret: Uint8Array }> {
@@ -194,6 +199,8 @@ export async function authenticateJellyfin(input: {
   let token = '';
   try {
     const server = await serverInfo(api);
+    if (input.expectedServerId && server.id !== input.expectedServerId)
+      throw new ConnectorError('identity_mismatch');
     const response = await getAuthenticationApi(api).authenticateUserByName({
       authenticateUserByName: { Username: input.username, Pw: input.password },
     });
@@ -236,7 +243,7 @@ export function createJellyfinConnector(
     let api: Api | undefined;
     try {
       const credential = credentialSchema.parse(JSON.parse(Buffer.from(secret).toString('utf8')));
-      api = apiFor(baseUrl, options.credential.id);
+      api = apiFor(baseUrl, options.credential.id, '', options.signal);
       const server = await serverInfo(api);
       noSecretEcho(server, [credential.token]);
       if (server.id !== credential.serverId) throw new ConnectorError('identity_mismatch');
@@ -278,6 +285,7 @@ export function createJellyfinConnector(
       return withCredential(async (_api, credential) => {
         const info = await serverInfo(apiFor(baseUrl, options.credential.id));
         noSecretEcho(info, [credential.token]);
+        if (info.id !== credential.serverId) throw new ConnectorError('identity_mismatch');
         return info;
       });
     },
@@ -331,6 +339,8 @@ export function createJellyfinConnector(
                   sortBy: ['SortName'],
                   sortOrder: ['Ascending'],
                   fields: [
+                    'Overview',
+                    'Genres',
                     'ParentId',
                     'SortName',
                     'ProviderIds',
@@ -380,6 +390,64 @@ export function createJellyfinConnector(
         if (item.id !== id) throw new ConnectorError('invalid_response');
         noSecretEcho(item, [credential.token]);
         return item;
+      });
+    },
+    async verifyItems(ids) {
+      if (ids.length > 256 || ids.some((id) => !identifier.safeParse(id).success))
+        throw new ConnectorError('invalid_configuration');
+      await withCredential(async (api, credential) => {
+        // Explicit-ID list queries bypass current library visibility on Jellyfin
+        // 10.11.11. Use the visibility-enforcing single-item operation instead.
+        const requested = [...new Set(ids)];
+        let next = 0;
+        let failure: unknown;
+        const results = await Promise.allSettled(
+          Array.from({ length: Math.min(3, requested.length) }, async () => {
+            while (!failure) {
+              options.signal?.throwIfAborted();
+              const id = requested[next++];
+              if (!id) return;
+              try {
+                const item = normalizeItem(
+                  (await catalogApi(api).getItem({ itemId: id, userId: credential.userId })).data,
+                );
+                if (item.id !== id) throw new ConnectorError('invalid_response');
+                noSecretEcho(item, [credential.token]);
+              } catch (error) {
+                failure ??= error;
+                throw error;
+              }
+            }
+          }),
+        );
+        const rejected = results.find((result) => result.status === 'rejected');
+        if (rejected?.status === 'rejected') throw failure ?? rejected.reason;
+      });
+    },
+    async getArtwork(id, kind, signal) {
+      if (!identifier.safeParse(id).success || !['poster', 'backdrop'].includes(kind))
+        throw new ConnectorError('invalid_configuration');
+      return withCredential(async (api) => {
+        const response = await (
+          getImageApi(api) as unknown as Pick<ImageApi, 'getItemImage'>
+        ).getItemImage(
+          {
+            itemId: id,
+            imageType: kind === 'poster' ? 'Primary' : 'Backdrop',
+            imageIndex: 0,
+            format: 'Jpg',
+            quality: 85,
+            maxWidth: kind === 'poster' ? 480 : 1920,
+            maxHeight: kind === 'poster' ? 720 : 1080,
+          },
+          {
+            responseType: 'arraybuffer',
+            signal,
+            maxContentLength: 2 * 1024 * 1024,
+            headers: { Accept: 'image/jpeg' },
+          },
+        );
+        return validateArtwork(response.data, response.headers['content-type']);
       });
     },
     async search(): Promise<MediaItem[]> {

@@ -14,6 +14,7 @@ import type {
   PlaybackSession,
   PlaybackStream,
   PlaybackStreamRequest,
+  PlaybackDiagnostic,
 } from '@openflix/connector-core';
 const id = z.string().regex(/^[a-zA-Z0-9-]{1,128}$/);
 // Shared DTO fields are bounded, not required to have video/audio semantics on subtitles or data.
@@ -169,62 +170,98 @@ export function validRange(range: string): boolean {
   if (!m[1]) return Number(m[2]) > 0;
   return !m[2] || Number(m[2]) >= Number(m[1]);
 }
-function hlsSource(source: z.infer<typeof sourceSchema>) {
+const hdrRanges = new Set([
+  'HDR10',
+  'HDR10Plus',
+  'HLG',
+  'DOVI',
+  'DOVIWithHDR10',
+  'DOVIWithHLG',
+  'DOVIWithSDR',
+  'DOVIWithEL',
+  'DOVIWithHDR10Plus',
+  'DOVIWithELHDR10Plus',
+]);
+function sourceConstraints(source: Source): NonNullable<PlaybackDiagnostic['sourceConstraints']> {
+  const issues: NonNullable<PlaybackDiagnostic['sourceConstraints']>[number][] = [];
+  if (source.Protocol !== 'File' || source.IsRemote) issues.push('non_file_or_remote');
   if (
-    source.Protocol !== 'File' ||
-    source.IsRemote ||
     source.IsInfiniteStream ||
     source.RequiresOpening ||
     source.RequiresClosing ||
-    (source.VideoType && source.VideoType !== 'VideoFile') ||
-    !hasRuntime(source) ||
-    source.RunTimeTicks > 144000000000
+    (source.VideoType && source.VideoType !== 'VideoFile')
   )
-    return;
+    issues.push('live_or_open_resource');
+  if (!hasRuntime(source) || source.RunTimeTicks > 144000000000) issues.push('runtime');
   const videos = (source.MediaStreams ?? []).filter((s) => s.Type === 'Video' && !s.IsExternal);
   const audios = (source.MediaStreams ?? []).filter((s) => s.Type === 'Audio' && !s.IsExternal);
-  if (videos.length !== 1 || !audios.length) return;
-  const v = videos[0]!;
-  if (
-    !v.Codec ||
-    !v.Width ||
-    !v.Height ||
-    (v.BitDepth != null && v.BitDepth <= 0) ||
-    v.Width > 1920 ||
-    v.Height > 1080 ||
-    v.IsInterlaced ||
-    (v.VideoRangeType && v.VideoRangeType !== 'SDR') ||
-    invalidFrameRate(v, 60)
-  )
-    return;
+  if (videos.length !== 1 || !audios.length) issues.push('stream_layout');
+  const v = videos[0],
+    a = audios.find((a) => a.Index === source.DefaultAudioStreamIndex) ?? audios[0];
+  if (v) {
+    if (!v.Width || !v.Height || v.Width > 1920 || v.Height > 1080) issues.push('dimensions');
+    if (v.BitDepth != null && v.BitDepth <= 0) issues.push('video_shape');
+    if (v.IsInterlaced) issues.push('interlaced');
+    if (v.VideoRangeType && v.VideoRangeType !== 'SDR' && !hdrRanges.has(v.VideoRangeType)) {
+      issues.push('dynamic_range');
+      issues.push(
+        ['HDR10', 'HDR10Plus', 'HLG'].includes(v.VideoRangeType)
+          ? 'hdr_input'
+          : [
+                'DOVI',
+                'DOVIWithHDR10',
+                'DOVIWithHLG',
+                'DOVIWithSDR',
+                'DOVIWithEL',
+                'DOVIWithHDR10Plus',
+                'DOVIWithELHDR10Plus',
+                'DOVIInvalid',
+              ].includes(v.VideoRangeType)
+            ? 'dolby_vision_input'
+            : 'unknown_range',
+      );
+    }
+    if (invalidFrameRate(v, 60)) issues.push('frame_rate');
+    if (
+      !v.Codec ||
+      !['h264', 'hevc', 'h265', 'vp8', 'vp9', 'av1', 'mpeg2video', 'mpeg4', 'vc1'].includes(v.Codec)
+    )
+      issues.push('video_codec');
+  }
+  if (a) {
+    if (!a.Channels || (a.BitDepth != null && a.BitDepth <= 0)) issues.push('audio_shape');
+    if (
+      !a.Codec ||
+      ![
+        'aac',
+        'ac3',
+        'eac3',
+        'dts',
+        'truehd',
+        'flac',
+        'mp3',
+        'opus',
+        'vorbis',
+        'alac',
+        'pcm_s16le',
+        'pcm_s24le',
+        'pcm_f32le',
+      ].includes(a.Codec)
+    )
+      issues.push('audio_codec');
+  }
+  return [...new Set(issues)];
+}
+function hlsSource(source: Source) {
+  if (sourceConstraints(source).length || !hasRuntime(source)) return;
+  const v = (source.MediaStreams ?? []).find((s) => s.Type === 'Video' && !s.IsExternal)!;
+  const audios = (source.MediaStreams ?? []).filter((s) => s.Type === 'Audio' && !s.IsExternal);
   const a = audios.find((a) => a.Index === source.DefaultAudioStreamIndex) ?? audios[0]!;
-  if (
-    !a.Codec ||
-    !a.Channels ||
-    (a.BitDepth != null && a.BitDepth <= 0) ||
-    !['h264', 'hevc', 'h265', 'vp8', 'vp9', 'av1', 'mpeg2video', 'mpeg4', 'vc1'].includes(
-      v.Codec,
-    ) ||
-    ![
-      'aac',
-      'ac3',
-      'eac3',
-      'dts',
-      'truehd',
-      'flac',
-      'mp3',
-      'opus',
-      'vorbis',
-      'alac',
-      'pcm_s16le',
-      'pcm_s24le',
-      'pcm_f32le',
-    ].includes(a.Codec)
-  )
-    return;
+  if (!v.Codec || !a.Codec || !a.Channels) return;
   return {
     durationMs: source.RunTimeTicks / 10000,
     videoCopy:
+      (!v.VideoRangeType || v.VideoRangeType === 'SDR') &&
       v.Codec === 'h264' &&
       v.BitRate != null &&
       v.BitRate > 0 &&
@@ -312,13 +349,18 @@ export function playbackOperations(access: Access) {
             return plan;
           }
         }
-        if (profile.formats.includes('hls-h264-aac') && data.MediaSources.some(hlsSource)) {
+        const requestedSource = data.MediaSources.find((source) => hlsSource(source));
+        const requestedStreams = requestedSource && hlsSource(requestedSource);
+        if (profile.formats.includes('hls-h264-aac') && requestedSource && requestedStreams) {
           const fallback = parsePlaybackInfo(
             (
               await getMediaInfoApi(api).getPostedPlaybackInfo({
                 itemId,
                 playbackInfoDto: {
                   UserId: credential.userId,
+                  // Jellyfin applies track indexes only when the selected MediaSourceId matches.
+                  MediaSourceId: requestedSource.Id,
+                  AudioStreamIndex: requestedStreams.audioIndex,
                   EnableDirectPlay: true,
                   EnableDirectStream: true,
                   EnableTranscoding: true,
@@ -354,6 +396,7 @@ export function playbackOperations(access: Access) {
                           { Condition: 'LessThanEqual', Property: 'Width', Value: '1920' },
                           { Condition: 'LessThanEqual', Property: 'Height', Value: '1080' },
                           { Condition: 'LessThanEqual', Property: 'VideoBitDepth', Value: '8' },
+                          { Condition: 'Equals', Property: 'VideoRangeType', Value: 'SDR' },
                           { Condition: 'LessThanEqual', Property: 'VideoLevel', Value: '41' },
                           { Condition: 'LessThanEqual', Property: 'VideoFramerate', Value: '30' },
                         ],
@@ -373,9 +416,8 @@ export function playbackOperations(access: Access) {
           );
           if (fallback.ErrorCode) throw new ConnectorError('unsupported');
           if (
-            policy?.singleVersionOnly &&
-            (fallback.MediaSources.length !== 1 ||
-              fallback.MediaSources[0]?.Id !== data.MediaSources[0]?.Id)
+            fallback.MediaSources.length !== 1 ||
+            fallback.MediaSources[0]?.Id !== requestedSource.Id
           )
             throw new ConnectorError('unsupported');
           for (const source of fallback.MediaSources) {
@@ -431,6 +473,7 @@ export function playbackOperations(access: Access) {
         throw new ConnectorError('unsupported', {
           stage: 'planning',
           resourceKind: 'playback_info',
+          sourceConstraints: [...new Set(data.MediaSources.flatMap(sourceConstraints))],
           reason:
             data.MediaSources.length > 0 && data.MediaSources.every((s) => !hasRuntime(s))
               ? 'insufficient_runtime'

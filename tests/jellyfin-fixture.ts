@@ -17,6 +17,17 @@ export function observedCatalog(types: readonly string[]): Record<string, unknow
 }
 export async function jellyfinFixture() {
   const state = {
+    artwork: {
+      bytes: Buffer.from([255, 216, 255, 192, 0, 8, 8, 0, 1, 0, 1, 1, 255, 217]),
+      contentType: 'image/jpeg',
+      delay: 0,
+      wait: undefined as Promise<void> | undefined,
+    },
+    authWait: undefined as Promise<void> | undefined,
+    catalogWait: undefined as Promise<void> | undefined,
+    itemWait: undefined as Promise<void> | undefined,
+    itemAborts: 0,
+    permissionDelay: 0,
     playback: playbackFixtureState(),
     collectionType: 'movies' as string | null,
     libraryName: 'Accessible movies',
@@ -28,6 +39,7 @@ export async function jellyfinFixture() {
     pageOverride: undefined as undefined | ((offset: number, limit: number) => unknown),
     version: '12.1.0',
     serverId,
+    serverIdResponses: [] as string[],
     name: 'Fixture Jellyfin',
     token: randomBytes(32).toString('hex'),
     redirectPath: '',
@@ -37,11 +49,23 @@ export async function jellyfinFixture() {
     mode: 'normal' as 'normal' | 'redirect' | 'malformed' | 'unreachable' | 'slow' | 'oversized',
     requests: [] as { path: string; authorization: string; body: string }[],
   };
+  const accounts = new Map<string, { id: string; state: typeof state }>();
+  const rootState = state;
   const server = createServer(async (request, response) => {
     const path = request.url ?? '/';
     let body = '';
     for await (const chunk of request) body += String(chunk);
     const authorization = request.headers.authorization ?? '';
+    const loginName =
+      path === '/jellyfin/Users/AuthenticateByName'
+        ? (JSON.parse(body || '{}').Username as string)
+        : undefined;
+    const account = loginName
+      ? accounts.get(loginName)
+      : [...accounts.values()].find((a) => authorization.includes(`Token="${a.state.token}"`));
+    const state = account?.state ?? rootState;
+    const currentUserId = account?.id ?? userId;
+    const currentUsername = loginName && account ? loginName : 'fixture-user';
     state.requests.push({ path, authorization, body });
     const json = (data: unknown, status = 200) => {
       response.writeHead(status, { 'content-type': 'application/json' });
@@ -66,8 +90,10 @@ export async function jellyfinFixture() {
       return;
     }
     if (path === '/jellyfin/System/Info/Public') {
+      if (state.permissionDelay)
+        await new Promise((resolve) => setTimeout(resolve, state.permissionDelay));
       json({
-        Id: state.serverId,
+        Id: state.serverIdResponses.shift() ?? state.serverId,
         ServerName: state.name,
         Version: state.version,
         ProductName: 'Jellyfin',
@@ -76,14 +102,15 @@ export async function jellyfinFixture() {
     }
     if (path === '/jellyfin/Users/AuthenticateByName' && request.method === 'POST') {
       const input = JSON.parse(body);
-      if (input.Username !== 'fixture-user' || input.Pw !== upstreamPassword) {
+      if (input.Username !== currentUsername || input.Pw !== upstreamPassword) {
         json({ error: 'wrong password' }, 401);
         return;
       }
+      await state.authWait;
       state.valid = true;
       json({
         AccessToken: state.token,
-        User: { Id: userId, Name: 'fixture-user' },
+        User: { Id: currentUserId, Name: currentUsername },
         ServerId: state.serverId,
       });
       return;
@@ -93,13 +120,13 @@ export async function jellyfinFixture() {
       return;
     }
     if (path === '/jellyfin/Users/Me') {
-      json({ Id: userId, Name: 'fixture-user' });
+      json({ Id: currentUserId, Name: currentUsername });
       return;
     }
     if (path.startsWith('/jellyfin/UserViews?')) {
       const url = new URL(path, 'http://fixture');
       if (
-        url.searchParams.get('userId') !== userId ||
+        url.searchParams.get('userId') !== currentUserId ||
         url.searchParams.get('includeHidden') !== 'false' ||
         url.searchParams.get('includeExternalContent') !== 'false'
       ) {
@@ -119,10 +146,36 @@ export async function jellyfinFixture() {
     }
     const catalogUrl = new URL(path, 'http://fixture');
     if (servePlayback(state.playback, request, response, catalogUrl, body)) return;
+    if (/^\/jellyfin\/Items\/[a-f0-9]+\/Images\/(Primary|Backdrop)$/.test(catalogUrl.pathname)) {
+      if (state.artwork.delay)
+        await new Promise((resolve) => setTimeout(resolve, state.artwork.delay));
+      await state.artwork.wait;
+      response.writeHead(200, { 'content-type': state.artwork.contentType });
+      response.end(state.artwork.bytes);
+      return;
+    }
     if (catalogUrl.pathname === '/jellyfin/Items') {
+      await state.catalogWait;
       const query = catalogUrl.searchParams;
+      if (query.has('ids')) {
+        if (state.permissionDelay)
+          await new Promise((resolve) => setTimeout(resolve, state.permissionDelay));
+        response.once('close', () => {
+          if (!response.writableEnded) state.itemAborts++;
+        });
+        await state.itemWait;
+        if (response.destroyed) return;
+        if (query.get('userId') !== currentUserId) {
+          json({}, 403);
+          return;
+        }
+        const requested = query.getAll('ids').flatMap((value) => value.split(','));
+        const items = state.catalog.filter((item) => requested.includes(String(item.Id)));
+        json({ Items: items, StartIndex: 0, TotalRecordCount: items.length });
+        return;
+      }
       if (
-        query.get('userId') !== userId ||
+        query.get('userId') !== currentUserId ||
         query.get('recursive') !== 'true' ||
         query.get('enableImages') !== 'false' ||
         query.get('enableUserData') !== 'false'
@@ -149,7 +202,18 @@ export async function jellyfinFixture() {
       return;
     }
     if (catalogUrl.pathname.startsWith('/jellyfin/Items/')) {
-      if (catalogUrl.searchParams.get('userId') !== userId) {
+      if (state.permissionDelay)
+        await new Promise((resolve) => setTimeout(resolve, state.permissionDelay));
+      if (state.hideLibraries) {
+        json({}, 404);
+        return;
+      }
+      response.once('close', () => {
+        if (!response.writableEnded) state.itemAborts++;
+      });
+      await state.itemWait;
+      if (response.destroyed) return;
+      if (catalogUrl.searchParams.get('userId') !== currentUserId) {
         json({}, 403);
         return;
       }
@@ -171,6 +235,20 @@ export async function jellyfinFixture() {
   if (!address || typeof address === 'string') throw new Error('fixture listener failed');
   return {
     state,
+    addAccount(name: string, id: string) {
+      const personal: typeof state = {
+        ...rootState,
+        token: randomBytes(32).toString('hex'),
+        valid: false,
+        revoked: 0,
+        requests: [],
+        catalog: [],
+        playback: playbackFixtureState(),
+        artwork: { ...rootState.artwork },
+      };
+      accounts.set(name, { id, state: personal });
+      return personal as typeof state;
+    },
     baseUrl: `http://127.0.0.1:${address.port}/jellyfin`,
     async close() {
       server.closeAllConnections();

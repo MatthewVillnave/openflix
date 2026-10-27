@@ -110,7 +110,7 @@ const server = createServer(async (req, res) => {
           Name: 'Fixture movies',
           CollectionType: 'movies',
         },
-        { Id: '44444444444444444444444444444444', Name: 'Tv shows', CollectionType: null },
+        { Id: '44444444444444444444444444444444', Name: 'Tv shows', CollectionType: 'tvshows' },
         { Id: '66666666666666666666666666666666', Name: 'Fixture music', CollectionType: 'music' },
       ],
     });
@@ -258,6 +258,24 @@ const server = createServer(async (req, res) => {
       send({}, 400);
       return;
     }
+    if (q.has('ids')) {
+      const requested = q.getAll('ids').flatMap((value) => value.split(','));
+      const Items = requested.flatMap((id) => {
+        const n = Number.parseInt(id, 16);
+        const Type =
+          {
+            999: 'Folder',
+            1001: 'Series',
+            1002: 'Season',
+            1003: 'Episode',
+            1099: 'Folder',
+            2001: 'Audio',
+          }[n] ?? (n >= 1 && n <= 205 ? 'Movie' : null);
+        return Type ? [{ Id: id, Name: 'Fixture item', Type }] : [];
+      });
+      send({ Items, StartIndex: 0, TotalRecordCount: Items.length });
+      return;
+    }
     const music = q.get('parentId') === '66666666666666666666666666666666';
     const tv = q.get('parentId') === '44444444444444444444444444444444';
     if (!tv && catalogMode === 'partial' && offset >= 100) {
@@ -305,6 +323,25 @@ const server = createServer(async (req, res) => {
       StartIndex: offset,
       TotalRecordCount: items.length,
     });
+    return;
+  }
+  const itemMatch = /^\/jellyfin\/Items\/([a-f0-9]{32})$/.exec(url.pathname);
+  if (itemMatch && req.method === 'GET') {
+    if (url.searchParams.get('userId') !== '22222222222222222222222222222222') {
+      send({}, 403);
+      return;
+    }
+    const number = Number.parseInt(itemMatch[1], 16);
+    const types = {
+      999: 'Folder',
+      1001: 'Series',
+      1002: 'Season',
+      1003: 'Episode',
+      1099: 'Folder',
+      2001: 'Audio',
+    };
+    const type = types[number] ?? (number >= 1 && number <= 205 ? 'Movie' : null);
+    send(type ? { Id: itemMatch[1], Type: type, Name: 'Fixture item' } : {}, type ? 200 : 404);
     return;
   }
   if (req.url === '/jellyfin/Sessions/Logout' && req.method === 'POST') {

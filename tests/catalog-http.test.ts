@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { request as httpRequest } from 'node:http';
 import { Writable } from 'node:stream';
 import { readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -94,7 +95,7 @@ afterEach(async () => {
   await upstream.close();
   fixture.cleanup();
 });
-const get = (path: string, session = viewer) =>
+const get = (path: string, session = cookie) =>
   app.inject({ url: '/api/v1/catalog' + path, headers: { cookie: session } });
 const start = (session = cookie, payload = {}) =>
   app.inject({
@@ -123,7 +124,7 @@ it('requires authentication for catalog and administrator plus Origin for sync',
     '/libraries/missing/items',
   ])
     expect((await get(path, '')).statusCode).toBe(401);
-  expect((await start(viewer)).statusCode).toBe(403);
+  expect((await start(viewer)).statusCode).toBe(404);
   expect(
     (
       await app.inject({
@@ -163,7 +164,8 @@ it('browses normalized TV hierarchy with paging/filtering, no secrets and no bro
   expect(serialized).not.toContain('ciphertext');
   const before = upstream.state.requests.length;
   await get(`/items/${episode.id}`);
-  expect(upstream.state.requests).toHaveLength(before);
+  expect(upstream.state.requests.length).toBeGreaterThan(before);
+  expect(upstream.state.requests.at(-1)!.path).toContain('/Items/');
 });
 it('persists across restart and repeats sync without password re-entry, then connector removal cascades', async () => {
   await sync();
@@ -185,6 +187,39 @@ it('persists across restart and repeats sync without password re-entry, then con
   expect(deleted.statusCode).toBe(200);
   expect((await get('/libraries')).json().libraries).toEqual([]);
   expect((await get(`/items/${before.items[0].id}`)).statusCode).toBe(404);
+});
+it('paginates a large season in episode order before applying page boundaries', async () => {
+  upstream.state.catalog = [
+    { Id: itemId(1), Name: 'Series', Type: 'Series' },
+    {
+      Id: itemId(2),
+      Name: 'Season',
+      Type: 'Season',
+      ParentId: itemId(1),
+      SeriesId: itemId(1),
+      IndexNumber: 1,
+    },
+    ...Array.from({ length: 60 }, (_, i) => ({
+      Id: itemId(i + 3),
+      Name: `Title ${String(60 - i).padStart(2, '0')}`,
+      Type: 'Episode',
+      ParentId: itemId(2),
+      SeriesId: itemId(1),
+      SeasonId: itemId(2),
+      IndexNumber: i + 1,
+      ParentIndexNumber: 1,
+    })),
+  ];
+  await sync();
+  const library = (await get('/libraries')).json().libraries[0];
+  const season = (await get(`/libraries/${library.id}/items?type=season`)).json().items[0];
+  const first = (await get(`/libraries/${library.id}/items?parentId=${season.id}&limit=50`)).json();
+  const second = (
+    await get(`/libraries/${library.id}/items?parentId=${season.id}&limit=50&offset=50`)
+  ).json();
+  expect(
+    [...first.items, ...second.items].map((item: { episodeNumber: number }) => item.episodeNumber),
+  ).toEqual(Array.from({ length: 60 }, (_, i) => i + 1));
 });
 it('failed second page leaves published records intact and reports only sanitized failure', async () => {
   await sync();
@@ -208,8 +243,9 @@ it('rejects overlapping mutations, and shutdown cancels staging before closing t
   expect(
     (
       await app.inject({
-        method: 'DELETE',
-        url: `/api/v1/connectors/${connection}`,
+        method: 'POST',
+        url: `/api/v1/connectors/${connection}/test`,
+        payload: {},
         headers: { origin, cookie },
       })
     ).statusCode,
@@ -236,3 +272,67 @@ it('offers authenticated bounded unified browsing without upstream URLs or crede
   expect((await get('/works?limit=101')).statusCode).toBe(400);
   expect((await get('/works?offset=1000001')).statusCode).toBe(400);
 });
+
+it('aborts upstream permission checks on a real browser disconnect and releases capacity', async () => {
+  upstream.state.catalog = Array.from({ length: 20 }, (_, i) => ({
+    Id: itemId(i + 1),
+    Name: `Movie ${i}`,
+    Type: 'Movie',
+  }));
+  await sync();
+  const library = (await get('/libraries')).json().libraries[0];
+  let release!: () => void;
+  upstream.state.itemWait = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const address = await app.listen({ host: '127.0.0.1', port: 0 });
+  const client = httpRequest(`${address}/api/v1/catalog/libraries/${library.id}/items?limit=20`, {
+    headers: { cookie },
+  });
+  client.on('error', () => {});
+  client.end();
+  await expect
+    .poll(
+      () =>
+        upstream.state.requests.filter(
+          (r) => /\/Items\/[a-f0-9]+\?/.test(r.path) || r.path.includes('ids='),
+        ).length,
+    )
+    .toBeGreaterThanOrEqual(4);
+  client.destroy();
+  await expect.poll(() => upstream.state.itemAborts).toBeGreaterThanOrEqual(4);
+  release();
+  upstream.state.itemWait = undefined;
+  expect((await get(`/libraries/${library.id}/items?limit=20`)).statusCode).toBe(200);
+});
+it('returns a complete fail-closed response over HTTP when permission verification fails', async () => {
+  await sync();
+  const library = (await get('/libraries')).json().libraries[0];
+  upstream.state.valid = false;
+  const address = await app.listen({ host: '127.0.0.1', port: 0 });
+  const response = await fetch(`${address}/api/v1/catalog/libraries/${library.id}/items`, {
+    headers: { cookie },
+  });
+  expect(response.status).toBe(503);
+  expect(await response.json()).toMatchObject({ error: expect.stringContaining('permissions') });
+});
+
+it('authorizes a 100-item page using visibility checks at 350ms upstream latency and rejects missing items', async () => {
+  upstream.state.catalog = Array.from({ length: 100 }, (_, i) => ({
+    Id: itemId(i + 1),
+    Name: `Movie ${i}`,
+    Type: 'Movie',
+  }));
+  await sync();
+  const library = (await get('/libraries')).json().libraries[0];
+  upstream.state.permissionDelay = 350;
+  const before = upstream.state.requests.length;
+  expect((await get(`/libraries/${library.id}/items?limit=100`)).statusCode).toBe(200);
+  const checks = upstream.state.requests
+    .slice(before)
+    .filter((r) => /\/Items\/[a-f0-9]+\?/.test(r.path));
+  expect(checks).toHaveLength(100);
+  expect(checks.every((r) => r.path.includes('userId='))).toBe(true);
+  upstream.state.catalog.pop();
+  expect((await get(`/libraries/${library.id}/items?limit=100`)).statusCode).toBe(503);
+}, 10000);

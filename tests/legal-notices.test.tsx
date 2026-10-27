@@ -11,12 +11,20 @@ afterEach(cleanup);
 it('offers legal notices without login and never labels an unknown build as the release', () => {
   render(<LegalNotice />);
   fireEvent.click(screen.getByText('Source / License / Notices'));
-  expect(screen.getByText(/Source identity is unconfigured/)).toBeDefined();
+  expect(screen.getByText(/complete corresponding-source offer is unconfigured/)).toBeDefined();
   expect(screen.queryByText(/Corresponding source \(/)).toBeNull();
   expect(screen.getByRole('link', { name: 'License' }).getAttribute('href')).toBe(
     '/legal/LICENSE.txt',
   );
   expect(screen.getByText(/No warranty/)).toBeDefined();
+});
+it('links the embedded first-party archive without claiming it includes third-party sources', () => {
+  render(<LegalNotice bundled />);
+  fireEvent.click(screen.getByText('Source / License / Notices'));
+  expect(
+    screen.getByRole('link', { name: 'OpenFlix source for this build' }).getAttribute('href'),
+  ).toBe('/legal/openflix-source.tar.gz');
+  expect(screen.getByText(/including applicable third-party sources/)).toBeDefined();
 });
 it('offers only the explicitly configured corresponding source', () => {
   const source = sourceUrl('https://example.org/releases/exact-version-source.zip');

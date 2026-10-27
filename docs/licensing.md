@@ -6,7 +6,11 @@ First-party OpenFlix is **GNU Affero General Public License version 3 only**, SP
 
 The footer exposes Source / License / Notices before and after login. Fixed public legal text assets are built from LICENSE, NOTICE and dependency notices; no runtime directory or arbitrary file-serving endpoint is added. The interface states there is no warranty and redistribution is permitted under the license.
 
-Build-time `OPENFLIX_SOURCE_URL` identifies the corresponding source for the actual deployment. It must be an HTTPS URL without credentials, query or fragment. It is public metadata, never a secret. Without it the UI explicitly labels source identity unconfigured and asks the operator to supply the actual source; it does not claim that a moving branch or upstream release is the source of an unknown/dirty local build. Do not serve a modified deployment without making its actual corresponding source available and setting this link accordingly.
+Container builds also expose `/legal/openflix-source.tar.gz` through the footer. The archive is generated from the build context's allowlisted first-party source and build files, rather than a moving branch. It does not contain all third-party dependency sources, so its presence alone is not a complete corresponding-source offer for a distributed binary. Operators must arrange and retain applicable dependency sources and provide a complete offer for their actual build before distribution or modified network service.
+
+The local candidate is accompanied separately by `openflix-third-party-material.tar.gz`, containing verified version-specific npm packages and selected upstream source archives. It is not automatically served by the container, and it is not a certified complete binary source bundle. Its manifest and [third-party review](../THIRD-PARTY-NOTICES.md) list the unresolved native-binary and OS-package source/build correspondence. Preserve it with the candidate and complete that review before publishing or offering binaries.
+
+Build-time `OPENFLIX_SOURCE_URL` can identify that complete corresponding-source offer. It must be an HTTPS URL without credentials, query or fragment. It is public metadata, never a secret. Without it the UI explicitly labels the operator's complete source offer unconfigured; it does not claim that a moving branch or upstream release is the source of an unknown/dirty local build.
 
 For an **unmodified checkout or extraction of the licensed release** `openflix-v0.5-m5`, use its immutable source asset:
 

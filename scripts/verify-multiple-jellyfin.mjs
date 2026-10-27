@@ -187,6 +187,9 @@ try {
       name,
       id: info.Id,
       api,
+      clientBase: base,
+      userId: user.Id,
+      policy,
       password: restrictedPassword,
       baseUrl: 'http://jellyfin-' + name + ':8096',
     });
@@ -315,14 +318,59 @@ try {
   mark(
     'Actual Chromium decode/progression/pause/seek/reporting from either independent backend; automatic direct preference',
   );
-  phase = 'offline startup fallback';
+  phase = 'real library permission revocation';
+  const revokedServer = servers[0];
+  const rawAuth = await revokedServer.api('/Users/AuthenticateByName', {
+    Username: 'restricted-connector',
+    Pw: revokedServer.password,
+  });
+  secrets.push(rawAuth.AccessToken);
+  const upstreamMovie = (
+    await revokedServer.api(
+      '/Items?userId=' + revokedServer.userId + '&Recursive=true&IncludeItemTypes=Movie',
+      undefined,
+      true,
+    )
+  ).Items.find((item) => item.Name === 'Shared work');
+  assert.ok(upstreamMovie);
+  const tvView = (
+    await revokedServer.api('/UserViews?userId=' + revokedServer.userId, undefined, true)
+  ).Items.find((view) => view.Name === 'tv');
+  assert.ok(tvView);
+  await revokedServer.api(
+    '/Users/' + revokedServer.userId + '/Policy',
+    { ...revokedServer.policy, EnabledFolders: [tvView.Id] },
+    true,
+  );
+  const restrictedRead = (path) =>
+    fetch(revokedServer.clientBase + path, { headers: { 'X-Emby-Token': rawAuth.AccessToken } });
+  const unsafeList = await restrictedRead(
+    '/Items?userId=' + revokedServer.userId + '&ids=' + upstreamMovie.Id + '&Recursive=true',
+  );
+  assert.equal(unsafeList.status, 200);
+  assert.ok(
+    (await unsafeList.json()).Items.some((item) => item.Id === upstreamMovie.Id),
+    'Explicit IDs demonstrate the upstream visibility bypass',
+  );
+  assert.equal(
+    (await restrictedRead('/Items/' + upstreamMovie.Id + '?userId=' + revokedServer.userId)).status,
+    404,
+  );
+  assert.equal((await api('/catalog/works/' + shared.id)).status, 503);
+  assert.equal((await api('/catalog/items/' + sourceA.itemId)).status, 404);
+  assert.notEqual((await api('/catalog/items/' + sourceA.itemId + '/artwork/poster')).status, 200);
+  assert.notEqual(
+    (await api('/playback/sessions', { itemId: sourceA.itemId, profile })).status,
+    201,
+  );
+  await revokedServer.api('/Users/' + revokedServer.userId + '/Policy', revokedServer.policy, true);
+  mark(
+    'Real library revocation blocks cached metadata, artwork and playback while media remains present',
+  );
+  phase = 'offline authorization fails closed';
   await compose('stop', 'jellyfin-a');
-  const fallback = await browser([
-    { title: 'Shared work', expectedItemId: sourceB.itemId, mode: 'remux' },
-  ]);
-  assert.ok(fallback.passed);
-  assert.equal((await (await api('/catalog/works/' + shared.id)).json()).work.sourceCount, 2);
-  mark('Offline A remains indexed; bounded fresh planning selects and decodes B before playback');
+  assert.equal((await api('/catalog/works/' + shared.id)).status, 503);
+  mark('Offline source does not bypass current access verification');
   phase = 'connector removal';
   const removed = await api('/connectors/' + servers[0].connector.id, undefined, 'DELETE');
   assert.equal(removed.status, 200);
@@ -330,6 +378,10 @@ try {
   assert.equal(surviving.work.id, shared.id);
   assert.equal(surviving.work.sourceCount, 1);
   assert.equal(surviving.sources.items[0].itemId, sourceB.itemId);
+  // Several complete browser journeys share one proxy IP and consume the production
+  // per-minute request budget, including expected missing-artwork responses. Let
+  // that window expire before testing the distinct post-removal journey.
+  await delay(61000);
   assert.ok(
     (await browser([{ title: 'Shared work', expectedItemId: sourceB.itemId, mode: 'remux' }]))
       .passed,
@@ -363,7 +415,7 @@ try {
     },
     body: JSON.stringify({ groupId: shared.id, profile }),
   });
-  assert.equal(denied.status, 403);
+  assert.equal(denied.status, 404);
   const logs = await compose('logs', '--no-color', 'server');
   for (const secret of secrets) assert.ok(!logs.includes(secret));
   const stats = await run([
@@ -386,6 +438,24 @@ try {
     'Two-Jellyfin verification: ' + checks.length + '/' + checks.length + ' groups passed',
   );
 } catch (error) {
+  try {
+    const log = await compose('logs', '--no-color', '--no-log-prefix', 'server');
+    const statusCounts = {};
+    for (const line of log.split('\n')) {
+      try {
+        const event = JSON.parse(line);
+        if (event.event === 'http.completed' && [429, 500, 502, 503].includes(event.status)) {
+          const key = `${event.route} ${event.status}`;
+          statusCounts[key] = (statusCounts[key] ?? 0) + 1;
+        }
+      } catch {
+        /* Only sanitized structured events are relevant. */
+      }
+    }
+    console.error(JSON.stringify({ statusCounts }));
+  } catch {
+    /* Diagnostics must not interfere with cleanup. */
+  }
   let message = error.message;
   for (const secret of secrets) message = message.replaceAll(secret, '[redacted]');
   console.error(JSON.stringify({ phase, error: message }));

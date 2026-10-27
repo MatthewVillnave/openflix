@@ -19,7 +19,7 @@
     "@jellyfin/sdk": "1.0.0",
     "@openflix/connector-core": "workspace:*",
     "axios": "1.20.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "license": "AGPL-3.0-only"
 }

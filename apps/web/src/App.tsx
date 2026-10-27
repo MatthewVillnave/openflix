@@ -1,28 +1,33 @@
+import { Cinema } from './Home.js';
 import { LegalNotice } from './LegalNotice.js';
-import { UnifiedCatalog } from './UnifiedCatalog.js';
-import { Catalog } from './Catalog.js';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { CurrentUserResponse } from '@openflix/protocol';
-import { MediaServers } from './MediaServers.js';
-import { ApiError, currentUser, login, logout } from './api.js';
+import { ApiError, createOwner, currentUser, login, logout, setupStatus } from './api.js';
 export function App() {
-  const [settings, setSettings] = useState(false);
   const [user, setUser] = useState<CurrentUserResponse['user'] | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [setup, setSetup] = useState(false);
   useEffect(() => {
     let active = true;
     currentUser()
       .then((value) => {
         if (active) setUser(value.user);
       })
-      .catch((error) => {
-        if (active && !(error instanceof ApiError && error.status === 401))
-          setError('The server is unavailable. Please try again.');
+      .catch(async (error) => {
+        if (error instanceof ApiError && error.status === 401) {
+          try {
+            const status = await setupStatus();
+            if (active) setSetup(status.setupRequired === true);
+          } catch (setupError) {
+            if (active && !(setupError instanceof ApiError && setupError.status === 404))
+              setError('The server is unavailable. Please try again.');
+          }
+        } else if (active) setError('The server is unavailable. Please try again.');
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -36,11 +41,21 @@ export function App() {
     setError('');
     setPending(true);
     try {
+      if (setup) {
+        await createOwner({ username, password });
+        setSetup(false);
+      }
       setUser((await login({ username, password })).user);
     } catch (error) {
-      setError(
-        error instanceof ApiError ? error.message : 'The server is unavailable. Please try again.',
-      );
+      if (setup && error instanceof ApiError && error.status === 409) {
+        setSetup(false);
+        setError('An account was already created. Sign in instead.');
+      } else
+        setError(
+          error instanceof ApiError
+            ? error.message
+            : 'The server is unavailable. Please try again.',
+        );
     } finally {
       setPassword('');
       setPending(false);
@@ -52,13 +67,22 @@ export function App() {
     try {
       await logout();
       setUser(null);
-      setSettings(false);
     } catch {
       setError('Could not sign out. Please try again.');
     } finally {
       setPending(false);
     }
   }
+  if (user)
+    return (
+      <Cinema
+        key={user.id}
+        user={user}
+        pending={pending}
+        error={error}
+        onSignOut={() => void signOut()}
+      />
+    );
   return (
     <div className="shell">
       <header>
@@ -68,7 +92,6 @@ export function App() {
           </span>{' '}
           OPENFLIX
         </a>
-        <span className="milestone">MULTIPLE SERVERS / M5</span>
       </header>
       <main>
         <section className="intro">
@@ -82,37 +105,19 @@ export function App() {
             An independent home for your media libraries. <br />
             Built to connect. Designed to stay yours.
           </p>
-          <div className="scope">
-            <span className="dot" /> Milestone 5 · Multiple servers
-          </div>
         </section>
-        <section className="panel" aria-label={user ? 'Your account' : 'Sign in'}>
+        <section className="panel" aria-label={setup ? 'Create your account' : 'Sign in'}>
           {loading ? (
             <p role="status">Checking your session…</p>
-          ) : user ? (
-            <>
-              <p className="eyebrow">CONNECTED TO OPENFLIX</p>
-              <h2>Welcome, {user.displayName}.</h2>
-              <p>Your account is ready.</p>
-              <UnifiedCatalog admin={user.role === 'admin'} />
-              <Catalog admin={user.role === 'admin'} />
-              {user.role === 'admin' && (
-                <>
-                  <button className="secondary" onClick={() => setSettings((value) => !value)}>
-                    Settings · Media Servers
-                  </button>
-                  {settings && <MediaServers />}
-                </>
-              )}
-              <button className="secondary" onClick={signOut} disabled={pending}>
-                {pending ? 'Signing out…' : 'Sign out'}
-              </button>
-            </>
           ) : (
             <>
-              <p className="eyebrow">WELCOME BACK</p>
-              <h2>Make yourself at home.</h2>
-              <p>Sign in to your OpenFlix account.</p>
+              <p className="eyebrow">{setup ? 'GET STARTED' : 'WELCOME BACK'}</p>
+              <h2>{setup ? 'Create your account.' : 'Make yourself at home.'}</h2>
+              <p>
+                {setup
+                  ? 'This first OpenFlix account is the administrator of this installation. Connect your personal Jellyfin account after signing in.'
+                  : 'Sign in to your OpenFlix account.'}
+              </p>
               <form onSubmit={signIn}>
                 <label htmlFor="username">Username</label>
                 <input
@@ -121,31 +126,42 @@ export function App() {
                   autoComplete="username"
                   required
                   minLength={3}
+                  pattern="[a-zA-Z0-9_.-]+"
                   maxLength={64}
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
                   disabled={pending}
                 />
                 <label htmlFor="password">Password</label>
+                {setup && <p className="help">Use at least 12 characters.</p>}
                 <input
                   id="password"
                   name="password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete={setup ? 'new-password' : 'current-password'}
                   required
+                  minLength={setup ? 12 : 1}
                   maxLength={1024}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={pending}
                 />
                 <button disabled={pending}>
-                  {pending ? 'Signing in…' : 'Sign in'}
+                  {pending
+                    ? setup
+                      ? 'Creating account…'
+                      : 'Signing in…'
+                    : setup
+                      ? 'Create account'
+                      : 'Sign in'}
                   <span aria-hidden="true">→</span>
                 </button>
               </form>
-              <p className="help">
-                Need an account? Ask the operator of this OpenFlix installation.
-              </p>
+              {!setup && (
+                <p className="help">
+                  Need an account? Ask the operator of this OpenFlix installation.
+                </p>
+              )}
             </>
           )}
           {error && (

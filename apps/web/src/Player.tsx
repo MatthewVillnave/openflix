@@ -28,7 +28,7 @@ async function mutation<T>(path: string, body: unknown, keepalive = false): Prom
 const nativeHls = (node: HTMLMediaElement) =>
   Boolean(node.canPlayType('application/vnd.apple.mpegurl')) &&
   (/Apple/.test(navigator.vendor) || !Hls.isSupported());
-export function Player({
+function PlayerSession({
   item,
   groupId,
   sourceItemId,
@@ -39,9 +39,12 @@ export function Player({
 }) {
   const [session, setSession] = useState<PlaybackView | null>(null);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const preparing = useRef(false);
+  const generation = useRef(0);
   const [status, setStatus] = useState('');
   const media = useRef<HTMLVideoElement & HTMLAudioElement>(null);
+  const resumeApplied = useRef<string | null>(null);
   const started = useRef(false),
     reporting = useRef(false),
     pendingReport = useRef(false),
@@ -53,7 +56,21 @@ export function Player({
       mounted.current = false;
     };
   }, []);
+  useEffect(() => {
+    let cancelled = false;
+    // Defer until the committed mount: StrictMode's probe must not create a second session.
+    queueMicrotask(() => {
+      if (!cancelled) void prepare();
+    });
+    return () => {
+      cancelled = true;
+      generation.current++;
+    };
+  }, [item.id, groupId, sourceItemId]);
   async function prepare() {
+    if (preparing.current) return;
+    preparing.current = true;
+    const requestGeneration = ++generation.current;
     setLoading(true);
     setError('');
     const video = document.createElement('video'),
@@ -68,6 +85,7 @@ export function Player({
     if (!formats.length) {
       setError('This browser does not support the supported playback formats.');
       setLoading(false);
+      preparing.current = false;
       return;
     }
     try {
@@ -76,9 +94,12 @@ export function Player({
         profile: { formats },
       });
       // Only the known same-origin route shape can ever become a media-element source.
-      if (!/^\/api\/v1\/playback\/sessions\/[a-f0-9-]{36}\/stream$/.test(result.streamPath))
+      if (!/^\/api\/v1\/playback\/sessions\/[a-f0-9-]{36}\/stream$/.test(result.streamPath)) {
+        if (/^[a-f0-9-]{36}$/.test(result.id))
+          void mutation(`/sessions/${result.id}/stop`, {}).catch(() => {});
         throw new Error('Invalid playback response.');
-      if (!mounted.current) {
+      }
+      if (!mounted.current || generation.current !== requestGeneration) {
         void mutation(`/sessions/${result.id}/stop`, {}).catch(() => {});
         return;
       }
@@ -89,9 +110,11 @@ export function Player({
       setSession(result);
       setStatus('Ready. Press Play.');
     } catch (e) {
-      if (mounted.current) setError((e as Error).message);
+      if (mounted.current && generation.current === requestGeneration)
+        setError((e as Error).message);
     } finally {
-      if (mounted.current) setLoading(false);
+      preparing.current = false;
+      if (mounted.current && generation.current === requestGeneration) setLoading(false);
     }
   }
   async function report(begin = false) {
@@ -115,9 +138,7 @@ export function Player({
       if (activeSession.current !== session.id) return;
       if (mounted.current) {
         setError((e as Error).message);
-        node.pause();
-        node.removeAttribute('src');
-        node.load();
+        // Session cleanup captures position before pausing/resetting the media element.
         setSession(null);
       }
       pendingReport.current = false;
@@ -160,11 +181,25 @@ export function Player({
     const timer = setInterval(() => {
       void report();
     }, 15000);
+    let stopped = false;
     const stop = () => {
-      void mutation(`/sessions/${session.id}/stop`, {}, true).catch(() => {});
+      if (stopped) return;
+      stopped = true;
+      const finalState =
+        node && (started.current || reporting.current)
+          ? {
+              positionMs: Math.min(
+                session.durationMs,
+                Math.max(0, Math.round(node.currentTime * 1000)),
+              ),
+              paused: node.paused,
+            }
+          : {};
+      void mutation(`/sessions/${session.id}/stop`, finalState, true).catch(() => {});
     };
     window.addEventListener('pagehide', stop);
     return () => {
+      stop();
       if (activeSession.current === session.id) activeSession.current = null;
       clearInterval(timer);
       window.removeEventListener('pagehide', stop);
@@ -172,7 +207,6 @@ export function Player({
       node?.pause();
       node?.removeAttribute('src');
       node?.load();
-      stop();
     };
     // This effect owns the session lifetime; report reads the captured session and live media/ref state.
   }, [session]);
@@ -192,9 +226,29 @@ export function Player({
       void report();
     },
     onWaiting: () => setStatus('Loading media…'),
-    onLoadedMetadata: () => setStatus('Ready. Press Play.'),
+    onLoadedMetadata: () => {
+      if (session && media.current && resumeApplied.current !== session.id) {
+        resumeApplied.current = session.id;
+        const position = session.resumePositionMs;
+        if (
+          position !== undefined &&
+          Number.isFinite(position) &&
+          position > 0 &&
+          position < session.durationMs
+        )
+          media.current.currentTime = position / 1000;
+      }
+      setStatus('Starting playback…');
+      void media.current?.play().catch(() => {
+        if (mounted.current && activeSession.current === session?.id)
+          setStatus('Your browser requires a click. Press Play to begin.');
+      });
+    },
     onEnded: () => {
-      void report().finally(() => setSession(null));
+      const endedId = session?.id;
+      void report().finally(() => {
+        if (activeSession.current === endedId) setSession(null);
+      });
     },
     onError: () => {
       if (!mounted.current || !session || activeSession.current !== session.id) return;
@@ -203,38 +257,35 @@ export function Player({
     },
   };
   return (
-    <section aria-label="Media player">
-      <p>
-        Playback uses this server’s connector identity and may update its Jellyfin watch progress.
-      </p>
+    <section aria-label={`Media player: ${item.title}`}>
       {!session ? (
-        <button disabled={loading} onClick={() => void prepare()}>
-          {loading ? 'Preparing playback…' : 'Prepare playback'}
-        </button>
+        loading ? (
+          <p role="status">Loading playback…</p>
+        ) : (
+          <button onClick={() => void prepare()}>Retry playback</button>
+        )
       ) : (
         <>
-          <h4>{item.title}</h4>
-          <p>Playback mode: {session.mode}</p>
           {session.kind === 'video' ? (
             <video ref={media} playsInline {...events} aria-label="Video player" />
           ) : (
             <audio ref={media} {...events} aria-label="Audio player" />
           )}
-          <button
-            onClick={() => {
-              void media.current
-                ?.play()
-                .catch(() => setError('Press the native Play control to begin playback.'));
-            }}
-          >
-            Play media
-          </button>
-          <button onClick={() => media.current?.pause()}>Pause media</button>
-          <button onClick={() => setSession(null)}>Return to catalog</button>
-          <p role="status">{status}</p>
+          <p role="status" className={status.startsWith('Your browser') ? undefined : 'sr-only'}>
+            {status}
+          </p>
         </>
       )}
       {error && <p role="alert">{error}</p>}
     </section>
+  );
+}
+
+export function Player(props: { item: CatalogItem; groupId?: string; sourceItemId?: string }) {
+  return (
+    <PlayerSession
+      key={`${props.item.id}:${props.groupId ?? ''}:${props.sourceItemId ?? ''}`}
+      {...props}
+    />
   );
 }

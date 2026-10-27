@@ -3,7 +3,10 @@ import { legalAssets, sourceUrl } from '../../scripts/legal-assets.js';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 export default defineConfig({
-  define: { __OPENFLIX_SOURCE_URL__: JSON.stringify(sourceUrl(process.env.OPENFLIX_SOURCE_URL)) },
+  define: {
+    __OPENFLIX_SOURCE_URL__: JSON.stringify(sourceUrl(process.env.OPENFLIX_SOURCE_URL)),
+    __OPENFLIX_BUNDLED_SOURCE__: JSON.stringify(process.env.OPENFLIX_BUNDLED_SOURCE === '1'),
+  },
   plugins: [
     react(),
     {

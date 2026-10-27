@@ -141,6 +141,28 @@ CREATE INDEX catalog_work_members_work ON catalog_work_members(work_id, item_id)
 CREATE INDEX catalog_work_members_version ON catalog_work_members(work_id, version_key, item_id);
 `,
   },
+  {
+    version: 5,
+    name: 'personal_jellyfin_identities',
+    sql: `
+ALTER TABLE media_connectors ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
+CREATE INDEX media_connectors_owner ON media_connectors(owner_user_id, id);
+CREATE UNIQUE INDEX personal_connector_server ON media_connectors(owner_user_id, base_url) WHERE owner_user_id IS NOT NULL;
+CREATE TABLE approved_media_servers (
+  base_url TEXT PRIMARY KEY,
+  server_id TEXT NOT NULL,
+  name TEXT NOT NULL
+) STRICT;
+CREATE TABLE personal_resume (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  item_id TEXT NOT NULL REFERENCES catalog_items(id) ON DELETE CASCADE,
+  position_ms INTEGER NOT NULL CHECK(position_ms >= 0),
+  duration_ms INTEGER NOT NULL CHECK(duration_ms > 0),
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY(user_id, item_id)
+) STRICT;
+`,
+  },
 ];
 export function migrate(
   db: Database.Database,

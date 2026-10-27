@@ -72,20 +72,20 @@ it('browses safe metadata from OpenFlix only and explicitly selects a source', a
   expect(await screen.findByText('2 indexed sources · 2 connections')).toBeTruthy();
   expect(document.querySelector('script')).toBeNull();
   fireEvent.change(screen.getByLabelText('Source/version'), { target: { value: 'item_b' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Open player' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Watch' }));
   expect(await screen.findByText('Player work_1 item_b')).toBeTruthy();
   expect(fetcher.mock.calls.every(([url]) => url.startsWith('/api/v1/catalog/'))).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Close player / choose another source' }));
   expect(screen.queryByText('Player work_1 item_b')).toBeNull();
 });
-it('keeps ordinary authenticated users browse-only with honest indexed wording', async () => {
+it('keeps the legacy read-only view without a playback action', async () => {
   mock();
   render(<UnifiedCatalog admin={false} />);
   fireEvent.click(screen.getByRole('button', { name: 'Unified catalog' }));
   fireEvent.click(await screen.findByRole('button', { name: work.title }));
   await waitFor(() =>
-    expect(screen.getByText('Playback is restricted to administrators.')).toBeTruthy(),
+    expect(screen.getByText('Playback requires your linked server permission.')).toBeTruthy(),
   );
-  expect(screen.queryByRole('button', { name: 'Open player' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Watch' })).toBeNull();
   expect(screen.getByText(/not current availability/)).toBeTruthy();
 });

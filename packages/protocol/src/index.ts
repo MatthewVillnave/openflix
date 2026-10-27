@@ -24,6 +24,8 @@ export interface AddConnectorRequest {
 export interface ConnectorsResponse {
   connectors: import('@openflix/shared').ConnectorSummary[];
   credentialStorageConfigured: boolean;
+  approvedServers: { baseUrl: string; serverId: string; name: string }[];
+  canRegisterServers: boolean;
 }
 export interface ConnectorResponse {
   connector: import('@openflix/shared').ConnectorSummary;
@@ -46,3 +48,8 @@ export interface CatalogSyncRequest {
 }
 
 export type { PlaybackView, PlaybackFormat } from '@openflix/shared';
+
+export interface DiscoveryResponse {
+  candidates: Array<{ name: string; serverId: string; baseUrl: string }>;
+  unavailable: boolean;
+}

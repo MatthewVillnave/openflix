@@ -1,121 +1,29 @@
 # OpenFlix
 
-OpenFlix is a standalone, self-hosted media application. Jellyfin is a backend behind `MediaConnector`; OpenFlix owns its API, authentication, sessions and normalized SQLite catalog. The browser talks only to OpenFlix.
+OpenFlix is an independent, self-hosted web media client and account/connector API. It connects to an existing Jellyfin server; it does not bundle a Jellyfin server or anyone's media. This unreleased branch adds a dark artwork-led Home with burnt-orange accents, movie and series details, hierarchical Back, automatic initial library loading, and personal Jellyfin identities for each OpenFlix account.
 
-## Release and development status
+Plex, Emby, Screenroom and Live TV are possible future integrations, not working features in this candidate. The prior M5 release and its historical acceptance are separate from the uncommitted work on this branch. The branch is a packaging candidate, not a published release.
 
-**Milestones 1–5 are independently accepted within documented limits.** The licensed release is [OpenFlix Milestone 5 — Multi-Server Streaming](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.5-m5), under AGPL-3.0-only. The accepted implementation snapshot and the licensed release have distinct identities; see [M5 acceptance](docs/milestone-5-audit-acceptance.md). This is early-development software, not universal production compatibility or a professional security certification.
+## Start locally
 
-OpenFlix coordinates multiple Jellyfin servers in one installation. Open **Unified catalog** to browse grouped movies, series and episodes and select a source/version. Existing source/library browsing and audio playback remain available. Music, albums, artists, seasons and playlists retain [source-specific limits](docs/milestone-5-architecture.md). **Federation is not implemented.**
+See [the self-hosted candidate guide](docs/self-hosted-candidate.md) for prerequisites, a private master key, first-run setup, additional-user provisioning, start/stop, updates, backup and uninstall. Its Docker Compose configuration binds the browser interface to `127.0.0.1:8080` and stores data in a named volume outside the code. Docker and Jellyfin must already be installed separately. The first OpenFlix account created on an empty installation is the administrator; set it up before exposing the service. Each user subsequently connects their own Jellyfin login.
 
-Grouping uses conservative provider evidence; missing or conflicting identifiers may leave duplicates separate. Automatic substitution requires matching explicit edition assertions and bounded duration evidence; these assertions do not prove identical timelines. Untagged/ambiguous versions require explicit source selection. Fallback occurs before playback, never seamlessly midstream. There is no persistent cross-server resume or full OpenFlix watch history.
+Additional users are currently provisioned by an interactive operator command; open signup and invitation management are not implemented. Signing out does not disconnect the saved personal Jellyfin connection. The encryption key must remain private and be backed up separately from the database; replacing it makes saved connection credentials unavailable.
 
-Supported movies, episodes and audio use authenticated direct streaming or Jellyfin-managed HLS remux/transcoding. Optimus independently accepted controlled two-server tests and a separate household-plus-disposable installation. Household observations were short decoding/control tests, not sustained capacity measurements. See [the exact evidence and limitations](docs/milestone-5-audit-acceptance.md).
+For network use, the existing `docker-compose.yml` expects an independently configured HTTPS origin and reverse proxy. Local HTTP and discovery are not a substitute for secure remote access. See [configuration](docs/configuration.md) and [security](docs/security.md).
 
-## Important limitations
+## What is supported
 
-- Playback is administrator-only; all authenticated users share imported catalog metadata. There is no per-user OpenFlix-to-Jellyfin identity mapping.
-- Codec, source, resolution and HLS support are bounded. See [current playback scope](docs/status.md#playback-scope) before choosing media or hardware.
-- Neither M4 nor M5 acceptance established Safari, actual iPhone behavior, audible-output confirmation or sustained household performance.
-- Playback reporting can affect the connector account's Jellyfin watch state. Use an appropriately authorized account/content scope.
-- Native Windows file-backed storage fails closed; use the documented Linux-container alternative.
-- M5 distinguishes intentional cancellation from real timeout and cleans up grants before connector-token revocation. These are [M5 improvements](docs/playback-cancellation.md), not retroactive changes to the M4 tag. Household persistent watch-progress storage remains unverified.
+Home, Movies and TV Shows use permitted Jellyfin catalog content. Details lead to the existing authenticated player. Supported direct or Jellyfin-managed HLS paths are bounded by the media, server and browser; HDR sources may require Jellyfin conversion to SDR. Source-specific resume and progress can update the linked Jellyfin account. Subtitle rendering, alternate tracks, all codecs, unrestricted 4K, DRM, live TV and seamless midstream fallback are not established. See [playback scope](docs/playback-scope.md).
 
-The earlier R1 movie failed; the same movie played on R2. The exact historical cause remains unconfirmed, but that uncertainty was **not a remaining M4 acceptance blocker**. See [acceptance evidence and historical records](docs/status.md).
+Validation has included disposable real Jellyfin 10.11.11 with generated movie and episode media in Chromium, two-user isolation, and limited user-directed household playback. This is not sustained performance testing or proof of compatibility with every Jellyfin version, browser or device. Firefox, iPhone, TV devices, native installer packages and large-scale usage remain unverified for this candidate.
 
-## Connect and use
+## Develop and verify
 
-Supply a private operator-generated `OPENFLIX_MASTER_KEY` (canonical base64 of 32 random bytes; no default). Keep it outside source control and separate from database backups. See [configuration and key requirements](docs/configuration.md#milestone-2-connector-key).
+Node 24.19.0 and pnpm 11.19.0 are pinned. From a complete checkout, run `pnpm install --frozen-lockfile`, configure a private `OPENFLIX_MASTER_KEY` as described in [configuration](docs/configuration.md), then `pnpm build` and `pnpm dev`. `pnpm check` runs formatting, builds, types and tests; isolated integration tests may require loopback sockets. The source candidate is not a published binary and needs its dependencies installed when built.
 
-Provision an OpenFlix administrator, add Jellyfin through Settings → Media Servers, then use Catalog → Sync [server]. Catalog data survives restart without an automatic rescan. Administrators can prepare playback for supported movies, episodes and audio tracks; other users remain browse-only.
+## License and provenance
 
-## Local setup
+First-party OpenFlix is **AGPL-3.0-only**. See [LICENSE](LICENSE), [NOTICE](NOTICE), [third-party notices](THIRD-PARTY-NOTICES.md) and [source-availability guidance](docs/licensing.md). The separately installed Jellyfin TypeScript SDK remains MPL-2.0; HLS.js is Apache-2.0. Their terms and notices remain applicable. Jellyfin is an independent server accessed over its API and is not included in the candidate. Connecting to it does not transfer ownership of that server or media to OpenFlix.
 
-Before serving a deployment, configure the public build-time corresponding-source offer using [these version-specific instructions](docs/licensing.md#shipped-interface). Unknown/local builds do not automatically claim the upstream release as their source.
-
-File-backed storage requires a filesystem that enforces POSIX permissions (macOS/Linux); use the Linux Docker deployment on Windows. The runtime-owned database directory is secured to mode 0700 and primary/known sidecar files to 0600 before use, or startup fails. Unsafe ancestors and wrong ownership are rejected. See [database operations](docs/configuration.md#database-lifecycle).
-
-Requirements: Node **24.19.0** (`.nvmrc`), pnpm **11.19.0**, and Git. Native dependencies ship prebuilt binaries for supported platforms; building from source may require Python 3 and a C++ toolchain (Xcode command-line tools on macOS).
-
-```sh
-npm install --global pnpm@11.19.0
-pnpm install --frozen-lockfile
-cp .env.example .env
-# Set OPENFLIX_MASTER_KEY in .env before adding a connector (see configuration guide).
-pnpm build
-pnpm user:create alice --admin
-pnpm dev
-```
-
-The account command prompts for a password and confirmation without echoing either. Use a unique password of at least 12 characters. Omit `--admin` for an ordinary account. There are no built-in credentials and no public registration. Run all commands from the repository root.
-
-Open [http://localhost:5173](http://localhost:5173). Vite proxies the same-origin API to port 8787. Use `localhost`, not `127.0.0.1`, in the browser unless you also change `OPENFLIX_BASE_URL`. Shut down with Ctrl+C. Server/web source edits reload automatically; after changing a shared package, restart `pnpm dev` to rebuild packages. If you change the backend port, set `OPENFLIX_DEV_API_TARGET` for the Vite process too.
-
-```sh
-pnpm test           # builds packages/server, runs all tests
-pnpm db:migrate     # explicitly apply pending migrations; startup also applies them
-pnpm build
-pnpm start          # compiled server; web assets require a web server/proxy
-```
-
-Tests use disposable SQLite databases and local Jellyfin protocol fixtures; they do not contact a household server. Lifecycle tests need permission to bind loopback sockets and signal their own child processes.
-
-## Docker
-
-Requires Docker Engine/Desktop and Docker Compose v2. Docker is not bundled or installed by this project.
-
-For local development:
-
-```sh
-docker compose -f docker/compose.dev.yml up --build -d
-docker compose -f docker/compose.dev.yml exec server pnpm --filter @openflix/server user:create alice --admin
-# Open http://localhost:5173
-docker compose -f docker/compose.dev.yml down
-```
-
-This is a standalone Compose file with a separate development data volume. Server/web source directories are mounted for reloads; rebuild containers after shared package or dependency changes.
-
-For production behind an HTTPS reverse proxy:
-
-```sh
-# Set this to your actual public HTTPS origin (no path).
-export OPENFLIX_BASE_URL=https://openflix.example.com
-# Supply OPENFLIX_MASTER_KEY securely through the environment or private .env.
-docker compose up --build -d --wait
-docker compose exec server node dist/cli.js user:create alice --admin
-```
-
-Route your host reverse proxy to `127.0.0.1:8080`. The web container proxies API traffic to the internal server; port 8787 is not published. Configure TLS, HTTP-to-HTTPS redirection and HSTS on your outer proxy. `.env.example` is for local development: production deliberately rejects its HTTP origin. Shell environment overrides `.env` in Compose. Do not expose the development configuration to the internet.
-
-```sh
-curl --fail http://127.0.0.1:8080/health
-docker compose logs server
-docker compose down              # preserves the named data volume
-```
-
-Production images run as non-root with read-only root filesystems; only `/config` and temporary directories are writable. Normalized source/contracts are independent of the deployment. Run `pnpm verify:docker` for disposable production/development deployment checks, trusted HTTPS browser authentication, persistence/restarts, runtime privilege checks, and the full Linux test suite. See [current verification instructions](docs/status.md#verification). The [M1 report](docs/milestone-1-report.md) remains historical. On macOS, approve Docker access to the project folder when prompted for development source mounts.
-
-## Verification
-
-Use Node 24.19.0 and pnpm 11.19.0. Host tests require a private runtime-owned temporary directory beneath trusted ancestors; a system `TMPDIR` under an unsafe ancestor can correctly fail storage checks. For macOS, or Linux with a trusted `/tmp`:
-
-```sh
-verification_tmp=$(mktemp -d /tmp/openflix-verification.XXXXXX)
-chmod 700 "$verification_tmp"
-TMPDIR="$verification_tmp" pnpm check
-rmdir "$verification_tmp"
-```
-
-`pnpm check` checks formatting, production builds, strict types and all tests. If interrupted tests leave files, inspect that specific temporary directory before removing it. Do not change shared-directory permissions or weaken storage checks. See [verification commands and prerequisites](docs/status.md#verification) for Docker, disposable Jellyfin, dependency audits and the Git-history-dependent upgrade check. Builder fixtures do not contact household Jellyfin.
-
-## Documentation and structure
-
-Read [license and source-availability guidance](docs/licensing.md) before distributing or serving a build. First-party material is licensed under GNU AGPL version 3 only; third-party licenses remain intact.
-
-Start with the [current status/documentation index](docs/status.md), [architecture](docs/architecture.md), [configuration](docs/configuration.md), [security](docs/security.md), [connector security](docs/connector-security.md), [catalog](docs/catalog.md) and [API](docs/api.md). Historical reports retain their original verdicts; later acceptance is recorded separately.
-
-- `apps/server`, `apps/web`: Fastify API and React/Vite UI.
-- `packages/connector-core`, `packages/connector-jellyfin`: normalized contracts and isolated Jellyfin adapter.
-- `packages/shared`, `packages/protocol`, `packages/database`: domain/API types, SQLite and migrations.
-- `tests`, `scripts`, `docker`, `.github/workflows`: reproducible verification and deployment.
-- `docs`: guides, [architecture decisions](docs/architecture-notes.md) and [original specification](docs/technical-specification-v0.1.txt).
+Container builds offer their exact packaged first-party source in the footer. That archive does not include all third-party dependency sources: a distributed or modified network-served build also needs an appropriate complete corresponding-source offer. Do not point it to an older release that omits this branch's changes. The inventory is engineering guidance, not a legal clearance of every dependency, container image, patent or media right.

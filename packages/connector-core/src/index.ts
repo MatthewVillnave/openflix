@@ -60,6 +60,8 @@ export interface MediaConnector {
     options?: { pageSize?: number; signal?: AbortSignal },
   ): AsyncIterable<readonly MediaItem[]>;
   getItem(id: string): Promise<MediaItem>;
+  /** Optional bounded raster derivative capability; never an arbitrary upstream URL. */
+  getArtwork?(id: string, kind: 'poster' | 'backdrop', signal: AbortSignal): Promise<Uint8Array>;
   search(query: string): Promise<MediaItem[]>;
   getPlaybackInfo(
     itemId: string,
@@ -96,6 +98,8 @@ export class ConnectorNotImplementedError extends Error {
 
 export type { ConnectorServerInfo, ConnectorErrorCode } from '@openflix/shared';
 export interface ManagedMediaConnector extends MediaConnector {
+  /** Verify every item under one pinned session; never infer access from cached metadata. */
+  verifyItems?(ids: readonly string[]): Promise<void>;
   getServerInfo(): Promise<ConnectorServerInfo>;
   disconnect(): Promise<void>;
 }

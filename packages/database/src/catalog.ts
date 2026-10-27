@@ -19,20 +19,23 @@ export function catalogId(kind: 'lib' | 'item', connectorId: string, upstreamId:
 const libraryColumns = `l.id, l.connector_id AS connectorId, c.name AS connectorName, l.upstream_id AS upstreamId,
  l.name, l.type, l.upstream_type AS upstreamType, l.last_synced_at AS lastSyncedAt`;
 export class CatalogRepository {
-  constructor(private readonly db: Database.Database) {}
+  constructor(
+    private readonly db: Database.Database,
+    private readonly ownerUserId?: string,
+  ) {}
   libraries(): CatalogLibrary[] {
     return this.db
       .prepare(
-        `SELECT ${libraryColumns} FROM catalog_libraries l JOIN media_connectors c ON c.id=l.connector_id ORDER BY l.name, l.id`,
+        `SELECT ${libraryColumns} FROM catalog_libraries l JOIN media_connectors c ON c.id=l.connector_id WHERE (? IS NULL OR c.owner_user_id=?) ORDER BY l.name, l.id`,
       )
-      .all() as CatalogLibrary[];
+      .all(this.ownerUserId ?? null, this.ownerUserId ?? null) as CatalogLibrary[];
   }
   library(id: string): CatalogLibrary | undefined {
     return this.db
       .prepare(
-        `SELECT ${libraryColumns} FROM catalog_libraries l JOIN media_connectors c ON c.id=l.connector_id WHERE l.id=?`,
+        `SELECT ${libraryColumns} FROM catalog_libraries l JOIN media_connectors c ON c.id=l.connector_id WHERE l.id=? AND (? IS NULL OR c.owner_user_id=?)`,
       )
-      .get(id) as CatalogLibrary | undefined;
+      .get(id, this.ownerUserId ?? null, this.ownerUserId ?? null) as CatalogLibrary | undefined;
   }
   status(connectorId: string): CatalogSyncStatus {
     return (
@@ -55,9 +58,10 @@ export class CatalogRepository {
   item(id: string): CatalogItem | undefined {
     const row = this.db
       .prepare(
-        'SELECT metadata_json AS metadata, synced_at AS syncedAt FROM catalog_items WHERE id=?',
+        'SELECT i.metadata_json AS metadata, i.synced_at AS syncedAt FROM catalog_items i JOIN media_connectors c ON c.id=i.connector_id WHERE i.id=? AND (? IS NULL OR c.owner_user_id=?)',
       )
-      .get(id) as { metadata: string; syncedAt: number } | undefined;
+      .get(id, this.ownerUserId ?? null, this.ownerUserId ?? null) as
+      { metadata: string; syncedAt: number } | undefined;
     if (!row) return undefined;
     const libraries = this.db
       .prepare(
@@ -74,6 +78,8 @@ export class CatalogRepository {
     libraryId: string,
     options: { offset: number; limit: number; type?: string; parentId?: string },
   ): CatalogPage {
+    if (!this.library(libraryId))
+      return { items: [], total: 0, offset: options.offset, limit: options.limit };
     const args = [
       libraryId,
       options.type ?? null,
@@ -83,8 +89,13 @@ export class CatalogRepository {
     ];
     const where = `FROM catalog_items i JOIN catalog_memberships m ON m.item_id=i.id
       WHERE m.library_id=? AND (? IS NULL OR i.type=?) AND (? IS NULL OR i.parent_id=?)`;
+    const order = options.parentId
+      ? `COALESCE(json_extract(i.metadata_json, '$.seasonNumber'), 2147483647),
+         COALESCE(json_extract(i.metadata_json, '$.episodeNumber'), 2147483647),
+         i.sort_title COLLATE NOCASE, i.id`
+      : 'i.sort_title COLLATE NOCASE, i.id';
     const rows = this.db
-      .prepare(`SELECT i.id ${where} ORDER BY i.sort_title COLLATE NOCASE, i.id LIMIT ? OFFSET ?`)
+      .prepare(`SELECT i.id ${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
       .all(...args, options.limit, options.offset) as { id: string }[];
     const { total } = this.db.prepare(`SELECT COUNT(*) AS total ${where}`).get(...args) as {
       total: number;

@@ -143,7 +143,7 @@ describe('administrator media server lifecycle', () => {
             }
           : {}),
       });
-      expect(response.statusCode).toBe(403);
+      expect(response.statusCode).toBe(method === 'GET' ? 200 : method === 'POST' ? 400 : 404);
     }
     expect(
       (
@@ -175,6 +175,87 @@ describe('administrator media server lifecycle', () => {
     expect(
       (await app.inject({ url: '/api/v1/connectors', headers: { cookie } })).json().connectors,
     ).toEqual([]);
+  });
+  it('rejects an identity change between verification and server-info fetch without corrupting saved credentials', async () => {
+    const added = await add();
+    expect(added.statusCode).toBe(201);
+    const id = added.json().connector.id;
+    const pinned = added.json().connector.server.id;
+    upstream.state.serverIdResponses = [pinned, pinned, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'];
+    const tested = await app.inject({
+      method: 'POST',
+      url: `/api/v1/connectors/${id}/test`,
+      headers: { origin, cookie },
+      payload: {},
+    });
+    expect(tested.statusCode).not.toBe(200);
+    const db = openDatabase(fixture.config.databasePath);
+    expect(db.getConnector(id)?.server.id).toBe(pinned);
+    db.close();
+    await app.close();
+    app = await buildApp(fixture.config, logger);
+    const retried = await app.inject({
+      method: 'POST',
+      url: `/api/v1/connectors/${id}/test`,
+      headers: { origin, cookie },
+      payload: {},
+    });
+    expect(retried.statusCode, retried.body).toBe(200);
+    expect(retried.json().connector.server.id).toBe(pinned);
+  });
+  it('rolls back the connector when approval persistence fails and permits retry', async () => {
+    const db = new Database(fixture.config.databasePath);
+    db.exec(
+      "CREATE TRIGGER fail_approval BEFORE INSERT ON approved_media_servers BEGIN SELECT RAISE(FAIL, 'synthetic failure'); END",
+    );
+    const failed = await add();
+    expect(failed.statusCode).not.toBe(201);
+    expect(db.prepare('SELECT count(*) AS n FROM media_connectors').get()).toEqual({ n: 0 });
+    expect(upstream.state.revoked).toBe(1);
+    db.exec('DROP TRIGGER fail_approval');
+    db.close();
+    const retried = await add();
+    expect(retried.statusCode, retried.body).toBe(201);
+  });
+  it('requires an administrator to explicitly forget an unused pinned identity before replacement', async () => {
+    const added = await add();
+    expect(added.statusCode).toBe(201);
+    const id = added.json().connector.id;
+    const payload = { baseUrl: upstream.baseUrl, serverId: added.json().connector.server.id };
+    const forget = (session: string, body = payload) =>
+      app.inject({
+        method: 'DELETE',
+        url: '/api/v1/connectors/approved-server',
+        headers: { origin, cookie: session },
+        payload: body,
+      });
+    const viewerLogin = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      headers: { origin },
+      payload: { username: 'viewer', password: testPassword },
+    });
+    const viewerCookie = (viewerLogin.headers['set-cookie'] as string).split(';')[0]!;
+    expect((await forget(viewerCookie)).statusCode).toBe(403);
+    expect((await forget(cookie)).statusCode).toBe(409);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: `/api/v1/connectors/${id}`,
+          headers: { origin, cookie },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (await forget(cookie, { ...payload, serverId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }))
+        .statusCode,
+    ).toBe(404);
+    expect((await forget(cookie)).statusCode).toBe(200);
+    upstream.state.serverId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const replaced = await add();
+    expect(replaced.statusCode, replaced.body).toBe(201);
+    expect(replaced.json().connector.server.id).toBe(upstream.state.serverId);
   });
   it('marks failed tests honestly and reports unconfirmed remote revocation when offline', async () => {
     const id = (await add()).json().connector.id;
@@ -252,7 +333,7 @@ it('migrates the audited R2 identity schema without changing accounts or session
     expect(db.listConnectors()).toEqual([]);
     db.close();
     const check = new Database(fixture.config.databasePath);
-    expect(check.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 4 });
+    expect(check.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 5 });
     check.close();
   } finally {
     fixture.cleanup();

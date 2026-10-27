@@ -49,14 +49,23 @@ export function playbackFixtureState() {
   return {
     sources: [playbackSource()],
     forbidden: false,
+    mismatchNegotiatedSource: false,
     hls: false,
     manifest:
       '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000,CODECS="avc1.640028,mp4a.40.2"\nmain.m3u8\n',
     mediaManifest:
       '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:6,\nhls1/main/0.ts\n#EXTINF:6,\nhls1/main/1.ts\n#EXT-X-ENDLIST\n',
+    outputRequests: [] as { range: string | null; copy: string | null }[],
+    subtitleRequests: [] as {
+      index: string | null;
+      method: string | null;
+      manifest: string | null;
+      codec: string | null;
+    }[],
     cleanup: [] as string[],
     reports: [] as { path: string; body: Record<string, unknown> }[],
     reportFailure: false,
+    reportHold: undefined as Promise<void> | undefined,
     streamMode: 'normal' as
       | 'normal'
       | 'redirect'
@@ -95,14 +104,40 @@ export function servePlayback(
       json({}, 400);
       return true;
     }
+    if (
+      input.EnableTranscoding === true &&
+      (!state.sources.some((s) => s.Id === input.MediaSourceId) ||
+        input.SubtitleStreamIndex !== -1 ||
+        !state.sources.some(
+          (s) =>
+            s.Id === input.MediaSourceId &&
+            (s.MediaStreams as { Type: string; Index: number }[]).some(
+              (t) => t.Type === 'Audio' && t.Index === input.AudioStreamIndex,
+            ),
+        ))
+    ) {
+      json({}, 400);
+      return true;
+    }
+    if (input.EnableTranscoding === true && state.mismatchNegotiatedSource) {
+      json({
+        PlaySessionId: playSessionId,
+        MediaSources: state.sources.map((s) => ({ ...s, Id: 'dddddddddddddddddddddddddddddddd' })),
+      });
+      return true;
+    }
     if (state.forbidden) json({}, 403);
     else json({ PlaySessionId: playSessionId, MediaSources: state.sources });
     return true;
   }
   if (/\/Sessions\/Playing(?:\/Progress|\/Stopped)?$/.test(url.pathname)) {
     state.reports.push({ path: url.pathname, body: JSON.parse(body) });
-    res.writeHead(state.reportFailure ? 503 : 204);
-    res.end();
+    const finish = () => {
+      res.writeHead(state.reportFailure ? 503 : 204);
+      res.end();
+    };
+    if (state.reportHold && url.pathname.endsWith('/Progress')) void state.reportHold.then(finish);
+    else finish();
     return true;
   }
   if (url.pathname.endsWith('/Videos/ActiveEncodings') && req.method === 'DELETE') {
@@ -116,6 +151,16 @@ export function servePlayback(
       url.pathname,
     )
   ) {
+    state.outputRequests.push({
+      range: url.searchParams.get('h264-rangetype'),
+      copy: url.searchParams.get('allowvideostreamcopy'),
+    });
+    state.subtitleRequests.push({
+      index: url.searchParams.get('subtitlestreamindex'),
+      method: url.searchParams.get('subtitlemethod'),
+      manifest: url.searchParams.get('enablesubtitlesinmanifest'),
+      codec: url.searchParams.get('subtitlecodec'),
+    });
     if (state.streamMode === 'redirect') {
       res.writeHead(302, { location: 'https://credential-trap.invalid' });
       res.end();

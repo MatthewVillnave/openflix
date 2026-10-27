@@ -65,7 +65,20 @@ export function versionIdentity(item: CatalogItem): string {
   );
 }
 export class WorkRepository {
-  constructor(private readonly db: Database.Database) {}
+  constructor(
+    private readonly db: Database.Database,
+    private readonly ownerUserId?: string,
+  ) {}
+  private get members(): string {
+    return this.ownerUserId === undefined
+      ? 'catalog_work_members'
+      : `(SELECT ownm.* FROM catalog_work_members ownm JOIN catalog_items owni ON owni.id=ownm.item_id JOIN media_connectors ownc ON ownc.id=owni.connector_id WHERE ownc.owner_user_id=${this.literalOwner()})`;
+  }
+  private literalOwner(): string {
+    return (this.db.prepare('SELECT quote(?) AS value').get(this.ownerUserId) as { value: string })
+      .value;
+  }
+
   private metadata(id: string): CatalogItem | undefined {
     const row = this.db
       .prepare('SELECT metadata_json AS metadata FROM catalog_items WHERE id=?')
@@ -122,7 +135,7 @@ export class WorkRepository {
   binding(itemId: string): { workId: string; versionKey: string } | undefined {
     return this.db
       .prepare(
-        'SELECT work_id AS workId,version_key AS versionKey FROM catalog_work_members WHERE item_id=?',
+        `SELECT work_id AS workId,version_key AS versionKey FROM ${this.members} WHERE item_id=?`,
       )
       .get(itemId) as { workId: string; versionKey: string } | undefined;
   }
@@ -130,16 +143,23 @@ export class WorkRepository {
     const row = this.db
       .prepare(
         `SELECT w.id,w.type,
-      (SELECT item_id FROM catalog_work_members WHERE work_id=w.id ORDER BY item_id LIMIT 1) AS representativeItemId,
-      (SELECT COUNT(*) FROM catalog_work_members WHERE work_id=w.id) AS memberCount,
-      (SELECT COUNT(DISTINCT i.connector_id) FROM catalog_work_members m JOIN catalog_items i ON i.id=m.item_id WHERE m.work_id=w.id) AS connectionCount,
-      (SELECT COUNT(DISTINCT json_array(json_extract(c.server_json,'$.id'),i.upstream_id)) FROM catalog_work_members m
+      (SELECT item_id FROM ${this.members} WHERE work_id=w.id ORDER BY item_id LIMIT 1) AS representativeItemId,
+      (SELECT COUNT(*) FROM ${this.members} WHERE work_id=w.id) AS memberCount,
+      (SELECT COUNT(DISTINCT i.connector_id) FROM ${this.members} m JOIN catalog_items i ON i.id=m.item_id WHERE m.work_id=w.id) AS connectionCount,
+      (SELECT COUNT(DISTINCT json_array(json_extract(c.server_json,'$.id'),i.upstream_id)) FROM ${this.members} m
        JOIN catalog_items i ON i.id=m.item_id JOIN media_connectors c ON c.id=i.connector_id WHERE m.work_id=w.id) AS sourceCount
-      FROM catalog_works w WHERE w.id=?`,
+      FROM catalog_works w WHERE w.id=? AND EXISTS (SELECT 1 FROM ${this.members} visible WHERE visible.work_id=w.id)`,
       )
       .get(id) as Omit<CatalogWork, 'title'> | undefined;
     if (!row) return;
-    return { ...row, title: this.metadata(row.representativeItemId)!.title };
+    const item = this.metadata(row.representativeItemId)!;
+    return {
+      ...row,
+      title: item.title,
+      ...(item.overview ? { overview: item.overview } : {}),
+      ...(item.year !== undefined ? { year: item.year } : {}),
+      ...(item.runtimeSeconds !== undefined ? { runtimeSeconds: item.runtimeSeconds } : {}),
+    };
   }
   browse(options: {
     offset: number;
@@ -149,7 +169,7 @@ export class WorkRepository {
     seriesWorkId?: string;
     seasonNumber?: number;
   }): WorkPage {
-    const clauses = ['1=1'],
+    const clauses = [`EXISTS (SELECT 1 FROM ${this.members} visible WHERE visible.work_id=w.id)`],
       args: (string | number)[] = [];
     if (options.type) {
       clauses.push('w.type=?');
@@ -157,13 +177,13 @@ export class WorkRepository {
     }
     if (options.connectorId) {
       clauses.push(
-        'EXISTS (SELECT 1 FROM catalog_work_members m JOIN catalog_items i ON i.id=m.item_id WHERE m.work_id=w.id AND i.connector_id=?)',
+        `EXISTS (SELECT 1 FROM ${this.members} m JOIN catalog_items i ON i.id=m.item_id WHERE m.work_id=w.id AND i.connector_id=?)`,
       );
       args.push(options.connectorId);
     }
     if (options.seriesWorkId) {
-      clauses.push(`EXISTS (SELECT 1 FROM catalog_work_members m JOIN catalog_items i ON i.id=m.item_id
-        JOIN catalog_work_members p ON p.item_id=i.series_id WHERE m.work_id=w.id AND p.work_id=?
+      clauses.push(`EXISTS (SELECT 1 FROM ${this.members} m JOIN catalog_items i ON i.id=m.item_id
+        JOIN ${this.members} p ON p.item_id=i.series_id WHERE m.work_id=w.id AND p.work_id=?
         AND (?<0 OR json_extract(i.metadata_json,'$.seasonNumber')=?))`);
       args.push(options.seriesWorkId, options.seasonNumber ?? -1, options.seasonNumber ?? -1);
     }
@@ -185,7 +205,7 @@ export class WorkRepository {
     const rows = this.db
       .prepare(
         `SELECT i.id AS itemId,i.connector_id AS connectorId,c.name AS connectorName,
-      i.metadata_json AS metadata,m.version_key AS versionKey FROM catalog_work_members m
+      i.metadata_json AS metadata,m.version_key AS versionKey FROM ${this.members} m
       JOIN catalog_items i ON i.id=m.item_id JOIN media_connectors c ON c.id=i.connector_id
       WHERE m.work_id=? ORDER BY i.id LIMIT ? OFFSET ?`,
       )
@@ -197,7 +217,7 @@ export class WorkRepository {
       versionKey: string;
     }[];
     const { total } = this.db
-      .prepare('SELECT COUNT(*) AS total FROM catalog_work_members WHERE work_id=?')
+      .prepare(`SELECT COUNT(*) AS total FROM ${this.members} WHERE work_id=?`)
       .get(id) as { total: number };
     return {
       items: rows.map(({ metadata, ...row }) => {
@@ -220,9 +240,7 @@ export class WorkRepository {
   versionCount(id: string): number {
     return (
       this.db
-        .prepare(
-          'SELECT COUNT(DISTINCT version_key) AS count FROM catalog_work_members WHERE work_id=?',
-        )
+        .prepare(`SELECT COUNT(DISTINCT version_key) AS count FROM ${this.members} WHERE work_id=?`)
         .get(id) as { count: number }
     ).count;
   }

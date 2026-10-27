@@ -35,3 +35,56 @@ it('normalizes content types to a closed vocabulary and preserves fixed error me
       .message,
   ).toBe(new ConnectorError('invalid_response').message);
 });
+it('preserves only fixed reference-rule labels and discards injected values', () => {
+  expect(
+    safePlaybackDiagnostic({
+      stage: 'resource_reference',
+      reason: 'unsafe_reference',
+      referenceRule: 'query_option',
+      query: 'api_key=secret',
+    }),
+  ).toEqual({
+    stage: 'resource_reference',
+    reason: 'unsafe_reference',
+    referenceRule: 'query_option',
+  });
+  expect(
+    safePlaybackDiagnostic({
+      stage: 'resource_reference',
+      reason: 'unsafe_reference',
+      referenceRule: 'https://private.invalid/?token=secret',
+    }),
+  ).toEqual({ stage: 'resource_reference', reason: 'unsafe_reference' });
+});
+it('logs only public fixed query-option names, never arbitrary input names or values', () => {
+  const base = { stage: 'resource_reference', reason: 'unsafe_reference' };
+  expect(safePlaybackDiagnostic({ ...base, queryOption: 'subtitlemethod' })).toMatchObject({
+    queryOption: 'subtitlemethod',
+  });
+  expect(
+    safePlaybackDiagnostic({ ...base, queryOption: 'private-token', value: 'secret' }),
+  ).toEqual(base);
+});
+
+it('bounds combined subtitle issues to a fixed deduplicated vocabulary', () => {
+  const base = { stage: 'resource_reference', reason: 'unsafe_reference' };
+  expect(
+    safePlaybackDiagnostic({
+      ...base,
+      subtitleIssues: ['index', 'secret', 'index', 'codec'],
+      url: 'secret',
+    }),
+  ).toEqual({ ...base, subtitleIssues: ['codec', 'index'] });
+  expect(safePlaybackDiagnostic({ ...base, subtitleIssues: 'private' })).toEqual(base);
+});
+
+it('limits input constraints to fixed categories without source metadata leakage', () => {
+  const base = { stage: 'planning', reason: 'no_supported_source' };
+  expect(
+    safePlaybackDiagnostic({
+      ...base,
+      sourceConstraints: ['dimensions', 'private-secret', 'dimensions'],
+      source: 'private-path',
+    }),
+  ).toEqual({ ...base, sourceConstraints: ['dimensions'] });
+});

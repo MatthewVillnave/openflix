@@ -28,7 +28,13 @@ async function catalogRequest<T>(path: string, body?: unknown): Promise<T> {
     );
   return response.json() as Promise<T>;
 }
-export function Catalog({ admin }: { admin: boolean }) {
+export function Catalog({
+  admin,
+  maintenanceOnly = false,
+}: {
+  admin: boolean;
+  maintenanceOnly?: boolean;
+}) {
   const [libraries, setLibraries] = useState<CatalogLibrary[]>([]);
   const [connectors, setConnectors] = useState<ConnectorSummary[]>([]);
   const [selected, setSelected] = useState('');
@@ -135,10 +141,8 @@ export function Catalog({ admin }: { admin: boolean }) {
   }
   return (
     <section aria-label="Catalog">
-      <h2>Catalog</h2>
-      <p>
-        Browse synchronized metadata. Playback is available to administrators for supported media.
-      </p>
+      <h2>{maintenanceOnly ? 'Library updates' : 'Catalog'}</h2>
+      <p>Your catalog and playback use only your linked Jellyfin account and its permissions.</p>
       <button
         onClick={() => {
           setRevision((n) => n + 1);
@@ -151,8 +155,8 @@ export function Catalog({ admin }: { admin: boolean }) {
         <div>
           <h3>Synchronize media servers</h3>
           <p>
-            Synchronized metadata is visible to all signed-in OpenFlix users. Choose the connector
-            account accordingly.
+            These updates apply only to your personal connections. Other OpenFlix users cannot
+            access them.
           </p>
           {connectors.map((c) => (
             <div key={c.id}>
@@ -185,127 +189,137 @@ export function Catalog({ admin }: { admin: boolean }) {
             : ''}
         </p>
       )}
-      {libraries.length === 0 ? (
-        <p>No synchronized libraries yet. An administrator can start a sync.</p>
-      ) : (
-        <nav aria-label="Catalog libraries">
-          {libraries.map((l) => (
-            <button
-              key={l.id}
-              onClick={() => {
-                setSelected(l.id);
-                setOffset(0);
-                setType('');
-                setParent('');
-                setDetail(null);
-              }}
-            >
-              {l.name} · {l.connectorName} ({l.type})
-            </button>
-          ))}
-        </nav>
-      )}
-      {selected && (
-        <div>
-          <label>
-            Media type{' '}
-            <select
-              value={type}
-              onChange={(e) => {
-                setType(e.target.value);
-                setOffset(0);
-              }}
-            >
-              <option value="">All types</option>
-              {mediaTypes
-                .filter((t) => t !== 'music')
-                .map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-            </select>
-          </label>
-          {parent && (
-            <button
-              onClick={() => {
-                setParent('');
-                setOffset(0);
-              }}
-            >
-              All library entries
-            </button>
+      {!maintenanceOnly && (
+        <>
+          {libraries.length === 0 ? (
+            <p>No libraries loaded yet. Connect your Jellyfin account in Settings.</p>
+          ) : (
+            <nav aria-label="Catalog libraries">
+              {libraries.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => {
+                    setSelected(l.id);
+                    setOffset(0);
+                    setType('');
+                    setParent('');
+                    setDetail(null);
+                  }}
+                >
+                  {l.name} · {l.connectorName} ({l.type})
+                </button>
+              ))}
+            </nav>
           )}
-          {admin && libraries.find((l) => l.id === selected) && (
-            <button
-              disabled={Boolean(poll)}
-              onClick={() =>
-                void synchronize(libraries.find((l) => l.id === selected)!.connectorId, selected)
-              }
-            >
-              Sync this library
-            </button>
+          {selected && (
+            <div>
+              <label>
+                Media type{' '}
+                <select
+                  value={type}
+                  onChange={(e) => {
+                    setType(e.target.value);
+                    setOffset(0);
+                  }}
+                >
+                  <option value="">All types</option>
+                  {mediaTypes
+                    .filter((t) => t !== 'music')
+                    .map((t) => (
+                      <option key={t}>{t}</option>
+                    ))}
+                </select>
+              </label>
+              {parent && (
+                <button
+                  onClick={() => {
+                    setParent('');
+                    setOffset(0);
+                  }}
+                >
+                  All library entries
+                </button>
+              )}
+              {admin && libraries.find((l) => l.id === selected) && (
+                <button
+                  disabled={Boolean(poll)}
+                  onClick={() =>
+                    void synchronize(
+                      libraries.find((l) => l.id === selected)!.connectorId,
+                      selected,
+                    )
+                  }
+                >
+                  Sync this library
+                </button>
+              )}
+              {page && (
+                <>
+                  <p>{page.total} entries</p>
+                  <ul>
+                    {page.items.map((item) => (
+                      <li key={item.id}>
+                        <button onClick={() => void showItem(item.id)}>{item.title}</button> ·{' '}
+                        {item.type}
+                        {item.year ? ` · ${item.year}` : ''}
+                        {['series', 'season', 'album', 'artist'].includes(item.type) && (
+                          <button
+                            onClick={() => {
+                              setParent(item.id);
+                              setType('');
+                              setOffset(0);
+                            }}
+                          >
+                            Browse children of {item.title}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    disabled={offset === 0}
+                    onClick={() => setOffset((n) => Math.max(0, n - 50))}
+                  >
+                    Previous page
+                  </button>
+                  <button
+                    disabled={offset + page.items.length >= page.total}
+                    onClick={() => setOffset((n) => n + 50)}
+                  >
+                    Next page
+                  </button>
+                </>
+              )}
+            </div>
           )}
-          {page && (
-            <>
-              <p>{page.total} entries</p>
-              <ul>
-                {page.items.map((item) => (
-                  <li key={item.id}>
-                    <button onClick={() => void showItem(item.id)}>{item.title}</button> ·{' '}
-                    {item.type}
-                    {item.year ? ` · ${item.year}` : ''}
-                    {['series', 'season', 'album', 'artist'].includes(item.type) && (
-                      <button
-                        onClick={() => {
-                          setParent(item.id);
-                          setType('');
-                          setOffset(0);
-                        }}
-                      >
-                        Browse children of {item.title}
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <button disabled={offset === 0} onClick={() => setOffset((n) => Math.max(0, n - 50))}>
-                Previous page
-              </button>
-              <button
-                disabled={offset + page.items.length >= page.total}
-                onClick={() => setOffset((n) => n + 50)}
-              >
-                Next page
-              </button>
-            </>
+          {detail && (
+            <article aria-label="Item details">
+              <h3>{detail.title}</h3>
+              <p>
+                {detail.type} · Source{' '}
+                {libraries.find((l) => l.connectorId === detail.connectorId)?.connectorName ??
+                  detail.connectorId}
+              </p>
+              <p>
+                {detail.year ?? ''}{' '}
+                {detail.runtimeSeconds !== undefined ? `${detail.runtimeSeconds} seconds` : ''}
+              </p>
+              {detail.seasonNumber !== undefined && <p>Season {detail.seasonNumber}</p>}
+              {detail.episodeNumber !== undefined && <p>Episode {detail.episodeNumber}</p>}
+              {detail.parentId && (
+                <button onClick={() => void showItem(detail.parentId!)}>View parent</button>
+              )}
+              {admin && ['movie', 'episode', 'audio'].includes(detail.type) && (
+                <Player key={detail.id} item={detail} />
+              )}
+              {!admin && ['movie', 'episode', 'audio'].includes(detail.type) && (
+                <p>Playback requires your linked server permission.</p>
+              )}
+              {detail.albumTitle && <p>Album: {detail.albumTitle}</p>}
+              <button onClick={() => setDetail(null)}>Close details</button>
+            </article>
           )}
-        </div>
-      )}
-      {detail && (
-        <article aria-label="Item details">
-          <h3>{detail.title}</h3>
-          <p>
-            {detail.type} · Source{' '}
-            {libraries.find((l) => l.connectorId === detail.connectorId)?.connectorName ??
-              detail.connectorId}
-          </p>
-          <p>
-            {detail.year ?? ''}{' '}
-            {detail.runtimeSeconds !== undefined ? `${detail.runtimeSeconds} seconds` : ''}
-          </p>
-          {detail.seasonNumber !== undefined && <p>Season {detail.seasonNumber}</p>}
-          {detail.episodeNumber !== undefined && <p>Episode {detail.episodeNumber}</p>}
-          {detail.parentId && (
-            <button onClick={() => void showItem(detail.parentId!)}>View parent</button>
-          )}
-          {admin && ['movie', 'episode', 'audio'].includes(detail.type) && (
-            <Player key={detail.id} item={detail} />
-          )}
-          {!admin && ['movie', 'episode', 'audio'].includes(detail.type) && (
-            <p>Playback requires administrator authorization.</p>
-          )}
-          {detail.albumTitle && <p>Album: {detail.albumTitle}</p>}
-          <button onClick={() => setDetail(null)}>Close details</button>
-        </article>
+        </>
       )}
       {error && <p role="alert">{error}</p>}
     </section>

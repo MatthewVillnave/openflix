@@ -2,6 +2,13 @@
 
 This index describes accepted M5 implementation and its separately verified licensed release integration. See [M5 acceptance and limitations](milestone-5-audit-acceptance.md) and [licensing/source obligations](licensing.md). Historical reports record what was known at their original freeze; later acceptance does not replace their original verdicts.
 
+## Unreleased personal-identity branch
+
+The local Home/details branch now implements per-person connections, ownership-bound encryption,
+legacy quarantine and bounded upstream metadata checks. [Design and current validation](personal-jellyfin-plan.md)
+supersede the shared/admin-only policy for this branch. Historical acceptance below applies to
+its frozen releases, not this uncommitted follow-up; no new real-household validation is claimed.
+
 ## Accepted M4 evidence
 
 The owner reports Optimus's independent verdict: **PASS — approve Milestone 5 with non-blocking notes**. The [published M4 release](https://github.com/MatthewVillnave/openflix/releases/tag/openflix-v0.4-m4) freezes commit `e975e3bd38cb3627b2fa3053bdb3e137c4450764`. [Source tag](https://github.com/MatthewVillnave/openflix/tree/openflix-v0.4-m4), [unchanged R2 review ZIP](https://github.com/MatthewVillnave/openflix/releases/download/openflix-v0.4-m4/openflix-milestone4-review-r2.zip) and [detached checksum](https://github.com/MatthewVillnave/openflix/releases/download/openflix-v0.4-m4/openflix-milestone4-review-r2.sha256) are published. ZIP SHA-256: `2bfb0d6992f1af650b8310bb3c1d3e28888721ea8f1571522c70208ef41e0105`.
@@ -18,7 +25,7 @@ Acceptance is bounded to the exercised operations against Jellyfin 10.11.11, not
 
 Use the [direct-play foundation](playback.md) for direct formats and [HLS security/limits](milestone-4-r1-playback.md) for the fallback. Accepted R2 includes both, with [R2 parser and movie-length bounds](milestone-4-r2-remediation.md#exact-contract-and-parser-policy). The remediation document's opening status and handoff are historical, superseded by the acceptance above.
 
-The browser receives authenticated OpenFlix routes, never permanent Jellyfin credentials or upstream media paths. Direct MP4/H264/AAC, WebM/VP8/Opus, MP3 and PCM WAV remain bounded by inspected metadata and browser capability. Jellyfin-managed HLS supports eligible finite local SDR video, including compatible MKV sources, with bounded H264/AAC output; OpenFlix is not a transcoder. HLS fallback is limited to four-hour sources, at most 1080p output and the codec/rate/resource policies in the HLS guide. No universal 4K/HDR, remote/live source, subtitle rendering, DRM, alternate-track or hardware-throughput support is claimed.
+The browser receives authenticated OpenFlix routes, never permanent Jellyfin credentials or upstream media paths. Direct MP4/H264/AAC, WebM/VP8/Opus, MP3 and PCM WAV remain bounded by inspected metadata and browser capability. Jellyfin-managed HLS supports eligible finite local SDR or recognized HDR video (HDR requires video conversion to SDR), including compatible MKV sources, with bounded H264/AAC output; OpenFlix is not a transcoder. HLS fallback is limited to four-hour sources, at most 1080p output and the codec/rate/resource policies in the HLS guide. No universal 4K/HDR, remote/live source, subtitle rendering, DRM, alternate-track or hardware-throughput support is claimed.
 
 R2 accepts bounded non-video zero/null metadata without relaxing selected-video/audio validation. Insufficient runtime fails safely without invented duration. HLS manifests are bounded to 4 MiB input, 512 KiB rewritten output and 8,192 lines; resource, recursion, origin, query and authentication restrictions remain enforced.
 
@@ -56,3 +63,5 @@ Historical records, preserved with original scope and verdicts:
 [M5 independent acceptance](milestone-5-audit-acceptance.md) distinguishes controlled two-server results from short household-plus-disposable observations. The accepted implementation remains frozen; the licensed release adds documentation and source/legal notices, not new playback or grouping behavior. See [M5 identity/API rules](milestone-5-architecture.md), [M5 reproduction](milestone-5-verification.md), and [M5 cancellation behavior](playback-cancellation.md).
 
 Use `node scripts/verify-m4-upgrade.mjs` for the current accepted-M4 upgrade and `node scripts/verify-multiple-jellyfin.mjs` for actual two-backend browser verification, in addition to full checks and historical Docker/single-Jellyfin verification. Upgrade requires Git history. Music/playlists retain source-specific limitations. Missing/conflicting identity evidence stays separate; ambiguous editions require selection. Automatic fallback requires explicit edition/duration evidence and occurs only before playback. No federation or persistent cross-server resume is implemented.
+
+The Home hero automatically advances every ten seconds without a user pause control, as requested for this candidate. Reduced-motion preferences remove animated transitions and hidden tabs suspend the timer. Automatically changing content without a user-controlled pause remains an accessibility limitation for future design review.

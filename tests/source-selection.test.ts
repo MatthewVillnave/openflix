@@ -60,7 +60,11 @@ const fake = (value: PlaybackInfo | Error) => {
     return value;
   });
   const closePlayback = vi.fn(async () => {});
-  return { getPlaybackInfo, closePlayback } as unknown as ManagedMediaConnector;
+  return {
+    getItem: vi.fn(async () => ({ id: upstream })),
+    getPlaybackInfo,
+    closePlayback,
+  } as unknown as ManagedMediaConnector;
 };
 const choose = (
   sources: Record<string, ManagedMediaConnector>,
@@ -170,4 +174,28 @@ it('preserves legacy source-item playback without equating catalog grouping with
   expect(a.getPlaybackInfo).not.toHaveBeenCalled();
   const result = await choose({ a }, { itemId: catalogId('item', 'a', upstream) });
   expect(result.binding).toBeUndefined();
+});
+it('preserves each automatic candidate failure for safe server diagnostics without granting playback', async () => {
+  const observed = vi.fn();
+  const error = new ConnectorError('invalid_response', {
+    stage: 'resource_reference',
+    reason: 'unsafe_reference',
+    referenceRule: 'unknown_query_name',
+  });
+  const sources = { a: fake(error), b: fake(new ConnectorError('timeout')) };
+  await expect(
+    selectSource(
+      db,
+      { groupId: group(), profile: { formats: [...profile.formats] } },
+      () => true,
+      (r) => sources[r.id as 'a' | 'b'],
+      () => {},
+      observed,
+    ),
+  ).rejects.toMatchObject({ code: 'no_compatible_source' });
+  expect(observed).toHaveBeenCalledTimes(2);
+  expect(observed.mock.calls.map(([e]) => e.code).sort()).toEqual(['invalid_response', 'timeout']);
+  expect(
+    observed.mock.calls.some(([e]) => e.diagnostic?.referenceRule === 'unknown_query_name'),
+  ).toBe(true);
 });
