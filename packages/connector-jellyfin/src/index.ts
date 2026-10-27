@@ -396,32 +396,32 @@ export function createJellyfinConnector(
       if (ids.length > 256 || ids.some((id) => !identifier.safeParse(id).success))
         throw new ConnectorError('invalid_configuration');
       await withCredential(async (api, credential) => {
-        options.signal?.throwIfAborted();
+        // Explicit-ID list queries bypass current library visibility on Jellyfin
+        // 10.11.11. Use the visibility-enforcing single-item operation instead.
         const requested = [...new Set(ids)];
-        const page = pageSchema.parse(
-          (
-            await catalogApi(api).getItems({
-              userId: credential.userId,
-              ids: requested,
-              recursive: true,
-              startIndex: 0,
-              limit: requested.length,
-              enableImages: false,
-              enableUserData: false,
-              enableTotalRecordCount: true,
-            })
-          ).data,
+        let next = 0;
+        let failure: unknown;
+        const results = await Promise.allSettled(
+          Array.from({ length: Math.min(3, requested.length) }, async () => {
+            while (!failure) {
+              options.signal?.throwIfAborted();
+              const id = requested[next++];
+              if (!id) return;
+              try {
+                const item = normalizeItem(
+                  (await catalogApi(api).getItem({ itemId: id, userId: credential.userId })).data,
+                );
+                if (item.id !== id) throw new ConnectorError('invalid_response');
+                noSecretEcho(item, [credential.token]);
+              } catch (error) {
+                failure ??= error;
+                throw error;
+              }
+            }
+          }),
         );
-        const returned = page.Items.map((item) => item.Id);
-        if (
-          page.StartIndex !== 0 ||
-          page.TotalRecordCount !== requested.length ||
-          returned.length !== requested.length ||
-          new Set(returned).size !== requested.length ||
-          returned.some((id) => !requested.includes(id))
-        )
-          throw new ConnectorError('unauthorized');
-        noSecretEcho(page, [credential.token]);
+        const rejected = results.find((result) => result.status === 'rejected');
+        if (rejected?.status === 'rejected') throw failure ?? rejected.reason;
       });
     },
     async getArtwork(id, kind, signal) {

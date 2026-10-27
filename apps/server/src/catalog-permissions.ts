@@ -15,7 +15,7 @@ export function catalogPermissions(
   const acquire = (deadline: number, signal: AbortSignal): Promise<void> => {
     if (signal.aborted) return Promise.reject(new ConnectorError('cancelled'));
     if (Date.now() >= deadline) return Promise.reject(new ConnectorError('timeout'));
-    if (active < 12) {
+    if (active < 4) {
       active++;
       return Promise.resolve();
     }
@@ -136,7 +136,8 @@ export function catalogPermissions(
         { baseUrl: record.baseUrl, credential: { id: record.id }, signal },
         vault.forUser(user.id),
       );
-      // Four bounded batches share the same global concurrency limit, while each
+      // At most four batches, each with three upstream item requests, keep
+      // the global upstream bound at twelve while each
       // batch pins identity once and still authorizes every individual item.
       const size = connector.verifyItems ? Math.ceil(entries.length / 4) : 1;
       for (let i = 0; i < entries.length; i += size) {

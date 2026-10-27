@@ -187,6 +187,9 @@ try {
       name,
       id: info.Id,
       api,
+      clientBase: base,
+      userId: user.Id,
+      policy,
       password: restrictedPassword,
       baseUrl: 'http://jellyfin-' + name + ':8096',
     });
@@ -314,6 +317,55 @@ try {
   console.log(JSON.stringify(both));
   mark(
     'Actual Chromium decode/progression/pause/seek/reporting from either independent backend; automatic direct preference',
+  );
+  phase = 'real library permission revocation';
+  const revokedServer = servers[0];
+  const rawAuth = await revokedServer.api('/Users/AuthenticateByName', {
+    Username: 'restricted-connector',
+    Pw: revokedServer.password,
+  });
+  secrets.push(rawAuth.AccessToken);
+  const upstreamMovie = (
+    await revokedServer.api(
+      '/Items?userId=' + revokedServer.userId + '&Recursive=true&IncludeItemTypes=Movie',
+      undefined,
+      true,
+    )
+  ).Items.find((item) => item.Name === 'Shared work');
+  assert.ok(upstreamMovie);
+  const tvView = (
+    await revokedServer.api('/UserViews?userId=' + revokedServer.userId, undefined, true)
+  ).Items.find((view) => view.Name === 'tv');
+  assert.ok(tvView);
+  await revokedServer.api(
+    '/Users/' + revokedServer.userId + '/Policy',
+    { ...revokedServer.policy, EnabledFolders: [tvView.Id] },
+    true,
+  );
+  const restrictedRead = (path) =>
+    fetch(revokedServer.clientBase + path, { headers: { 'X-Emby-Token': rawAuth.AccessToken } });
+  const unsafeList = await restrictedRead(
+    '/Items?userId=' + revokedServer.userId + '&ids=' + upstreamMovie.Id + '&Recursive=true',
+  );
+  assert.equal(unsafeList.status, 200);
+  assert.ok(
+    (await unsafeList.json()).Items.some((item) => item.Id === upstreamMovie.Id),
+    'Explicit IDs demonstrate the upstream visibility bypass',
+  );
+  assert.equal(
+    (await restrictedRead('/Items/' + upstreamMovie.Id + '?userId=' + revokedServer.userId)).status,
+    404,
+  );
+  assert.equal((await api('/catalog/works/' + shared.id)).status, 503);
+  assert.equal((await api('/catalog/items/' + sourceA.itemId)).status, 404);
+  assert.notEqual((await api('/catalog/items/' + sourceA.itemId + '/artwork/poster')).status, 200);
+  assert.notEqual(
+    (await api('/playback/sessions', { itemId: sourceA.itemId, profile })).status,
+    201,
+  );
+  await revokedServer.api('/Users/' + revokedServer.userId + '/Policy', revokedServer.policy, true);
+  mark(
+    'Real library revocation blocks cached metadata, artwork and playback while media remains present',
   );
   phase = 'offline authorization fails closed';
   await compose('stop', 'jellyfin-a');

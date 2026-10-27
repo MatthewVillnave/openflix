@@ -202,6 +202,12 @@ export async function jellyfinFixture() {
       return;
     }
     if (catalogUrl.pathname.startsWith('/jellyfin/Items/')) {
+      if (state.permissionDelay)
+        await new Promise((resolve) => setTimeout(resolve, state.permissionDelay));
+      if (state.hideLibraries) {
+        json({}, 404);
+        return;
+      }
       response.once('close', () => {
         if (!response.writableEnded) state.itemAborts++;
       });

@@ -50,7 +50,7 @@ it('rechecks account authority after waiting and never starts revoked-owner work
   const { verify, users } = setup();
   state.delay = 75;
   const first = Array.from({ length: 3 }, () => verify('a', page));
-  await vi.waitFor(() => expect(state.active).toBe(12));
+  await vi.waitFor(() => expect(state.active).toBe(4));
   const queued = verify('b', page);
   const outcome = queued.catch((e) => e);
   users.delete('b');
@@ -64,7 +64,7 @@ it('rejects a source removed while its permission work waits', async () => {
   const { verify, connections } = setup();
   state.delay = 75;
   const first = Array.from({ length: 3 }, () => verify('a', page));
-  await vi.waitFor(() => expect(state.active).toBe(12));
+  await vi.waitFor(() => expect(state.active).toBe(4));
   const result = verify('b', page).catch((e) => e);
   connections.delete('b');
   await Promise.all(first);
@@ -112,7 +112,7 @@ it('removes disconnected requests from the shared queue and leaves capacity avai
   const { verify } = setup();
   state.delay = 75;
   const first = Array.from({ length: 3 }, () => verify('a', page));
-  await vi.waitFor(() => expect(state.active).toBe(12));
+  await vi.waitFor(() => expect(state.active).toBe(4));
   const controller = new AbortController();
   const queued = verify('b', page, controller.signal).catch((error) => error);
   controller.abort();
